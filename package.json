@@ -1,0 +1,46 @@
+{
+  "name": "bot-wa-kr",
+  "version": "1.0.0",
+  "description": "WhatsApp Bot for Kakarama Room booking management and reporting",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "node test/runTests.js",
+    "test:health": "node test/runTests.js --health",
+    "test:parser": "node test/messageParser.test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tupski/Bot-WA-KR.git"
+  },
+  "keywords": [
+    "whatsapp",
+    "bot",
+    "booking",
+    "reporting",
+    "nodejs"
+  ],
+  "author": "tupski",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/tupski/Bot-WA-KR/issues"
+  },
+  "homepage": "https://github.com/tupski/Bot-WA-KR#readme",
+  "dependencies": {
+    "dotenv": "^17.2.1",
+    "exceljs": "^4.4.0",
+    "moment-timezone": "^0.6.0",
+    "mysql2": "^3.14.3",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^7.0.5",
+    "qrcode-terminal": "^0.12.0",
+    "sqlite3": "^5.1.7",
+    "whatsapp-web.js": "^1.31.0",
+    "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}

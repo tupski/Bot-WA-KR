@@ -1,0 +1,461 @@
+// Modul Generator Laporan
+const moment = require('moment-timezone');
+const config = require('../config/config.js');
+const database = require('./database');
+const numberFormatter = require('./numberFormatter');
+const logger = require('./logger');
+
+class ReportGenerator {
+    constructor() {
+        this.timezone = config.report.timezone;
+        this.companyName = config.report.companyName;
+    }
+
+    /**
+     * Generate daily report in the specified format
+     */
+    async generateDailyReport(date = null) {
+        try {
+            const reportDate = date || moment().tz(this.timezone).format('YYYY-MM-DD');
+            const displayDate = moment(reportDate).tz(this.timezone).format('DD MMMM YYYY');
+            const displayTime = moment().tz(this.timezone).format('HH:mm');
+
+            logger.info(`Generating daily report for ${reportDate}`);
+
+            // Get data from database
+            const [csSummary, dailySummary, marketingCommission, locationStats] = await Promise.all([
+                database.getCSSummary(reportDate),
+                database.getDailySummary(reportDate),
+                database.getMarketingCommission(reportDate),
+                database.getLocationStats(reportDate)
+            ]);
+
+            // Build report sections
+            const csSection = this.buildCSSection(csSummary);
+            const financeSection = this.buildFinanceSection(csSummary, dailySummary);
+            const commissionSection = this.buildCommissionSection(marketingCommission);
+
+            // Combine all sections
+            const report = this.formatReport(displayDate, displayTime, csSection, financeSection, commissionSection);
+
+            logger.info('Daily report generated successfully');
+            return report;
+
+        } catch (error) {
+            logger.error('Error generating daily report:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Build CS section of the report
+     */
+    buildCSSection(csSummary) {
+        let section = '=== *Laporan CS* ===\n';
+        let totalCS = 0;
+
+        if (csSummary && csSummary.length > 0) {
+            // Group by CS name and sum bookings
+            const csGroups = {};
+            
+            csSummary.forEach(cs => {
+                if (!csGroups[cs.cs_name]) {
+                    csGroups[cs.cs_name] = 0;
+                }
+                csGroups[cs.cs_name] += cs.total_bookings || 0;
+            });
+
+            // Sort by booking count (descending)
+            const sortedCS = Object.entries(csGroups)
+                .sort(([,a], [,b]) => b - a);
+
+            sortedCS.forEach(([csName, bookings]) => {
+                section += `- Total CS ${csName}: ${bookings}\n`;
+                totalCS += bookings;
+            });
+        } else {
+            section += '- Tidak ada data CS hari ini\n';
+        }
+
+        section += `- *Total CS: ${totalCS}*\n`;
+        return section;
+    }
+
+    /**
+     * Build finance section of the report
+     */
+    buildFinanceSection(csSummary, dailySummary) {
+        let section = '=== *Keuangan* ===\n';
+        
+        // Initialize totals
+        let totalCash = 0;
+        let totalTransfer = 0;
+        let totalGross = 0;
+
+        if (csSummary && csSummary.length > 0) {
+            // Group by location/CS for cash and transfer
+            const locationGroups = {};
+            
+            csSummary.forEach(cs => {
+                const location = cs.cs_name;
+                if (!locationGroups[location]) {
+                    locationGroups[location] = {
+                        cash: 0,
+                        transfer: 0
+                    };
+                }
+                locationGroups[location].cash += parseFloat(cs.total_cash || 0);
+                locationGroups[location].transfer += parseFloat(cs.total_transfer || 0);
+            });
+
+            // Display cash amounts by location
+            Object.entries(locationGroups).forEach(([location, amounts]) => {
+                if (amounts.cash > 0) {
+                    section += `- Total Cash ${location}: ${this.formatCurrency(amounts.cash)}\n`;
+                    totalCash += amounts.cash;
+                }
+            });
+
+            // Display transfer amounts by location
+            Object.entries(locationGroups).forEach(([location, amounts]) => {
+                if (amounts.transfer > 0) {
+                    section += `- Total TF ${location}: ${this.formatCurrency(amounts.transfer)}\n`;
+                    totalTransfer += amounts.transfer;
+                }
+            });
+        }
+
+        // Use daily summary if available, otherwise calculate from CS summary
+        if (dailySummary) {
+            totalCash = parseFloat(dailySummary.total_cash || 0);
+            totalTransfer = parseFloat(dailySummary.total_transfer || 0);
+            totalGross = parseFloat(dailySummary.total_gross || 0);
+        } else {
+            totalGross = totalCash + totalTransfer;
+        }
+
+        section += `- *Total Kotor: ${this.formatCurrency(totalGross)}*\n`;
+        return section;
+    }
+
+    /**
+     * Build commission section of the report
+     */
+    buildCommissionSection(marketingCommission) {
+        let section = '=== *Komisi Marketing* ===\n';
+        let totalCommission = 0;
+
+        if (marketingCommission && marketingCommission.length > 0) {
+            marketingCommission.forEach(commission => {
+                const csName = commission.cs_name;
+                const bookingCount = commission.booking_count || 0;
+                const commissionAmount = parseFloat(commission.total_commission || 0);
+                
+                section += `(${csName}): ${bookingCount} booking, ${this.formatCurrency(commissionAmount)}\n`;
+                totalCommission += commissionAmount;
+            });
+        } else {
+            section += 'Tidak ada komisi hari ini\n';
+        }
+
+        section += `Total Komisi: ${this.formatCurrency(totalCommission)}\n`;
+        return section;
+    }
+
+    /**
+     * Format the complete report
+     */
+    formatReport(displayDate, displayTime, csSection, financeSection, commissionSection) {
+        return `*Laporan ${this.companyName}*
+*Tanggal: ${displayDate}, Jam ${displayTime} WIB*
+
+${csSection}
+${financeSection}
+${commissionSection}`;
+    }
+
+    /**
+     * Format currency in Indonesian Rupiah
+     */
+    formatCurrency(amount) {
+        return numberFormatter.formatByContext(amount, 'whatsapp');
+    }
+
+    /**
+     * Generate weekly report
+     */
+    async generateWeeklyReport(startDate = null) {
+        try {
+            const endDate = startDate ? 
+                moment(startDate).add(6, 'days').format('YYYY-MM-DD') :
+                moment().tz(this.timezone).format('YYYY-MM-DD');
+            
+            const actualStartDate = startDate || 
+                moment().tz(this.timezone).subtract(6, 'days').format('YYYY-MM-DD');
+
+            logger.info(`Generating weekly report from ${actualStartDate} to ${endDate}`);
+
+            const [transactions, csPerformance] = await Promise.all([
+                database.getTransactionsByDateRange(actualStartDate, endDate),
+                database.getCSPerformance(actualStartDate, endDate)
+            ]);
+
+            let report = `*Laporan Mingguan ${this.companyName}*\n`;
+            report += `*Periode: ${moment(actualStartDate).format('DD MMM')} - ${moment(endDate).format('DD MMM YYYY')}*\n\n`;
+
+            // Weekly summary
+            const totalBookings = transactions.length;
+            const totalRevenue = transactions.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+            const totalCommission = transactions.reduce((sum, t) => sum + parseFloat(t.commission || 0), 0);
+
+            report += `=== *Ringkasan Mingguan* ===\n`;
+            report += `- Total Booking: ${totalBookings}\n`;
+            report += `- Total Pendapatan: ${this.formatCurrency(totalRevenue)}\n`;
+            report += `- Total Komisi: ${this.formatCurrency(totalCommission)}\n\n`;
+
+            // CS Performance
+            if (csPerformance.length > 0) {
+                report += `=== *Performa CS* ===\n`;
+                csPerformance.forEach(cs => {
+                    report += `- ${cs.cs_name}: ${cs.total_bookings} booking, ${this.formatCurrency(cs.total_revenue)}\n`;
+                });
+            }
+
+            return report;
+
+        } catch (error) {
+            logger.error('Error generating weekly report:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Generate monthly report
+     */
+    async generateMonthlyReport(year = null, month = null) {
+        try {
+            const targetDate = moment().tz(this.timezone);
+            if (year) targetDate.year(year);
+            if (month) targetDate.month(month - 1);
+
+            const startDate = targetDate.clone().startOf('month').format('YYYY-MM-DD');
+            const endDate = targetDate.clone().endOf('month').format('YYYY-MM-DD');
+
+            logger.info(`Generating monthly report for ${targetDate.format('MMMM YYYY')}`);
+
+            const [transactions, csPerformance] = await Promise.all([
+                database.getTransactionsByDateRange(startDate, endDate),
+                database.getCSPerformance(startDate, endDate)
+            ]);
+
+            let report = `*Laporan Bulanan ${this.companyName}*\n`;
+            report += `*Bulan: ${targetDate.format('MMMM YYYY')}*\n\n`;
+
+            // Monthly summary
+            const totalBookings = transactions.length;
+            const totalRevenue = transactions.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+            const totalCommission = transactions.reduce((sum, t) => sum + parseFloat(t.commission || 0), 0);
+            const avgDailyRevenue = totalRevenue / targetDate.daysInMonth();
+
+            report += `=== *Ringkasan Bulanan* ===\n`;
+            report += `- Total Booking: ${totalBookings}\n`;
+            report += `- Total Pendapatan: ${this.formatCurrency(totalRevenue)}\n`;
+            report += `- Total Komisi: ${this.formatCurrency(totalCommission)}\n`;
+            report += `- Rata-rata Harian: ${this.formatCurrency(avgDailyRevenue)}\n\n`;
+
+            // Top performing CS
+            if (csPerformance.length > 0) {
+                report += `=== *Top Performer* ===\n`;
+                const topCS = csPerformance[0];
+                report += `🏆 ${topCS.cs_name}: ${topCS.total_bookings} booking, ${this.formatCurrency(topCS.total_revenue)}\n\n`;
+
+                report += `=== *Performa Semua CS* ===\n`;
+                csPerformance.forEach((cs, index) => {
+                    const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '-';
+                    report += `${medal} ${cs.cs_name}: ${cs.total_bookings} booking, ${this.formatCurrency(cs.total_revenue)}\n`;
+                });
+            }
+
+            return report;
+
+        } catch (error) {
+            logger.error('Error generating monthly report:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Generate custom report for date range
+     */
+    async generateCustomReport(startDate, endDate, title = 'Laporan Custom') {
+        try {
+            logger.info(`Generating custom report from ${startDate} to ${endDate}`);
+
+            const [transactions, csPerformance, paymentStats] = await Promise.all([
+                database.getTransactionsByDateRange(startDate, endDate),
+                database.getCSPerformance(startDate, endDate),
+                database.getPaymentMethodStats(startDate) // Note: This might need adjustment for date range
+            ]);
+
+            let report = `*${title}*\n`;
+            report += `*Periode: ${moment(startDate).format('DD MMM YYYY')} - ${moment(endDate).format('DD MMM YYYY')}*\n\n`;
+
+            // Summary
+            const totalBookings = transactions.length;
+            const totalRevenue = transactions.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+            const totalCommission = transactions.reduce((sum, t) => sum + parseFloat(t.commission || 0), 0);
+
+            report += `=== *Ringkasan* ===\n`;
+            report += `- Total Booking: ${totalBookings}\n`;
+            report += `- Total Pendapatan: ${this.formatCurrency(totalRevenue)}\n`;
+            report += `- Total Komisi: ${this.formatCurrency(totalCommission)}\n\n`;
+
+            // CS Performance
+            if (csPerformance.length > 0) {
+                report += `=== *Performa CS* ===\n`;
+                csPerformance.forEach(cs => {
+                    report += `- ${cs.cs_name}: ${cs.total_bookings} booking, ${this.formatCurrency(cs.total_revenue)}\n`;
+                });
+            }
+
+            return report;
+
+        } catch (error) {
+            logger.error('Error generating custom report:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Generate laporan berdasarkan rentang tanggal dan waktu
+     */
+    async generateReportByDateRange(startDate, endDate, displayDate) {
+        try {
+            logger.info(`Generating report untuk rentang: ${startDate} - ${endDate}`);
+
+            // Ambil data dari database berdasarkan rentang waktu
+            const transactions = await database.getTransactionsByDateRange(startDate, endDate);
+
+            if (!transactions || transactions.length === 0) {
+                return null;
+            }
+
+            // Hitung statistik
+            const stats = this.calculateRangeStats(transactions);
+
+            // Format laporan
+            const report = this.formatRangeReport(stats, displayDate);
+
+            return report;
+
+        } catch (error) {
+            logger.error('Error generating report by date range:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Hitung statistik untuk rentang waktu
+     */
+    calculateRangeStats(transactions) {
+        const stats = {
+            totalTransactions: 0,
+            totalAmount: 0,
+            totalCommission: 0,
+            totalNet: 0,
+            csSummary: {},
+            paymentMethods: { Cash: 0, Transfer: 0 },
+            locations: {}
+        };
+
+        transactions.forEach(transaction => {
+            // Skip APK dari perhitungan keuangan
+            if (transaction.csName && transaction.csName.toLowerCase() === 'apk') {
+                // Hitung CS tapi skip keuangan
+                if (!stats.csSummary[transaction.csName]) {
+                    stats.csSummary[transaction.csName] = { count: 0, amount: 0, commission: 0, net: 0 };
+                }
+                stats.csSummary[transaction.csName].count++;
+                return;
+            }
+
+            stats.totalTransactions++;
+            stats.totalAmount += transaction.amount || 0;
+            stats.totalCommission += transaction.commission || 0;
+            stats.totalNet += transaction.netAmount || (transaction.amount - transaction.commission) || 0;
+
+            // CS Summary
+            if (transaction.csName) {
+                if (!stats.csSummary[transaction.csName]) {
+                    stats.csSummary[transaction.csName] = { count: 0, amount: 0, commission: 0, net: 0 };
+                }
+                stats.csSummary[transaction.csName].count++;
+                stats.csSummary[transaction.csName].amount += transaction.amount || 0;
+                stats.csSummary[transaction.csName].commission += transaction.commission || 0;
+                stats.csSummary[transaction.csName].net += transaction.netAmount || (transaction.amount - transaction.commission) || 0;
+            }
+
+            // Payment Methods
+            if (transaction.paymentMethod) {
+                if (transaction.paymentMethod.toLowerCase().includes('cash')) {
+                    stats.paymentMethods.Cash += transaction.amount || 0;
+                } else if (transaction.paymentMethod.toLowerCase().includes('transfer') || transaction.paymentMethod.toLowerCase().includes('tf')) {
+                    stats.paymentMethods.Transfer += transaction.amount || 0;
+                }
+            }
+
+            // Locations
+            if (transaction.location) {
+                if (!stats.locations[transaction.location]) {
+                    stats.locations[transaction.location] = 0;
+                }
+                stats.locations[transaction.location]++;
+            }
+        });
+
+        return stats;
+    }
+
+    /**
+     * Format laporan untuk rentang waktu
+     */
+    formatRangeReport(stats, displayDate) {
+        let report = `📊 *REKAP LAPORAN ${displayDate.toUpperCase()}*\n`;
+        report += `🏢 ${this.companyName}\n`;
+        report += `⏰ ${moment().tz(this.timezone).format('HH:mm')} WIB\n\n`;
+
+        // Ringkasan Keuangan
+        report += `💰 *RINGKASAN KEUANGAN*\n`;
+        report += `Total Transaksi: ${stats.totalTransactions}\n`;
+        report += `Total Pendapatan: ${numberFormatter.formatCurrency(stats.totalAmount, 'whatsapp')}\n`;
+        report += `Total Komisi: ${numberFormatter.formatCurrency(stats.totalCommission, 'whatsapp')}\n`;
+        report += `Pendapatan Bersih: ${numberFormatter.formatCurrency(stats.totalNet, 'whatsapp')}\n\n`;
+
+        // Metode Pembayaran
+        report += `💳 *METODE PEMBAYARAN*\n`;
+        report += `Cash: ${numberFormatter.formatCurrency(stats.paymentMethods.Cash, 'whatsapp')}\n`;
+        report += `Transfer: ${numberFormatter.formatCurrency(stats.paymentMethods.Transfer, 'whatsapp')}\n\n`;
+
+        // Performa CS
+        report += `👥 *PERFORMA CS*\n`;
+        Object.entries(stats.csSummary).forEach(([csName, data]) => {
+            if (csName.toLowerCase() === 'apk') {
+                report += `${csName}: ${data.count} transaksi (APK - tidak dihitung keuangan)\n`;
+            } else {
+                report += `${csName}: ${data.count} transaksi - ${numberFormatter.formatCurrency(data.net, 'whatsapp')}\n`;
+            }
+        });
+
+        // Lokasi
+        if (Object.keys(stats.locations).length > 0) {
+            report += `\n📍 *LOKASI*\n`;
+            Object.entries(stats.locations).forEach(([location, count]) => {
+                report += `${location}: ${count} transaksi\n`;
+            });
+        }
+
+        return report;
+    }
+}
+
+module.exports = new ReportGenerator();
