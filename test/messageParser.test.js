@@ -81,17 +81,17 @@ function runTests() {
         try {
             const result = messageParser.parseBookingMessage(test.input, `test-${index}`, test.groupName);
 
-            if (!result) {
-                console.log('❌ GAGAL: Parser mengembalikan null');
+            if (!result || result.status !== 'VALID') {
+                console.log('❌ GAGAL: Parser tidak mengembalikan status VALID');
                 failed++;
                 return;
             }
 
-            // Cek setiap field yang diharapkan
+            // Cek setiap field yang diharapkan di result.data
             let testPassed = true;
             for (const [key, expectedValue] of Object.entries(test.expected)) {
-                if (result[key] !== expectedValue) {
-                    console.log(`❌ GAGAL: ${key} diharapkan "${expectedValue}", dapat "${result[key]}"`);
+                if (result.data[key] !== expectedValue) {
+                    console.log(`❌ GAGAL: ${key} diharapkan "${expectedValue}", dapat "${result.data[key]}"`);
                     testPassed = false;
                 }
             }
@@ -117,8 +117,30 @@ function runTests() {
         'Pesan biasa tanpa emoji',
         '🟢WRONG GROUP',
         `🟢SKY HOUSE
-Unit: A1`, // Tidak lengkap
+Unit: A1`, // Tidak lengkap - WRONG_FORMAT
         '🔴SKY HOUSE\nUnit: A1\nCs: test' // Emoji salah
+    ];
+
+    // Test missing field
+    const missingFieldMessages = [
+        {
+            input: `🟢SKY HOUSE
+Unit      :L3/30N
+Cek out: 05:00
+Untuk   : 6 jam
+Cash/Tf: tf kr 250
+Cs    : dreamy`,
+            expectedMissing: 'Komisi'
+        },
+        {
+            input: `🟢SKY HOUSE
+Unit      :L3/30N
+Cek out: 05:00
+Untuk   : 6 jam
+Cash/Tf: tf kr 250
+Komisi: 50`,
+            expectedMissing: 'Cs'
+        }
     ];
 
     invalidMessages.forEach((message, index) => {
@@ -127,7 +149,7 @@ Unit: A1`, // Tidak lengkap
         try {
             const result = messageParser.parseBookingMessage(message, `invalid-${index}`, 'SKY HOUSE');
 
-            if (result === null) {
+            if (result && (result.status === 'WRONG_FORMAT' || result.status === 'MISSING_FIELD' || result.status === 'WRONG_PREFIX')) {
                 console.log('✅ BERHASIL: Berhasil menolak pesan tidak valid');
                 passed++;
             } else {
@@ -137,6 +159,29 @@ Unit: A1`, // Tidak lengkap
         } catch (error) {
             console.log('✅ BERHASIL: Berhasil menolak pesan tidak valid');
             passed++;
+        }
+
+        console.log('');
+    });
+
+    // Test missing field messages
+    console.log('Testing missing field messages...');
+    missingFieldMessages.forEach((test, index) => {
+        console.log(`Test Missing Field ${index + 1}: ${test.input.split('\n')[0]}...`);
+
+        try {
+            const result = messageParser.parseBookingMessage(test.input, `missing-${index}`, 'SKY HOUSE');
+
+            if (result && result.status === 'MISSING_FIELD' && result.missingField === test.expectedMissing) {
+                console.log(`✅ BERHASIL: Berhasil detect field ${test.expectedMissing} yang kurang`);
+                passed++;
+            } else {
+                console.log(`❌ GAGAL: Seharusnya detect field ${test.expectedMissing} yang kurang`);
+                failed++;
+            }
+        } catch (error) {
+            console.log(`❌ GAGAL: Error - ${error.message}`);
+            failed++;
         }
 
         console.log('');

@@ -43,20 +43,48 @@ async function handleMessage(message) {
         if (message.body.startsWith('🟢') && groupName) {
             logger.info(`Memproses pesan booking dari grup ${groupName}: ${message.body.substring(0, 50)}...`);
 
-            // Parse pesan dengan nama grup
-            const parsedData = messageParser.parseBookingMessage(message.body, message.id.id, groupName);
-
-            if (parsedData) {
-                // Simpan ke database
-                await database.saveTransaction(parsedData);
-                logger.info('Transaksi berhasil disimpan');
-            } else {
-                await errorHandler.handleParsingError(
-                    new Error('Gagal parse pesan booking'),
-                    message.body,
-                    message.id.id
-                );
+            // Cek apakah pesan sudah diproses sebelumnya
+            const isProcessed = await database.isMessageProcessed(message.id.id);
+            if (isProcessed) {
+                logger.info(`Pesan ${message.id.id} sudah diproses sebelumnya, skip.`);
+                return;
             }
+
+            // Parse pesan dengan nama grup
+            const parseResult = messageParser.parseBookingMessage(message.body, message.id.id, groupName);
+
+            if (parseResult.status === 'VALID') {
+                // Simpan ke database
+                await database.saveTransaction(parseResult.data);
+                await database.markMessageProcessed(message.id.id, message.from);
+                logger.info('Transaksi berhasil disimpan');
+
+            } else if (parseResult.status === 'WRONG_FORMAT') {
+                // Format salah - hapus pesan dan maki-maki
+                const deleted = await bot.deleteMessage(message);
+                if (deleted) {
+                    await bot.sendMessage(message.from, parseResult.message);
+                } else {
+                    // Jika tidak bisa hapus, kirim pesan saja
+                    await bot.sendMessage(message.from, parseResult.message);
+                }
+
+            } else if (parseResult.status === 'MISSING_FIELD') {
+                // Field kurang - hapus pesan dan mention user
+                const deleted = await bot.deleteMessage(message);
+                const contact = await message.getContact();
+                const mentionText = `@${contact.number} ${parseResult.message}`;
+
+                if (deleted) {
+                    await bot.sendMessageWithMention(message.from, mentionText, contact.id._serialized);
+                } else {
+                    // Jika tidak bisa hapus, kirim mention saja
+                    await bot.sendMessageWithMention(message.from, mentionText, contact.id._serialized);
+                }
+            }
+
+            // Mark sebagai processed meskipun error untuk avoid spam
+            await database.markMessageProcessed(message.id.id, message.from);
         }
     } catch (error) {
         await errorHandler.handleError(error, 'Message Processing', {
@@ -101,6 +129,24 @@ async function handleCommand(message, groupName) {
     }
 }
 
+// Recovery function untuk checkpoint system
+async function performRecovery() {
+    try {
+        logger.info('Memulai recovery check untuk pesan yang tertinggal...');
+
+        // Cleanup old processed messages (older than 30 days)
+        await database.cleanupProcessedMessages(30);
+
+        // Note: Recovery dari WhatsApp messages yang tertinggal memerlukan
+        // implementasi khusus karena WhatsApp Web.js tidak menyimpan history
+        // Untuk sekarang, kita hanya cleanup dan log
+
+        logger.info('Recovery check selesai');
+    } catch (error) {
+        logger.error('Error during recovery:', error);
+    }
+}
+
 // Daftarkan message handler
 bot.addMessageHandler(handleMessage);
 
@@ -117,6 +163,9 @@ async function startBot() {
 
         // Initialize WhatsApp bot
         await bot.initialize();
+
+        // Perform recovery check setelah bot ready
+        await performRecovery();
 
         // Initialize scheduled tasks
         scheduler.initializeSchedules();

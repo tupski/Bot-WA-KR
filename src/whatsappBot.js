@@ -247,6 +247,74 @@ class WhatsAppBot {
     }
 
     // Graceful shutdown
+    /**
+     * Cek apakah bot adalah admin di grup
+     */
+    async isBotAdmin(chatId) {
+        try {
+            const chat = await this.client.getChatById(chatId);
+            if (!chat.isGroup) return false;
+
+            const participants = await chat.participants;
+            const botNumber = this.client.info.wid._serialized;
+
+            const botParticipant = participants.find(p => p.id._serialized === botNumber);
+            return botParticipant && botParticipant.isAdmin;
+        } catch (error) {
+            logger.error('Error checking admin status:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Hapus pesan (jika bot admin)
+     */
+    async deleteMessage(message) {
+        try {
+            const isAdmin = await this.isBotAdmin(message.from);
+            if (isAdmin) {
+                await message.delete(true); // true = delete for everyone
+                logger.info(`Pesan dihapus: ${message.id._serialized}`);
+                return true;
+            } else {
+                logger.warn('Bot bukan admin, tidak bisa hapus pesan');
+                return false;
+            }
+        } catch (error) {
+            logger.error('Error deleting message:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Kirim pesan dengan mention
+     */
+    async sendMessageWithMention(chatId, text, mentionedUser) {
+        try {
+            const mentions = [mentionedUser];
+            await this.client.sendMessage(chatId, text, { mentions });
+            logger.info(`Pesan dengan mention dikirim ke ${chatId}`);
+            return true;
+        } catch (error) {
+            logger.error('Error sending message with mention:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Kirim pesan biasa
+     */
+    async sendMessage(chatId, text) {
+        try {
+            await this.client.sendMessage(chatId, text);
+            logger.info(`Pesan dikirim ke ${chatId}`);
+            return true;
+        } catch (error) {
+            logger.error('Error sending message:', error);
+            return false;
+        }
+    }
+
     async destroy() {
         try {
             if (this.client) {

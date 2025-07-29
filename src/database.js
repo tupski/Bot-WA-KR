@@ -87,6 +87,15 @@ class Database {
                     created_at ${this.dbType === 'mysql' ? 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP' : 'DATETIME DEFAULT CURRENT_TIMESTAMP'}
                 )
             `,
+            processed_messages: `
+                CREATE TABLE IF NOT EXISTS processed_messages (
+                    id INTEGER PRIMARY KEY ${this.dbType === 'mysql' ? 'AUTO_INCREMENT' : 'AUTOINCREMENT'},
+                    message_id VARCHAR(255) UNIQUE,
+                    chat_id VARCHAR(255),
+                    processed_at ${this.dbType === 'mysql' ? 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP' : 'DATETIME DEFAULT CURRENT_TIMESTAMP'},
+                    status VARCHAR(50) DEFAULT 'processed'
+                )
+            `,
             config_table: `
                 CREATE TABLE IF NOT EXISTS config (
                     id INTEGER PRIMARY KEY ${this.dbType === 'mysql' ? 'AUTO_INCREMENT' : 'AUTOINCREMENT'},
@@ -386,6 +395,45 @@ class Database {
 
         logger.info(`Cleaned up ${totalDeleted} old records older than ${daysToKeep} days`);
         return totalDeleted;
+    }
+
+    // Checkpoint system methods
+    async markMessageProcessed(messageId, chatId) {
+        const query = `
+            INSERT OR REPLACE INTO processed_messages (message_id, chat_id, status)
+            VALUES (?, ?, 'processed')
+        `;
+        return await this.executeQuery(query, [messageId, chatId]);
+    }
+
+    async isMessageProcessed(messageId) {
+        const query = 'SELECT id FROM processed_messages WHERE message_id = ?';
+        const result = await this.executeQuery(query, [messageId]);
+        return result.length > 0;
+    }
+
+    async getUnprocessedMessages(chatId, limit = 100) {
+        // Ini akan digunakan untuk recovery - implementasi tergantung WhatsApp API
+        const query = `
+            SELECT message_id FROM processed_messages
+            WHERE chat_id = ?
+            ORDER BY processed_at DESC
+            LIMIT ?
+        `;
+        return await this.executeQuery(query, [chatId, limit]);
+    }
+
+    async cleanupProcessedMessages(daysToKeep = 30) {
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
+        const cutoffDateStr = cutoffDate.toISOString().split('T')[0];
+
+        const query = 'DELETE FROM processed_messages WHERE processed_at < ?';
+        const result = await this.executeQuery(query, [cutoffDateStr]);
+
+        const deleted = result.changes || result.affectedRows || 0;
+        logger.info(`Cleaned up ${deleted} old processed message records`);
+        return deleted;
     }
 
     async close() {

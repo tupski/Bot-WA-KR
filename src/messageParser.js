@@ -24,15 +24,25 @@ class MessageParser {
             // Cek apakah pesan dimulai dengan prefix grup
             const groupPrefix = `🟢${groupName}`;
             if (!messageBody.startsWith(groupPrefix)) {
-                return null;
+                return {
+                    status: 'WRONG_PREFIX',
+                    data: null,
+                    missingField: null,
+                    message: null
+                };
             }
 
             // Pisahkan baris-baris pesan
             const lines = messageBody.split('\n').map(line => line.trim()).filter(line => line);
 
+            // Cek format dasar - minimal harus ada 6 baris
             if (lines.length < 6) {
-                logger.warn(`Format pesan tidak lengkap: ${messageBody}`);
-                return null;
+                return {
+                    status: 'WRONG_FORMAT',
+                    data: null,
+                    missingField: null,
+                    message: 'Salah anjing. yang bener gini:\n\n🟢SKY HOUSE\nUnit      :L3/30N\nCek out: 05:00\nUntuk   : 6 jam\nCash/Tf: tf kr 250\nCs    : dreamy\nKomisi: 50'
+                };
             }
 
             // Parse setiap baris
@@ -59,10 +69,35 @@ class MessageParser {
                 }
             }
 
-            // Validasi data yang diperlukan
-            if (!data.unit || !data.csName) {
-                logger.warn(`Data wajib tidak lengkap: ${messageBody}`);
-                return null;
+            // Validasi field yang diperlukan
+            const requiredFields = {
+                'unit': 'Unit',
+                'checkoutTime': 'Cek out',
+                'duration': 'Untuk',
+                'paymentMethod': 'Cash/Tf',
+                'csName': 'Cs',
+                'komisi': 'Komisi'
+            };
+
+            for (const [field, displayName] of Object.entries(requiredFields)) {
+                if (!data[field] && field !== 'komisi') {
+                    return {
+                        status: 'MISSING_FIELD',
+                        data: null,
+                        missingField: displayName,
+                        message: `${displayName}nya mana?`
+                    };
+                }
+            }
+
+            // Khusus untuk komisi - cek apakah ada tapi kosong
+            if (data.komisi === undefined || data.komisi === null) {
+                return {
+                    status: 'MISSING_FIELD',
+                    data: null,
+                    missingField: 'Komisi',
+                    message: 'Komisinya mana?'
+                };
             }
 
             // Hitung pendapatan bersih (amount - komisi)
@@ -89,12 +124,22 @@ class MessageParser {
             };
 
             logger.info('Pesan berhasil di-parse:', JSON.stringify(parsedData, null, 2));
-            return parsedData;
+            return {
+                status: 'VALID',
+                data: parsedData,
+                missingField: null,
+                message: null
+            };
 
         } catch (error) {
             logger.error('Error parsing pesan:', error);
             logger.error('Isi pesan:', messageBody);
-            return null;
+            return {
+                status: 'WRONG_FORMAT',
+                data: null,
+                missingField: null,
+                message: 'Salah anjing. yang bener gini:\n\n🟢SKY HOUSE\nUnit      :L3/30N\nCek out: 05:00\nUntuk   : 6 jam\nCash/Tf: tf kr 250\nCs    : dreamy\nKomisi: 50'
+            };
         }
     }
 
