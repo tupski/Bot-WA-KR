@@ -55,7 +55,7 @@ async function handleMessage(message) {
             // Cek apakah pesan sudah diproses sebelumnya
             const isProcessed = await database.isMessageProcessed(message.id.id);
             if (isProcessed) {
-                logger.info(`Pesan ${message.id.id} sudah diproses sebelumnya, skip.`);
+                logger.info(`Pesan ${message.id.id} sudah diproses sebelumnya, dilewati.`);
                 return;
             }
 
@@ -96,7 +96,7 @@ async function handleMessage(message) {
             await database.markMessageProcessed(message.id.id, message.from);
         }
     } catch (error) {
-        await errorHandler.handleError(error, 'Message Processing', {
+        await errorHandler.handleError(error, 'Pemrosesan Pesan', {
             level: 'error',
             sendEmail: false,
             userId: message.from,
@@ -164,10 +164,10 @@ async function handleCommand(message, apartmentName) {
 
             // Kirim report ke pengirim
             await bot.sendMessage(message.from, report);
-            logger.info(`Apartment report untuk ${apartmentName} berhasil dikirim`);
+            logger.info(`Laporan apartemen untuk ${apartmentName} berhasil dikirim`);
         }
     } catch (error) {
-        logger.error('Error handling command:', error);
+        logger.error('Error menangani command:', error);
         await bot.sendMessage(message.from, 'Terjadi error saat memproses command.');
     }
 }
@@ -196,7 +196,7 @@ bot.addMessageHandler(handleMessage);
 // Initialize database and start bot
 async function startBot() {
     try {
-        logger.info('Starting WhatsApp Bot...');
+        logger.info('Memulai Bot WhatsApp...');
 
         // Setup global error handlers
         errorHandler.setupGlobalHandlers();
@@ -213,7 +213,7 @@ async function startBot() {
         // Initialize scheduled tasks
         scheduler.initializeSchedules();
 
-        logger.info('Bot initialization completed');
+        logger.info('Inisialisasi bot selesai');
     } catch (error) {
         await errorHandler.handleError(error, 'Bot Startup', {
             level: 'fatal',

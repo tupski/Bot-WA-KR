@@ -20,7 +20,7 @@ class ReportGenerator {
             const displayDate = moment(reportDate).tz(this.timezone).format('DD MMMM YYYY');
             const displayTime = moment().tz(this.timezone).format('HH:mm');
 
-            logger.info(`Generating daily report for ${reportDate}`);
+            logger.info(`Membuat laporan harian untuk ${reportDate}`);
 
             // Get data from database
             const [csSummary, dailySummary, marketingCommission, locationStats] = await Promise.all([
@@ -38,11 +38,11 @@ class ReportGenerator {
             // Combine all sections
             const report = this.formatReport(displayDate, displayTime, csSection, financeSection, commissionSection);
 
-            logger.info('Daily report generated successfully');
+            logger.info('Laporan harian berhasil dibuat');
             return report;
 
         } catch (error) {
-            logger.error('Error generating daily report:', error);
+            logger.error('Error membuat laporan harian:', error);
             throw error;
         }
     }
@@ -193,7 +193,7 @@ ${commissionSection}`;
             const actualStartDate = startDate || 
                 moment().tz(this.timezone).subtract(6, 'days').format('YYYY-MM-DD');
 
-            logger.info(`Generating weekly report from ${actualStartDate} to ${endDate}`);
+            logger.info(`Membuat laporan mingguan dari ${actualStartDate} sampai ${endDate}`);
 
             const [transactions, csPerformance] = await Promise.all([
                 database.getTransactionsByDateRange(actualStartDate, endDate),
@@ -224,7 +224,7 @@ ${commissionSection}`;
             return report;
 
         } catch (error) {
-            logger.error('Error generating weekly report:', error);
+            logger.error('Error membuat laporan mingguan:', error);
             throw error;
         }
     }
@@ -241,7 +241,7 @@ ${commissionSection}`;
             const startDate = targetDate.clone().startOf('month').format('YYYY-MM-DD');
             const endDate = targetDate.clone().endOf('month').format('YYYY-MM-DD');
 
-            logger.info(`Generating monthly report for ${targetDate.format('MMMM YYYY')}`);
+            logger.info(`Membuat laporan bulanan untuk ${targetDate.format('MMMM YYYY')}`);
 
             const [transactions, csPerformance] = await Promise.all([
                 database.getTransactionsByDateRange(startDate, endDate),
@@ -279,7 +279,7 @@ ${commissionSection}`;
             return report;
 
         } catch (error) {
-            logger.error('Error generating monthly report:', error);
+            logger.error('Error membuat laporan bulanan:', error);
             throw error;
         }
     }
@@ -289,7 +289,7 @@ ${commissionSection}`;
      */
     async generateCustomReport(startDate, endDate, title = 'Laporan Custom') {
         try {
-            logger.info(`Generating custom report from ${startDate} to ${endDate}`);
+            logger.info(`Membuat laporan kustom dari ${startDate} sampai ${endDate}`);
 
             const [transactions, csPerformance, paymentStats] = await Promise.all([
                 database.getTransactionsByDateRange(startDate, endDate),
@@ -321,7 +321,7 @@ ${commissionSection}`;
             return report;
 
         } catch (error) {
-            logger.error('Error generating custom report:', error);
+            logger.error('Error membuat laporan kustom:', error);
             throw error;
         }
     }
@@ -349,7 +349,7 @@ ${commissionSection}`;
             return report;
 
         } catch (error) {
-            logger.error('Error generating report by date range:', error);
+            logger.error('Error membuat laporan berdasarkan rentang tanggal:', error);
             throw error;
         }
     }
@@ -474,7 +474,7 @@ ${commissionSection}`;
                 endDate = startDate;
             }
 
-            logger.info(`Generating apartment report for ${apartmentName} from ${startDate} to ${endDate}`);
+            logger.info(`Membuat laporan apartemen untuk ${apartmentName} dari ${startDate} sampai ${endDate}`);
 
             // Get transactions untuk apartemen tertentu
             const transactions = await database.getTransactionsByLocation(apartmentName, startDate, endDate);
@@ -521,7 +521,7 @@ ${commissionSection}`;
             return report;
 
         } catch (error) {
-            logger.error('Error generating apartment report:', error);
+            logger.error('Error membuat laporan apartemen:', error);
             throw error;
         }
     }

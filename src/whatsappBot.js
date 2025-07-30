@@ -42,7 +42,7 @@ class WhatsAppBot {
             console.log('\n=== WhatsApp Bot QR Code ===');
             console.log('Scan this QR code with your WhatsApp mobile app:');
             qrcode.generate(qr, { small: true });
-            logger.info('QR Code generated for WhatsApp authentication');
+            logger.info('QR Code dibuat untuk autentikasi WhatsApp');
         });
 
         // Ready event
@@ -57,18 +57,18 @@ class WhatsAppBot {
 
         // Authentication success
         this.client.on('authenticated', () => {
-            logger.info('WhatsApp authentication successful');
+            logger.info('Autentikasi WhatsApp berhasil');
         });
 
         // Authentication failure
         this.client.on('auth_failure', (msg) => {
-            logger.error('WhatsApp authentication failed:', msg);
+            logger.error('Autentikasi WhatsApp gagal:', msg);
         });
 
         // Disconnected event
         this.client.on('disconnected', (reason) => {
             this.isReady = false;
-            logger.warn('WhatsApp Bot disconnected:', reason);
+            logger.warn('Bot WhatsApp terputus:', reason);
         });
 
         // Message event
@@ -84,18 +84,18 @@ class WhatsAppBot {
                     await handler(message);
                 }
             } catch (error) {
-                logger.error('Error processing message:', error);
+                logger.error('Error memproses pesan:', error);
             }
         });
 
         // Group join event
         this.client.on('group_join', (notification) => {
-            logger.info(`Bot joined group: ${notification.chatId}`);
+            logger.info(`Bot bergabung ke grup: ${notification.chatId}`);
         });
 
         // Error event
         this.client.on('error', (error) => {
-            logger.error('WhatsApp client error:', error);
+            logger.error('Error klien WhatsApp:', error);
         });
     }
 

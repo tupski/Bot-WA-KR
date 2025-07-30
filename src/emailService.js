@@ -19,7 +19,7 @@ class EmailService {
      */
     initializeTransporter() {
         try {
-            this.transporter = nodemailer.createTransporter({
+            this.transporter = nodemailer.createTransport({
                 service: config.email.service,
                 auth: {
                     user: config.email.auth.user,
@@ -30,9 +30,9 @@ class EmailService {
                 }
             });
 
-            logger.info('Email transporter initialized successfully');
+            logger.info('Transporter email berhasil diinisialisasi');
         } catch (error) {
-            logger.error('Error initializing email transporter:', error);
+            logger.error('Error menginisialisasi transporter email:', error);
         }
     }
 
@@ -46,10 +46,10 @@ class EmailService {
             }
 
             await this.transporter.verify();
-            logger.info('Email connection verified successfully');
+            logger.info('Koneksi email berhasil diverifikasi');
             return true;
         } catch (error) {
-            logger.error('Email connection verification failed:', error);
+            logger.error('Verifikasi koneksi email gagal:', error);
             return false;
         }
     }
@@ -98,13 +98,13 @@ class EmailService {
             // Send email
             const info = await this.transporter.sendMail(mailOptions);
             
-            logger.info(`Daily report email sent successfully to ${config.email.to}`);
+            logger.info(`Email laporan harian berhasil dikirim ke ${config.email.to}`);
             logger.info(`Message ID: ${info.messageId}`);
-            
+
             return true;
 
         } catch (error) {
-            logger.error('Error sending daily report email:', error);
+            logger.error('Error mengirim email laporan harian:', error);
             return false;
         }
     }
@@ -263,11 +263,11 @@ Waktu pengiriman: ${moment().tz(this.timezone).format('DD/MM/YYYY HH:mm:ss')} WI
             };
 
             const info = await this.transporter.sendMail(mailOptions);
-            logger.info(`Weekly report email sent successfully: ${info.messageId}`);
+            logger.info(`Email laporan mingguan berhasil dikirim: ${info.messageId}`);
             return true;
 
         } catch (error) {
-            logger.error('Error sending weekly report email:', error);
+            logger.error('Error mengirim email laporan mingguan:', error);
             return false;
         }
     }
@@ -341,11 +341,11 @@ Waktu pengiriman: ${moment().tz(this.timezone).format('DD/MM/YYYY HH:mm:ss')} WI
             };
 
             const info = await this.transporter.sendMail(mailOptions);
-            logger.info(`Monthly report email sent successfully: ${info.messageId}`);
+            logger.info(`Email laporan bulanan berhasil dikirim: ${info.messageId}`);
             return true;
 
         } catch (error) {
-            logger.error('Error sending monthly report email:', error);
+            logger.error('Error mengirim email laporan bulanan:', error);
             return false;
         }
     }
@@ -414,11 +414,11 @@ Waktu pengiriman: ${moment().tz(this.timezone).format('DD/MM/YYYY HH:mm:ss')} WI
             };
 
             await this.transporter.sendMail(mailOptions);
-            logger.info('Error notification email sent');
+            logger.info('Email notifikasi error berhasil dikirim');
             return true;
 
         } catch (emailError) {
-            logger.error('Error sending error notification email:', emailError);
+            logger.error('Error mengirim email notifikasi error:', emailError);
             return false;
         }
     }
@@ -451,11 +451,11 @@ Waktu pengiriman: ${moment().tz(this.timezone).format('DD/MM/YYYY HH:mm:ss')} WI
             };
 
             const info = await this.transporter.sendMail(mailOptions);
-            logger.info(`Test email sent successfully: ${info.messageId}`);
+            logger.info(`Email test berhasil dikirim: ${info.messageId}`);
             return true;
 
         } catch (error) {
-            logger.error('Error sending test email:', error);
+            logger.error('Error mengirim email test:', error);
             return false;
         }
     }

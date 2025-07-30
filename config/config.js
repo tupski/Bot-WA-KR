@@ -13,7 +13,7 @@ class Configuration {
         this.config = {
             // WhatsApp Configuration
             whatsapp: {
-                groupChatId: process.env.GROUP_CHAT_ID || '', // WhatsApp group chat ID
+                // groupChatId tidak diperlukan untuk sistem multi-grup
                 sessionPath: process.env.WHATSAPP_SESSION_PATH || './session',
                 puppeteerOptions: {
                     headless: process.env.PUPPETEER_HEADLESS !== 'false',
@@ -28,28 +28,28 @@ class Configuration {
             apartments: {
                 // Mapping nama grup WhatsApp ke nama apartemen
                 groupMapping: {
-                    'SKY HOUSE': 'SKY HOUSE',
-                    'BLUE TOWER': 'BLUE TOWER',
-                    'GREEN RESIDENCE': 'GREEN RESIDENCE',
-                    'GOLD APARTMENT': 'GOLD APARTMENT',
-                    'SILVER SUITES': 'SILVER SUITES',
-                    'DIAMOND TOWER': 'DIAMOND TOWER',
-                    'Code Tester' : 'Skyhouse BSD KR'
+                    'SKY HOUSE CHECKIN': 'SKY HOUSE',
+                    'TREE PARK BSD CHECKIN': 'TREEPARK BSD',
+                    'SPRINGWOOD CHECKIN': 'SPRINGWOOD RESIDENCES',
+                    'EMERALD CHECKIN': 'EMERALD BINTARO',
+                    'TOKYO PIK2 CHECKIN': 'TOKYO RIVERSIDE PIK2',
+                    'SERPONG GARDEN CHECKIN': 'SERPONG GARDEN',
+                    'Code Tester' : 'TESTING BOT'
                 },
 
                 // Grup yang diizinkan (opsional - untuk keamanan)
                 allowedGroups: [
                     'Code Tester',
                     'SKY HOUSE',
-                    'BLUE TOWER',
-                    'GREEN RESIDENCE',
-                    'GOLD APARTMENT',
-                    'SILVER SUITES',
-                    'DIAMOND TOWER'
+                    'TREEPARK BSD ',
+                    'SPRINGWOOD RESIDENCES',
+                    'EMERALD BINTARO',
+                    'TOKYO RIVERSIDE PIK2',
+                    'SERPONG GARDEN'
                 ],
 
                 // Default apartemen jika grup tidak dikenali
-                defaultApartment: 'UNKNOWN APARTMENT'
+                defaultApartment: 'APARTEMEN TIDAK DIKETAHUI'
             },
 
             // Database Configuration

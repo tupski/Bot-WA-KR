@@ -35,9 +35,9 @@ class Scheduler {
             // Health check every hour
             this.scheduleHealthCheck();
 
-            logger.info('All scheduled tasks initialized successfully');
+            logger.info('Semua tugas terjadwal berhasil diinisialisasi');
         } catch (error) {
-            logger.error('Error initializing scheduled tasks:', error);
+            logger.error('Error menginisialisasi tugas terjadwal:', error);
         }
     }
 
@@ -47,7 +47,7 @@ class Scheduler {
     scheduleDailyReport() {
         const task = cron.schedule(config.report.dailyReportTime, async () => {
             try {
-                logger.info('Starting scheduled daily report generation...');
+                logger.info('Memulai pembuatan laporan harian terjadwal...');
                 
                 // Generate report
                 const report = await reportGenerator.generateDailyReport();
@@ -56,9 +56,9 @@ class Scheduler {
                 const messageSent = await this.bot.sendToGroup(report);
                 
                 if (messageSent) {
-                    logger.info('Daily report sent to WhatsApp group successfully');
+                    logger.info('Laporan harian berhasil dikirim ke grup WhatsApp');
                 } else {
-                    logger.error('Failed to send daily report to WhatsApp group');
+                    logger.error('Gagal mengirim laporan harian ke grup WhatsApp');
                 }
                 
                 // Generate Excel file
@@ -69,16 +69,16 @@ class Scheduler {
                     const emailSent = await emailService.sendDailyReport(excelPath);
                     
                     if (emailSent) {
-                        logger.info('Daily Excel report sent via email successfully');
+                        logger.info('Laporan Excel harian berhasil dikirim via email');
                     } else {
-                        logger.error('Failed to send daily Excel report via email');
+                        logger.error('Gagal mengirim laporan Excel harian via email');
                     }
                 } else {
-                    logger.error('Failed to generate Excel file for daily report');
+                    logger.error('Gagal membuat file Excel untuk laporan harian');
                 }
-                
+
             } catch (error) {
-                logger.error('Error in scheduled daily report:', error);
+                logger.error('Error dalam laporan harian terjadwal:', error);
                 
                 // Send error notification to group
                 const errorMessage = `❌ *Error dalam laporan harian*\n\nTerjadi kesalahan saat membuat laporan harian. Silakan periksa log untuk detail lebih lanjut.\n\nWaktu: ${moment().tz(this.timezone).format('DD/MM/YYYY HH:mm')} WIB`;
@@ -89,7 +89,7 @@ class Scheduler {
         });
 
         this.scheduledTasks.set('dailyReport', task);
-        logger.info(`Daily report scheduled for ${config.report.dailyReportTime} ${this.timezone}`);
+        logger.info(`Laporan harian dijadwalkan untuk ${config.report.dailyReportTime} ${this.timezone}`);
     }
 
     /**
@@ -98,21 +98,21 @@ class Scheduler {
     scheduleWeeklyReport() {
         const task = cron.schedule('0 9 * * 1', async () => {
             try {
-                logger.info('Starting scheduled weekly report generation...');
-                
+                logger.info('Memulai pembuatan laporan mingguan terjadwal...');
+
                 const report = await reportGenerator.generateWeeklyReport();
                 await this.bot.sendToGroup(report);
-                
-                logger.info('Weekly report sent successfully');
+
+                logger.info('Laporan mingguan berhasil dikirim');
             } catch (error) {
-                logger.error('Error in scheduled weekly report:', error);
+                logger.error('Error dalam laporan mingguan terjadwal:', error);
             }
         }, {
             timezone: this.timezone
         });
 
         this.scheduledTasks.set('weeklyReport', task);
-        logger.info('Weekly report scheduled for every Monday at 09:00 WIB');
+        logger.info('Laporan mingguan dijadwalkan setiap Senin jam 09:00 WIB');
     }
 
     /**
@@ -121,27 +121,27 @@ class Scheduler {
     scheduleMonthlyReport() {
         const task = cron.schedule('0 10 1 * *', async () => {
             try {
-                logger.info('Starting scheduled monthly report generation...');
-                
+                logger.info('Memulai pembuatan laporan bulanan terjadwal...');
+
                 // Generate report for previous month
                 const lastMonth = moment().tz(this.timezone).subtract(1, 'month');
                 const report = await reportGenerator.generateMonthlyReport(
-                    lastMonth.year(), 
+                    lastMonth.year(),
                     lastMonth.month() + 1
                 );
-                
+
                 await this.bot.sendToGroup(report);
-                
-                logger.info('Monthly report sent successfully');
+
+                logger.info('Laporan bulanan berhasil dikirim');
             } catch (error) {
-                logger.error('Error in scheduled monthly report:', error);
+                logger.error('Error dalam laporan bulanan terjadwal:', error);
             }
         }, {
             timezone: this.timezone
         });
 
         this.scheduledTasks.set('monthlyReport', task);
-        logger.info('Monthly report scheduled for 1st day of each month at 10:00 WIB');
+        logger.info('Laporan bulanan dijadwalkan tanggal 1 setiap bulan jam 10:00 WIB');
     }
 
     /**
@@ -150,20 +150,20 @@ class Scheduler {
     scheduleDatabaseCleanup() {
         const task = cron.schedule('0 2 * * 0', async () => {
             try {
-                logger.info('Starting scheduled database cleanup...');
-                
+                logger.info('Memulai pembersihan database terjadwal...');
+
                 const deletedCount = await database.cleanupOldData(90); // Keep 90 days
-                
-                logger.info(`Database cleanup completed. Deleted ${deletedCount} old records.`);
+
+                logger.info(`Pembersihan database selesai. Menghapus ${deletedCount} record lama.`);
             } catch (error) {
-                logger.error('Error in scheduled database cleanup:', error);
+                logger.error('Error dalam pembersihan database terjadwal:', error);
             }
         }, {
             timezone: this.timezone
         });
 
         this.scheduledTasks.set('databaseCleanup', task);
-        logger.info('Database cleanup scheduled for every Sunday at 02:00 WIB');
+        logger.info('Pembersihan database dijadwalkan setiap Minggu jam 02:00 WIB');
     }
 
     /**
@@ -174,28 +174,28 @@ class Scheduler {
             try {
                 // Check if WhatsApp bot is still connected
                 if (!this.bot.isClientReady()) {
-                    logger.warn('WhatsApp bot is not ready - attempting to reconnect');
+                    logger.warn('Bot WhatsApp tidak siap - mencoba menyambung kembali');
                     // Could implement reconnection logic here
                 }
-                
+
                 // Check database connection
                 try {
                     await database.getTotalStats();
                 } catch (dbError) {
-                    logger.error('Database health check failed:', dbError);
+                    logger.error('Pemeriksaan kesehatan database gagal:', dbError);
                 }
-                
+
                 // Log health status
-                logger.debug('Health check completed');
+                logger.debug('Pemeriksaan kesehatan selesai');
             } catch (error) {
-                logger.error('Error in health check:', error);
+                logger.error('Error dalam pemeriksaan kesehatan:', error);
             }
         }, {
             timezone: this.timezone
         });
 
         this.scheduledTasks.set('healthCheck', task);
-        logger.info('Health check scheduled every hour');
+        logger.info('Pemeriksaan kesehatan dijadwalkan setiap jam');
     }
 
     /**
@@ -209,11 +209,11 @@ class Scheduler {
             });
 
             this.scheduledTasks.set(name, task);
-            logger.info(`Custom task '${name}' scheduled with expression: ${cronExpression}`);
-            
+            logger.info(`Tugas kustom '${name}' dijadwalkan dengan ekspresi: ${cronExpression}`);
+
             return task;
         } catch (error) {
-            logger.error(`Error scheduling custom task '${name}':`, error);
+            logger.error(`Error menjadwalkan tugas kustom '${name}':`, error);
             return null;
         }
     }
@@ -225,10 +225,10 @@ class Scheduler {
         const task = this.scheduledTasks.get(taskName);
         if (task) {
             task.stop();
-            logger.info(`Task '${taskName}' stopped`);
+            logger.info(`Tugas '${taskName}' dihentikan`);
             return true;
         } else {
-            logger.warn(`Task '${taskName}' not found`);
+            logger.warn(`Tugas '${taskName}' tidak ditemukan`);
             return false;
         }
     }
@@ -240,10 +240,10 @@ class Scheduler {
         const task = this.scheduledTasks.get(taskName);
         if (task) {
             task.start();
-            logger.info(`Task '${taskName}' started`);
+            logger.info(`Tugas '${taskName}' dimulai`);
             return true;
         } else {
-            logger.warn(`Task '${taskName}' not found`);
+            logger.warn(`Tugas '${taskName}' tidak ditemukan`);
             return false;
         }
     }
@@ -256,10 +256,10 @@ class Scheduler {
         if (task) {
             task.destroy();
             this.scheduledTasks.delete(taskName);
-            logger.info(`Task '${taskName}' removed`);
+            logger.info(`Tugas '${taskName}' dihapus`);
             return true;
         } else {
-            logger.warn(`Task '${taskName}' not found`);
+            logger.warn(`Tugas '${taskName}' tidak ditemukan`);
             return false;
         }
     }
@@ -284,9 +284,9 @@ class Scheduler {
     stopAllTasks() {
         for (const [name, task] of this.scheduledTasks) {
             task.stop();
-            logger.info(`Task '${name}' stopped`);
+            logger.info(`Tugas '${name}' dihentikan`);
         }
-        logger.info('All scheduled tasks stopped');
+        logger.info('Semua tugas terjadwal dihentikan');
     }
 
     /**
@@ -295,9 +295,9 @@ class Scheduler {
     startAllTasks() {
         for (const [name, task] of this.scheduledTasks) {
             task.start();
-            logger.info(`Task '${name}' started`);
+            logger.info(`Tugas '${name}' dimulai`);
         }
-        logger.info('All scheduled tasks started');
+        logger.info('Semua tugas terjadwal dimulai');
     }
 
     /**
@@ -305,20 +305,20 @@ class Scheduler {
      */
     async triggerDailyReport(date = null) {
         try {
-            logger.info('Manually triggering daily report...');
-            
+            logger.info('Memicu laporan harian secara manual...');
+
             const report = await reportGenerator.generateDailyReport(date);
             const messageSent = await this.bot.sendToGroup(report);
-            
+
             if (messageSent) {
-                logger.info('Manual daily report sent successfully');
+                logger.info('Laporan harian manual berhasil dikirim');
                 return true;
             } else {
-                logger.error('Failed to send manual daily report');
+                logger.error('Gagal mengirim laporan harian manual');
                 return false;
             }
         } catch (error) {
-            logger.error('Error in manual daily report trigger:', error);
+            logger.error('Error dalam pemicu laporan harian manual:', error);
             return false;
         }
     }

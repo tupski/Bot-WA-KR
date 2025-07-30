@@ -19,9 +19,9 @@ class Database {
             }
             
             await this.createTables();
-            logger.info(`Database initialized successfully (${this.dbType})`);
+            logger.info(`Database berhasil diinisialisasi (${this.dbType})`);
         } catch (error) {
-            logger.error('Error initializing database:', error);
+            logger.error('Error menginisialisasi database:', error);
             throw error;
         }
     }
@@ -108,7 +108,7 @@ class Database {
 
         for (const [tableName, query] of Object.entries(tables)) {
             await this.executeQuery(query);
-            logger.info(`Table ${tableName} created/verified`);
+            logger.info(`Tabel ${tableName} dibuat/diverifikasi`);
         }
     }
 
@@ -393,7 +393,7 @@ class Database {
             totalDeleted += result.changes || result.affectedRows || 0;
         }
 
-        logger.info(`Cleaned up ${totalDeleted} old records older than ${daysToKeep} days`);
+        logger.info(`Membersihkan ${totalDeleted} record lama lebih dari ${daysToKeep} hari`);
         return totalDeleted;
     }
 
@@ -432,7 +432,7 @@ class Database {
         const result = await this.executeQuery(query, [cutoffDateStr]);
 
         const deleted = result.changes || result.affectedRows || 0;
-        logger.info(`Cleaned up ${deleted} old processed message records`);
+        logger.info(`Membersihkan ${deleted} record pesan lama yang sudah diproses`);
         return deleted;
     }
 
@@ -469,7 +469,7 @@ class Database {
             } else {
                 await this.db.end();
             }
-            logger.info('Database connection closed');
+            logger.info('Koneksi database ditutup');
         }
     }
 }

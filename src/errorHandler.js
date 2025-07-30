@@ -55,7 +55,7 @@ class ErrorHandler {
 
         } catch (handlingError) {
             // If error handling itself fails, log it simply
-            logger.error('Error in error handler:', handlingError);
+            logger.error('Error dalam error handler:', handlingError);
         }
     }
 
@@ -150,9 +150,9 @@ class ErrorHandler {
                 new Error(errorInfo.message),
                 errorInfo.context
             );
-            logger.info('Error alert email sent successfully');
+            logger.info('Email alert error berhasil dikirim');
         } catch (emailError) {
-            logger.error('Failed to send error alert email:', emailError);
+            logger.error('Gagal mengirim email alert error:', emailError);
         }
     }
 
@@ -308,16 +308,16 @@ class ErrorHandler {
      */
     async handleShutdown(signal) {
         try {
-            logger.info(`Received ${signal}. Starting graceful shutdown...`);
-            
+            logger.info(`Menerima ${signal}. Memulai graceful shutdown...`);
+
             // Give time for ongoing operations to complete
             await new Promise(resolve => setTimeout(resolve, 5000));
-            
-            logger.info('Graceful shutdown completed');
+
+            logger.info('Graceful shutdown selesai');
             process.exit(0);
-            
+
         } catch (error) {
-            logger.error('Error during graceful shutdown:', error);
+            logger.error('Error selama graceful shutdown:', error);
             process.exit(1);
         }
     }
@@ -355,7 +355,7 @@ class ErrorHandler {
         process.on('SIGTERM', () => this.handleShutdown('SIGTERM'));
         process.on('SIGINT', () => this.handleShutdown('SIGINT'));
 
-        logger.info('Global error handlers setup completed');
+        logger.info('Setup global error handlers selesai');
     }
 
     /**
@@ -382,7 +382,7 @@ class ErrorHandler {
     clearErrorStats() {
         this.errorCounts.clear();
         this.lastErrorTime.clear();
-        logger.info('Error statistics cleared');
+        logger.info('Statistik error dibersihkan');
     }
 }
 

@@ -27,7 +27,7 @@ class ExcelExporter {
             const reportDate = date || moment().tz(this.timezone).format('YYYY-MM-DD');
             const displayDate = moment(reportDate).format('YYYY-MM-DD');
             
-            logger.info(`Generating Excel report for ${reportDate}`);
+            logger.info(`Membuat laporan Excel untuk ${reportDate}`);
 
             // Get data from database
             const [transactions, csSummary, marketingCommission] = await Promise.all([
@@ -54,11 +54,11 @@ class ExcelExporter {
             
             await workbook.xlsx.writeFile(filepath);
             
-            logger.info(`Excel report saved: ${filepath}`);
+            logger.info(`Laporan Excel disimpan: ${filepath}`);
             return filepath;
 
         } catch (error) {
-            logger.error('Error generating Excel report:', error);
+            logger.error('Error membuat laporan Excel:', error);
             throw error;
         }
     }
@@ -371,7 +371,7 @@ class ExcelExporter {
             const endDate = targetDate.clone().endOf('month').format('YYYY-MM-DD');
             const monthName = targetDate.format('MMMM_YYYY');
 
-            logger.info(`Generating monthly Excel report for ${monthName}`);
+            logger.info(`Membuat laporan Excel bulanan untuk ${monthName}`);
 
             // Get data from database
             const [transactions, csPerformance] = await Promise.all([
@@ -393,11 +393,11 @@ class ExcelExporter {
             
             await workbook.xlsx.writeFile(filepath);
             
-            logger.info(`Monthly Excel report saved: ${filepath}`);
+            logger.info(`Laporan Excel bulanan disimpan: ${filepath}`);
             return filepath;
 
         } catch (error) {
-            logger.error('Error generating monthly Excel report:', error);
+            logger.error('Error membuat laporan Excel bulanan:', error);
             throw error;
         }
     }
@@ -483,15 +483,15 @@ class ExcelExporter {
                     if (fileDate.isBefore(cutoffDate)) {
                         fs.unlinkSync(filePath);
                         deletedCount++;
-                        logger.info(`Deleted old Excel file: ${file}`);
+                        logger.info(`Menghapus file Excel lama: ${file}`);
                     }
                 }
             }
 
-            logger.info(`Cleaned up ${deletedCount} old Excel files`);
+            logger.info(`Membersihkan ${deletedCount} file Excel lama`);
             return deletedCount;
         } catch (error) {
-            logger.error('Error cleaning up old Excel files:', error);
+            logger.error('Error membersihkan file Excel lama:', error);
             return 0;
         }
     }
