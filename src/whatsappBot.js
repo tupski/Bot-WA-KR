@@ -75,7 +75,7 @@ class WhatsAppBot {
             logger.warn('Bot WhatsApp terputus:', reason);
         });
 
-        // Message event
+        // Message event with edit detection
         this.client.on('message', async (message) => {
             try {
                 // Skip if message is from status broadcast
@@ -83,12 +83,29 @@ class WhatsAppBot {
                     return;
                 }
 
+                // Check if this message ID already exists in our processed messages
+                // If it does, it might be an edited message (though this is not perfect)
+                const wasProcessed = await this.checkIfMessageWasEdited(message);
+
                 // Process message through registered handlers
                 for (const handler of this.messageHandlers) {
-                    await handler(message);
+                    await handler(message, wasProcessed); // wasProcessed = potential edit flag
                 }
             } catch (error) {
                 logger.error('Error memproses pesan:', error);
+            }
+        });
+
+        // Message revoke event
+        this.client.on('message_revoke_everyone', async (_, before) => {
+            try {
+                if (before) {
+                    logger.info(`Pesan dihapus untuk semua: ${before.id.id}`);
+                    // Tandai pesan sebagai dihapus di database jika diperlukan
+                    // Untuk saat ini, kita tidak melakukan apa-apa karena pesan sudah dihapus
+                }
+            } catch (error) {
+                logger.error('Error memproses pesan yang dihapus:', error);
             }
         });
 
@@ -176,6 +193,38 @@ class WhatsAppBot {
         }
 
         return config.apartments.allowedGroups.includes(groupId);
+    }
+
+    /**
+     * Check if message was potentially edited by comparing with processed messages
+     */
+    async checkIfMessageWasEdited(message) {
+        try {
+            const database = require('./database');
+
+            // Cek apakah message ID ini sudah pernah diproses
+            const wasProcessed = await database.isMessageProcessed(message.id.id);
+
+            if (wasProcessed) {
+                // Cek apakah ada transaksi dengan message ID ini
+                const existingTransaction = await database.getTransactionByMessageId(message.id.id);
+
+                if (existingTransaction) {
+                    // Bandingkan konten pesan dengan data yang tersimpan
+                    // Jika berbeda, kemungkinan pesan diedit
+                    const lines = message.body.split('\n').map(line => line.trim()).filter(line => line);
+                    if (lines.length >= 2 && lines[1].toLowerCase().includes('unit')) {
+                        logger.info(`Kemungkinan pesan diedit terdeteksi: ${message.id.id}`);
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        } catch (error) {
+            logger.error('Error checking if message was edited:', error);
+            return false;
+        }
     }
 
     // Register message handler

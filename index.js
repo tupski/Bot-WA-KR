@@ -48,7 +48,7 @@ function findApartmentByPartialName(partialName) {
 }
 
 // Handler pesan untuk booking dan command
-async function handleMessage(message) {
+async function handleMessage(message, isEdit = false) {
     try {
         // Skip jika pesan dari status broadcast
         if (message.from === 'status@broadcast') {
@@ -82,51 +82,18 @@ async function handleMessage(message) {
         // Cek apakah pesan memiliki format booking (baris kedua mengandung "Unit")
         const lines = message.body.split('\n').map(line => line.trim()).filter(line => line);
         if (lines.length >= 2 && lines[1].toLowerCase().includes('unit')) {
-            logger.info(`Memproses pesan booking dari ${apartmentName || groupName || 'private'}: ${message.body.substring(0, 50)}...`);
+            const logPrefix = isEdit ? 'Memproses pesan booking yang diedit' : 'Memproses pesan booking';
+            logger.info(`${logPrefix} dari ${apartmentName || groupName || 'private'}: ${message.body.substring(0, 50)}...`);
 
-            // Cek apakah pesan sudah diproses sebelumnya
-            const isProcessed = await database.isMessageProcessed(message.id.id);
-            if (isProcessed) {
-                logger.info(`Pesan ${message.id.id} sudah diproses sebelumnya, dilewati.`);
-                return;
+            if (isEdit) {
+                // Jika pesan diedit, update transaksi yang sudah ada
+                await handleEditedBookingMessage(message, apartmentName || groupName);
+            } else {
+                // Jika pesan baru, proses seperti biasa
+                await handleNewBookingMessage(message, apartmentName || groupName);
             }
-
-            // Parse pesan dengan nama apartemen
-            const parseResult = messageParser.parseBookingMessage(message.body, message.id.id, apartmentName || groupName);
-
-            if (parseResult.status === 'VALID') {
-                // Simpan ke database
-                await database.saveTransaction(parseResult.data);
-                await database.markMessageProcessed(message.id.id, message.from);
-                logger.info('Transaksi berhasil disimpan');
-
-            } else if (parseResult.status === 'WRONG_FORMAT') {
-                // Format salah - hapus pesan dan maki-maki
-                const deleted = await bot.deleteMessage(message);
-                if (deleted) {
-                    await bot.sendMessage(message.from, parseResult.message);
-                } else {
-                    // Jika tidak bisa hapus, kirim pesan saja
-                    await bot.sendMessage(message.from, parseResult.message);
-                }
-
-            } else if (parseResult.status === 'MISSING_FIELD') {
-                // Field kurang - hapus pesan dan mention user
-                const deleted = await bot.deleteMessage(message);
-                const contact = await message.getContact();
-                const mentionText = `@${contact.number} ${parseResult.message}`;
-
-                if (deleted) {
-                    await bot.sendMessageWithMention(message.from, mentionText, contact.id._serialized);
-                } else {
-                    // Jika tidak bisa hapus, kirim mention saja
-                    await bot.sendMessageWithMention(message.from, mentionText, contact.id._serialized);
-                }
-            }
-
-            // Mark sebagai processed meskipun error untuk avoid spam
-            await database.markMessageProcessed(message.id.id, message.from);
         }
+
     } catch (error) {
         await errorHandler.handleError(error, 'Pemrosesan Pesan', {
             level: 'error',
@@ -134,6 +101,104 @@ async function handleMessage(message) {
             userId: message.from,
             operation: 'handleMessage'
         });
+    }
+}
+
+// Handler untuk pesan booking baru
+async function handleNewBookingMessage(message, apartmentName) {
+    // Cek apakah pesan sudah diproses sebelumnya
+    const isProcessed = await database.isMessageProcessed(message.id.id);
+    if (isProcessed) {
+        logger.info(`Pesan ${message.id.id} sudah diproses sebelumnya, dilewati.`);
+        return;
+    }
+
+    // Parse pesan dengan nama apartemen
+    const parseResult = messageParser.parseBookingMessage(message.body, message.id.id, apartmentName);
+
+    if (parseResult.status === 'VALID') {
+        // Simpan ke database
+        await database.saveTransaction(parseResult.data);
+        await database.markMessageProcessed(message.id.id, message.from);
+        logger.info('Transaksi berhasil disimpan');
+
+    } else if (parseResult.status === 'WRONG_FORMAT') {
+        // Format salah - hapus pesan dan maki-maki
+        const deleted = await bot.deleteMessage(message);
+        if (deleted) {
+            await bot.sendMessage(message.from, parseResult.message);
+        } else {
+            // Jika tidak bisa hapus, kirim pesan saja
+            await bot.sendMessage(message.from, parseResult.message);
+        }
+
+    } else if (parseResult.status === 'MISSING_FIELD') {
+        // Field kurang - hapus pesan dan mention user
+        const deleted = await bot.deleteMessage(message);
+        const contact = await message.getContact();
+        const mentionText = `@${contact.number} ${parseResult.message}`;
+
+        if (deleted) {
+            await bot.sendMessageWithMention(message.from, mentionText, contact.id._serialized);
+        } else {
+            // Jika tidak bisa hapus, kirim mention saja
+            await bot.sendMessageWithMention(message.from, mentionText, contact.id._serialized);
+        }
+    }
+
+    // Mark sebagai processed meskipun error untuk avoid spam
+    await database.markMessageProcessed(message.id.id, message.from);
+}
+
+// Handler untuk pesan booking yang diedit
+async function handleEditedBookingMessage(message, apartmentName) {
+    try {
+        // Cek apakah transaksi untuk message ID ini sudah ada
+        const existingTransaction = await database.getTransactionByMessageId(message.id.id);
+
+        if (!existingTransaction) {
+            logger.info(`Pesan diedit tapi tidak ada transaksi sebelumnya untuk message ID ${message.id.id}, proses sebagai pesan baru`);
+            await handleNewBookingMessage(message, apartmentName);
+            return;
+        }
+
+        // Parse pesan yang sudah diedit
+        const parseResult = messageParser.parseBookingMessage(message.body, message.id.id, apartmentName);
+
+        if (parseResult.status === 'VALID') {
+            // Update transaksi yang sudah ada
+            const updateData = {
+                location: parseResult.data.location,
+                unit: parseResult.data.unit,
+                checkout_time: parseResult.data.checkoutTime,
+                duration: parseResult.data.duration,
+                payment_method: parseResult.data.paymentMethod,
+                cs_name: parseResult.data.csName,
+                amount: parseResult.data.amount,
+                commission: parseResult.data.commission,
+                net_amount: parseResult.data.netAmount
+            };
+
+            await database.updateTransactionByMessageId(message.id.id, updateData);
+            logger.info(`Transaksi berhasil diupdate untuk message ID ${message.id.id}`);
+            logger.info(`Update: Unit ${parseResult.data.unit}, CS ${parseResult.data.csName}, Amount ${parseResult.data.amount}`);
+
+            // Kirim konfirmasi update ke grup
+            const confirmationMsg = `✅ *Transaksi berhasil diupdate*\n` +
+                `📝 Unit: ${parseResult.data.unit}\n` +
+                `👤 CS: ${parseResult.data.csName}\n` +
+                `💰 Amount: ${parseResult.data.amount.toLocaleString('id-ID')}`;
+            await bot.sendMessage(message.from, confirmationMsg);
+
+        } else {
+            // Jika format edit tidak valid, kirim pesan error tapi jangan hapus transaksi
+            logger.warn(`Pesan diedit dengan format tidak valid untuk message ID ${message.id.id}`);
+            await bot.sendMessage(message.from, `⚠️ Edit pesan tidak valid. Transaksi lama tetap tersimpan.\n\n${parseResult.message}`);
+        }
+
+    } catch (error) {
+        logger.error(`Error memproses pesan booking yang diedit: ${error.message}`);
+        await bot.sendMessage(message.from, `❌ Terjadi error saat memproses edit pesan. Transaksi lama tetap tersimpan.`);
     }
 }
 
@@ -395,6 +460,47 @@ async function handleCommand(message, apartmentName) {
 
             } catch (error) {
                 logger.error('Error dalam reload command:', error);
+                await bot.sendMessage(message.from, `❌ Terjadi error: ${error.message}`);
+            }
+
+        } else if (message.body.startsWith('!testedit')) {
+            logger.info(`Memproses command testedit dari ${message.from}: ${message.body}`);
+
+            // Hanya bisa dipanggil dari private message untuk keamanan
+            const isFromGroup = message.from.includes('@g.us');
+            if (isFromGroup) {
+                await bot.sendMessage(message.from, '❌ Command !testedit hanya bisa digunakan melalui pesan pribadi untuk keamanan.');
+                return;
+            }
+
+            try {
+                // Ambil transaksi terbaru untuk testing
+                const recentTransactions = await database.getLastTransactions(5);
+
+                if (recentTransactions.length === 0) {
+                    await bot.sendMessage(message.from, '❌ Tidak ada transaksi untuk testing.');
+                    return;
+                }
+
+                let testMsg = `🧪 *Test Edit Message*\n\n`;
+                testMsg += `📊 *5 Transaksi Terbaru:*\n`;
+
+                recentTransactions.forEach((transaction, index) => {
+                    testMsg += `${index + 1}. Message ID: ${transaction.message_id}\n`;
+                    testMsg += `   Unit: ${transaction.unit}, CS: ${transaction.cs_name}\n`;
+                    testMsg += `   Amount: ${transaction.amount.toLocaleString('id-ID')}\n\n`;
+                });
+
+                testMsg += `💡 *Cara test edit:*\n`;
+                testMsg += `1. Edit pesan booking di grup\n`;
+                testMsg += `2. Bot akan otomatis update database\n`;
+                testMsg += `3. Cek log untuk konfirmasi update`;
+
+                await bot.sendMessage(message.from, testMsg);
+                logger.info('Test edit info berhasil dikirim');
+
+            } catch (error) {
+                logger.error('Error dalam testedit command:', error);
                 await bot.sendMessage(message.from, `❌ Terjadi error: ${error.message}`);
             }
 

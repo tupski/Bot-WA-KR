@@ -321,7 +321,7 @@ class Database {
         const fields = [];
         const values = [];
 
-        const allowedFields = ['location', 'unit', 'checkout_time', 'duration', 'payment_method', 'cs_name', 'commission', 'amount'];
+        const allowedFields = ['location', 'unit', 'checkout_time', 'duration', 'payment_method', 'cs_name', 'commission', 'amount', 'net_amount'];
 
         for (const field of allowedFields) {
             if (data[field] !== undefined) {
@@ -337,7 +337,70 @@ class Database {
         values.push(transactionId);
         const query = `UPDATE transactions SET ${fields.join(', ')} WHERE id = ?`;
 
-        return await this.executeQuery(query, values);
+        const result = await this.executeQuery(query, values);
+
+        // Update daily summaries after transaction update
+        if (result.changes > 0 || result.affectedRows > 0) {
+            // Get the updated transaction to recalculate summaries
+            const updatedTransaction = await this.getTransactionById(transactionId);
+            if (updatedTransaction) {
+                await this.recalculateDailySummary(updatedTransaction.date_only);
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Update transaksi berdasarkan message ID
+     */
+    async updateTransactionByMessageId(messageId, data) {
+        // Cari transaksi berdasarkan message_id
+        const existingTransaction = await this.getTransactionByMessageId(messageId);
+        if (!existingTransaction) {
+            throw new Error(`Transaksi dengan message ID ${messageId} tidak ditemukan`);
+        }
+
+        // Update transaksi
+        return await this.updateTransaction(existingTransaction.id, data);
+    }
+
+    /**
+     * Get transaksi berdasarkan message ID
+     */
+    async getTransactionByMessageId(messageId) {
+        const query = 'SELECT * FROM transactions WHERE message_id = ?';
+        const result = await this.executeQuery(query, [messageId]);
+        return result.length > 0 ? result[0] : null;
+    }
+
+    /**
+     * Get transaksi berdasarkan ID
+     */
+    async getTransactionById(transactionId) {
+        const query = 'SELECT * FROM transactions WHERE id = ?';
+        const result = await this.executeQuery(query, [transactionId]);
+        return result.length > 0 ? result[0] : null;
+    }
+
+    /**
+     * Recalculate daily summary untuk tanggal tertentu
+     */
+    async recalculateDailySummary(date) {
+        // Hapus summary lama
+        await this.executeQuery('DELETE FROM daily_summary WHERE date = ?', [date]);
+        await this.executeQuery('DELETE FROM cs_summary WHERE date = ?', [date]);
+
+        // Ambil semua transaksi untuk tanggal tersebut
+        const transactions = await this.getTransactions(date);
+
+        if (transactions.length > 0) {
+            // Recalculate dan simpan summary baru
+            for (const transaction of transactions) {
+                await this.updateDailySummary(transaction);
+                await this.updateCSSummary(transaction);
+            }
+        }
     }
 
     async getConfigValue(key) {
