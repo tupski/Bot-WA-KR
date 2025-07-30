@@ -90,7 +90,7 @@ class MessageParser {
                             status: 'MISSING_FIELD',
                             data: null,
                             missingField: 'Komisi',
-                            message: 'Komisinya mana?'
+                            message: 'Komisinya mana anjing?'
                         };
                     }
                 } else {
@@ -100,17 +100,23 @@ class MessageParser {
                             status: 'MISSING_FIELD',
                             data: null,
                             missingField: displayName,
-                            message: `${displayName}nya mana?`
+                            message: `${displayName}nya mana anjing?`
                         };
                     }
                 }
             }
 
-            // Hitung pendapatan bersih (amount - komisi)
-            const netAmount = (data.amount || 0) - (data.komisi || 0);
+            // Konversi angka ke format ribuan (250 → 250.000)
+            const amount = (data.amount || 0) * 1000;
+            const commission = (data.komisi || 0) * 1000;
 
-            // Dapatkan tanggal saat ini
-            const currentDate = moment().tz(this.timezone).format('YYYY-MM-DD');
+            // Hitung pendapatan bersih (amount - komisi)
+            const netAmount = amount - commission;
+
+            // Dapatkan tanggal dan waktu saat ini dengan timezone Indonesia
+            const now = moment().tz(this.timezone);
+            const currentDate = now.format('YYYY-MM-DD');
+            const currentDateTime = now.format('YYYY-MM-DD HH:mm:ss');
 
             const parsedData = {
                 messageId: messageId,
@@ -121,11 +127,11 @@ class MessageParser {
                 duration: data.duration || '',
                 paymentMethod: data.paymentMethod || 'Unknown',
                 csName: data.csName,
-                amount: data.amount || 0,
-                commission: data.komisi || 0,
+                amount: amount,
+                commission: commission,
                 netAmount: netAmount,
                 date: currentDate,
-                createdAt: moment().tz(this.timezone).toISOString(),
+                createdAt: currentDateTime,
                 skipFinancial: data.csName.toLowerCase() === 'apk', // Skip APK dari perhitungan keuangan
                 originalMessage: messageBody
             };

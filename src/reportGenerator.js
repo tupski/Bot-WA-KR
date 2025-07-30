@@ -365,43 +365,52 @@ ${commissionSection}`;
             totalNet: 0,
             csSummary: {},
             paymentMethods: { Cash: 0, Transfer: 0 },
-            locations: {}
+            locations: {},
+            csPaymentBreakdown: {} // Breakdown cash/transfer per CS
         };
 
         transactions.forEach(transaction => {
+            const csName = transaction.cs_name || transaction.csName;
+            const amount = parseFloat(transaction.amount || 0);
+            const commission = parseFloat(transaction.commission || 0);
+            const paymentMethod = transaction.payment_method || transaction.paymentMethod || '';
+
+            // Inisialisasi CS summary
+            if (!stats.csSummary[csName]) {
+                stats.csSummary[csName] = { count: 0, amount: 0, commission: 0, net: 0 };
+            }
+
+            // Inisialisasi CS payment breakdown
+            if (!stats.csPaymentBreakdown[csName.toLowerCase()]) {
+                stats.csPaymentBreakdown[csName.toLowerCase()] = { cash: 0, transfer: 0 };
+            }
+
+            // Hitung CS count
+            stats.csSummary[csName].count++;
+
             // Skip APK dari perhitungan keuangan
-            if (transaction.csName && transaction.csName.toLowerCase() === 'apk') {
-                // Hitung CS tapi skip keuangan
-                if (!stats.csSummary[transaction.csName]) {
-                    stats.csSummary[transaction.csName] = { count: 0, amount: 0, commission: 0, net: 0 };
-                }
-                stats.csSummary[transaction.csName].count++;
+            if (csName && csName.toLowerCase() === 'apk') {
                 return;
             }
 
+            // Hitung total keuangan
             stats.totalTransactions++;
-            stats.totalAmount += transaction.amount || 0;
-            stats.totalCommission += transaction.commission || 0;
-            stats.totalNet += transaction.netAmount || (transaction.amount - transaction.commission) || 0;
+            stats.totalAmount += amount;
+            stats.totalCommission += commission;
+            stats.totalNet += (amount - commission);
 
             // CS Summary
-            if (transaction.csName) {
-                if (!stats.csSummary[transaction.csName]) {
-                    stats.csSummary[transaction.csName] = { count: 0, amount: 0, commission: 0, net: 0 };
-                }
-                stats.csSummary[transaction.csName].count++;
-                stats.csSummary[transaction.csName].amount += transaction.amount || 0;
-                stats.csSummary[transaction.csName].commission += transaction.commission || 0;
-                stats.csSummary[transaction.csName].net += transaction.netAmount || (transaction.amount - transaction.commission) || 0;
-            }
+            stats.csSummary[csName].amount += amount;
+            stats.csSummary[csName].commission += commission;
+            stats.csSummary[csName].net += (amount - commission);
 
-            // Payment Methods
-            if (transaction.paymentMethod) {
-                if (transaction.paymentMethod.toLowerCase().includes('cash')) {
-                    stats.paymentMethods.Cash += transaction.amount || 0;
-                } else if (transaction.paymentMethod.toLowerCase().includes('transfer') || transaction.paymentMethod.toLowerCase().includes('tf')) {
-                    stats.paymentMethods.Transfer += transaction.amount || 0;
-                }
+            // Payment Methods breakdown per CS
+            if (paymentMethod.toLowerCase().includes('cash')) {
+                stats.paymentMethods.Cash += amount;
+                stats.csPaymentBreakdown[csName.toLowerCase()].cash += amount;
+            } else if (paymentMethod.toLowerCase().includes('transfer') || paymentMethod.toLowerCase().includes('tf')) {
+                stats.paymentMethods.Transfer += amount;
+                stats.csPaymentBreakdown[csName.toLowerCase()].transfer += amount;
             }
 
             // Locations
@@ -417,42 +426,64 @@ ${commissionSection}`;
     }
 
     /**
-     * Format laporan untuk rentang waktu
+     * Format laporan untuk rentang waktu dengan format baru
      */
     formatRangeReport(stats, displayDate) {
+        const now = moment().tz(this.timezone);
+
         let report = `📊 *REKAP LAPORAN ${displayDate.toUpperCase()}*\n`;
         report += `🏢 ${this.companyName}\n`;
-        report += `⏰ ${moment().tz(this.timezone).format('HH:mm')} WIB\n\n`;
+        report += `📅 ${now.format('DD/MM/YYYY')} - ${now.format('HH:mm')} WIB\n\n`;
 
-        // Ringkasan Keuangan
-        report += `💰 *RINGKASAN KEUANGAN*\n`;
-        report += `Total Transaksi: ${stats.totalTransactions}\n`;
-        report += `Total Pendapatan: ${numberFormatter.formatCurrency(stats.totalAmount, 'whatsapp')}\n`;
-        report += `Total Komisi: ${numberFormatter.formatCurrency(stats.totalCommission, 'whatsapp')}\n`;
-        report += `Pendapatan Bersih: ${numberFormatter.formatCurrency(stats.totalNet, 'whatsapp')}\n\n`;
-
-        // Metode Pembayaran
-        report += `💳 *METODE PEMBAYARAN*\n`;
-        report += `Cash: ${numberFormatter.formatCurrency(stats.paymentMethods.Cash, 'whatsapp')}\n`;
-        report += `Transfer: ${numberFormatter.formatCurrency(stats.paymentMethods.Transfer, 'whatsapp')}\n\n`;
-
-        // Performa CS
-        report += `👥 *PERFORMA CS*\n`;
+        // Total CS
+        report += `👥 *TOTAL CS*\n`;
         Object.entries(stats.csSummary).forEach(([csName, data]) => {
-            if (csName.toLowerCase() === 'apk') {
-                report += `${csName}: ${data.count} transaksi (APK - tidak dihitung keuangan)\n`;
-            } else {
-                report += `${csName}: ${data.count} transaksi - ${numberFormatter.formatCurrency(data.net, 'whatsapp')}\n`;
+            report += `- total cs ${csName.toLowerCase()}: ${data.count}\n`;
+        });
+
+        const totalCS = Object.values(stats.csSummary).reduce((sum, data) => sum + data.count, 0);
+        report += `\n- Jumlah CS: ${totalCS}\n`;
+        report += `----------------------\n\n`;
+
+        // Keuangan
+        report += `💰 *KEUANGAN*\n`;
+
+        // Hitung cash dan transfer per CS
+        const cashAmel = stats.csPaymentBreakdown?.amel?.cash || 0;
+        const cashKr = stats.csPaymentBreakdown?.kr?.cash || 0;
+        const tfKr = stats.csPaymentBreakdown?.kr?.transfer || 0;
+
+        report += `- total cash amel: ${numberFormatter.formatCurrency(cashAmel, 'whatsapp')}\n`;
+        report += `- total cash kr: ${numberFormatter.formatCurrency(cashKr, 'whatsapp')}\n`;
+        report += `- total tf KR: ${numberFormatter.formatCurrency(tfKr, 'whatsapp')}\n\n`;
+
+        report += `- total kotor: ${numberFormatter.formatCurrency(stats.totalAmount, 'whatsapp')}\n`;
+        report += `-----------\n\n`;
+
+        // Komisi Marketing
+        report += `💼 *KOMISI MARKETING*\n\n`;
+
+        // Group by marketing (berdasarkan CS yang bukan APK)
+        const marketingStats = {};
+        Object.entries(stats.csSummary).forEach(([csName, data]) => {
+            if (csName.toLowerCase() !== 'apk') {
+                // Anggap setiap CS adalah marketing
+                marketingStats[csName] = {
+                    totalCS: data.count,
+                    totalKomisi: data.commission
+                };
             }
         });
 
-        // Lokasi
-        if (Object.keys(stats.locations).length > 0) {
-            report += `\n📍 *LOKASI*\n`;
-            Object.entries(stats.locations).forEach(([location, count]) => {
-                report += `${location}: ${count} transaksi\n`;
-            });
-        }
+        let totalKomisiMarketing = 0;
+        Object.entries(marketingStats).forEach(([marketingName, data]) => {
+            report += `${marketingName}:\n`;
+            report += `- total cs: ${data.totalCS}\n`;
+            report += `- total komisi: ${numberFormatter.formatCurrency(data.totalKomisi, 'whatsapp')}\n\n`;
+            totalKomisiMarketing += data.totalKomisi;
+        });
+
+        report += `Total komisi marketing: ${numberFormatter.formatCurrency(totalKomisiMarketing, 'whatsapp')}\n`;
 
         return report;
     }

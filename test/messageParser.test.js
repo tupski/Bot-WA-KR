@@ -22,8 +22,8 @@ Komisi: 50`,
             duration: '6 jam',
             paymentMethod: 'Cash',
             csName: 'dreamy',
-            amount: 250,
-            commission: 50
+            amount: 250000,
+            commission: 50000
         }
     },
     {
@@ -43,8 +43,8 @@ Komisi: 75`,
             duration: '3 jam',
             paymentMethod: 'Transfer',
             csName: 'amel',
-            amount: 350,
-            commission: 75
+            amount: 350000,
+            commission: 75000
         }
     },
     {
