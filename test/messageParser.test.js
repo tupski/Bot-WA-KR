@@ -6,8 +6,7 @@ const messageParser = require('../src/messageParser');
 // Test data dengan format baru
 const testMessages = [
     {
-        input: `🟢SKY HOUSE
-Unit      :L3/30N
+        input: `Unit      :L3/30N
 Cek out: 05:00
 Untuk   : 6 jam
 Cash/Tf: cash 250
@@ -26,8 +25,7 @@ Komisi: 50`,
         }
     },
     {
-        input: `🟢SKY HOUSE
-Unit      :A1/20N
+        input: `Unit      :A1/20N
 Cek out: 14:30
 Untuk   : 3 jam
 Cash/Tf: tf kr 350
@@ -46,8 +44,7 @@ Komisi: 75`,
         }
     },
     {
-        input: `🟢SKY HOUSE
-Unit      :B2/15N
+        input: `Unit      :B2/15N
 Cek out: 16:00
 Untuk   : 4 jam
 Cash/Tf: tf amel
@@ -115,17 +112,15 @@ function runTests() {
     console.log('Testing pesan tidak valid...');
     const invalidMessages = [
         'Pesan biasa tanpa emoji',
-        '🟢WRONG GROUP',
-        `🟢SKY HOUSE
-Unit: A1`, // Tidak lengkap - WRONG_FORMAT
-        '🔴SKY HOUSE\nUnit: A1\nCs: test' // Emoji salah
+        'Cek out: 05:00', // Tidak dimulai dengan Unit
+        `Unit: A1`, // Tidak lengkap - WRONG_FORMAT
+        'Checkout: 05:00\nUnit: A1\nCs: test' // Tidak dimulai dengan Unit
     ];
 
     // Test missing field
     const missingFieldMessages = [
         {
-            input: `🟢SKY HOUSE
-Unit      :L3/30N
+            input: `Unit      :L3/30N
 Cek out: 05:00
 Untuk   : 6 jam
 Cash/Tf: tf kr 250
@@ -133,8 +128,7 @@ Cs    : dreamy`,
             expectedMissing: 'Komisi'
         },
         {
-            input: `🟢SKY HOUSE
-Unit      :L3/30N
+            input: `Unit      :L3/30N
 Cek out: 05:00
 Untuk   : 6 jam
 Cash/Tf: tf kr 250

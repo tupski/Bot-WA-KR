@@ -39,9 +39,9 @@ async function handleMessage(message) {
             return;
         }
 
-        // Cek apakah pesan dimulai dengan 🟢 dan nama grup
-        if (message.body.startsWith('🟢') && groupName) {
-            logger.info(`Memproses pesan booking dari grup ${groupName}: ${message.body.substring(0, 50)}...`);
+        // Cek apakah pesan dimulai dengan Unit (format booking)
+        if (message.body.toLowerCase().startsWith('unit')) {
+            logger.info(`Memproses pesan booking dari ${groupName || 'private'}: ${message.body.substring(0, 50)}...`);
 
             // Cek apakah pesan sudah diproses sebelumnya
             const isProcessed = await database.isMessageProcessed(message.id.id);

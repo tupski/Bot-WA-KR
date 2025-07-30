@@ -21,9 +21,11 @@ class MessageParser {
      */
     parseBookingMessage(messageBody, messageId = null, groupName = '') {
         try {
-            // Cek apakah pesan dimulai dengan prefix grup
-            const groupPrefix = `🟢${groupName}`;
-            if (!messageBody.startsWith(groupPrefix)) {
+            // Pisahkan baris-baris pesan
+            const lines = messageBody.split('\n').map(line => line.trim()).filter(line => line);
+
+            // Cek apakah pesan dimulai dengan Unit
+            if (lines.length === 0 || !lines[0].toLowerCase().includes('unit')) {
                 return {
                     status: 'WRONG_PREFIX',
                     data: null,
@@ -32,23 +34,20 @@ class MessageParser {
                 };
             }
 
-            // Pisahkan baris-baris pesan
-            const lines = messageBody.split('\n').map(line => line.trim()).filter(line => line);
-
-            // Cek format dasar - minimal harus ada 6 baris
-            if (lines.length < 6) {
+            // Cek format dasar - minimal harus ada 5 baris (akan divalidasi lebih detail nanti)
+            if (lines.length < 5) {
                 return {
                     status: 'WRONG_FORMAT',
                     data: null,
                     missingField: null,
-                    message: 'Salah anjing. yang bener gini:\n\n🟢SKY HOUSE\nUnit      :L3/30N\nCek out: 05:00\nUntuk   : 6 jam\nCash/Tf: tf kr 250\nCs    : dreamy\nKomisi: 50'
+                    message: 'Salah anjing. yang bener gini:\n\nUnit      :L3/30N\nCek out: 05:00\nUntuk   : 6 jam\nCash/Tf: tf kr 250\nCs    : dreamy\nKomisi: 50'
                 };
             }
 
             // Parse setiap baris
             const data = {};
 
-            for (let i = 1; i < lines.length; i++) {
+            for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
 
                 if (line.toLowerCase().includes('unit')) {
@@ -80,24 +79,27 @@ class MessageParser {
             };
 
             for (const [field, displayName] of Object.entries(requiredFields)) {
-                if (!data[field] && field !== 'komisi') {
-                    return {
-                        status: 'MISSING_FIELD',
-                        data: null,
-                        missingField: displayName,
-                        message: `${displayName}nya mana?`
-                    };
+                if (field === 'komisi') {
+                    // Khusus untuk komisi - cek apakah ada tapi kosong atau undefined
+                    if (data.komisi === undefined || data.komisi === null || data.komisi === '') {
+                        return {
+                            status: 'MISSING_FIELD',
+                            data: null,
+                            missingField: 'Komisi',
+                            message: 'Komisinya mana?'
+                        };
+                    }
+                } else {
+                    // Field lainnya
+                    if (!data[field] || data[field] === '') {
+                        return {
+                            status: 'MISSING_FIELD',
+                            data: null,
+                            missingField: displayName,
+                            message: `${displayName}nya mana?`
+                        };
+                    }
                 }
-            }
-
-            // Khusus untuk komisi - cek apakah ada tapi kosong
-            if (data.komisi === undefined || data.komisi === null) {
-                return {
-                    status: 'MISSING_FIELD',
-                    data: null,
-                    missingField: 'Komisi',
-                    message: 'Komisinya mana?'
-                };
             }
 
             // Hitung pendapatan bersih (amount - komisi)
@@ -138,7 +140,7 @@ class MessageParser {
                 status: 'WRONG_FORMAT',
                 data: null,
                 missingField: null,
-                message: 'Salah anjing. yang bener gini:\n\n🟢SKY HOUSE\nUnit      :L3/30N\nCek out: 05:00\nUntuk   : 6 jam\nCash/Tf: tf kr 250\nCs    : dreamy\nKomisi: 50'
+                message: 'Salah anjing. yang bener gini:\n\nUnit      :L3/30N\nCek out: 05:00\nUntuk   : 6 jam\nCash/Tf: tf kr 250\nCs    : dreamy\nKomisi: 50'
             };
         }
     }
