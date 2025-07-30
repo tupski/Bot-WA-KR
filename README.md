@@ -1,17 +1,17 @@
 # Bot WhatsApp untuk Manajemen Check-in Apartemen Kakarama Room
 
-Sistem bot WhatsApp komprehensif untuk mengelola check-in apartemen, membuat laporan, dan melacak performa CS untuk operasional bisnis Kakarama Room.
+Sistem bot WhatsApp untuk mengelola grup check-in apartemen, membuat laporan, dan melacak cs marketing, amel, dan APK untuk operasional bisnis Kakarama Room.
 
 ## Fitur Utama
 
-- 🤖 **Pemrosesan Pesan Otomatis**: Memproses pesan booking yang dimulai dengan "Unit"
+- 🤖 **Pemrosesan Pesan Otomatis**: Memproses pesan booking otomatis
 - � **Multi-Apartemen**: Mendukung beberapa apartemen dengan deteksi grup otomatis
 - 📊 **Laporan Harian**: Laporan otomatis dikirim ke grup WhatsApp setiap jam 12:00 WIB
 - 📧 **Integrasi Email**: Laporan Excel harian dikirim via email
 - 💾 **Dukungan Database**: Pilihan database SQLite dan MySQL
 - 📈 **Pelacakan Performa**: Monitoring performa CS dan perhitungan komisi
 - 🔄 **Tugas Terjadwal**: Laporan otomatis harian, mingguan, dan bulanan
-- 📱 **Export Excel**: Laporan Excel komprehensif dengan multiple sheet
+- 📱 **Export Excel**: Laporan Excel dengan multiple sheet
 - 🛡️ **Penanganan Error**: Sistem error handling dan logging yang robust
 - ⚙️ **Dapat Dikonfigurasi**: Opsi konfigurasi ekstensif via environment variables
 - 💬 **Validasi Format**: Validasi format pesan dengan respon yang jelas
