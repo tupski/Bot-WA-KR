@@ -319,6 +319,39 @@ async function handleCommand(message, apartmentName) {
                 await bot.sendMessage(message.from, errorMsg);
             }
 
+        } else if (message.body.startsWith('!rekapulang')) {
+            logger.info(`Memproses command rekapulang dari ${message.from}: ${message.body}`);
+
+            // Hanya bisa dipanggil dari private message untuk keamanan
+            const isFromGroup = message.from.includes('@g.us');
+            if (isFromGroup) {
+                await bot.sendMessage(message.from, '❌ Command !rekapulang hanya bisa digunakan melalui pesan pribadi untuk keamanan.');
+                return;
+            }
+
+            await bot.sendMessage(message.from, '🔄 Memulai proses rekap ulang semua pesan di semua grup...\nProses ini mungkin memakan waktu beberapa menit.');
+
+            try {
+                const result = await reprocessAllGroupMessages();
+
+                const summary = `✅ *Proses rekap ulang selesai!*\n\n` +
+                    `📊 *Ringkasan:*\n` +
+                    `- Grup diproses: ${result.groupsProcessed}\n` +
+                    `- Total pesan diperiksa: ${result.totalMessagesChecked}\n` +
+                    `- Pesan booking ditemukan: ${result.bookingMessagesFound}\n` +
+                    `- Data baru ditambahkan: ${result.newDataAdded}\n` +
+                    `- Data sudah ada (dilewati): ${result.duplicatesSkipped}\n` +
+                    `- Error: ${result.errors}\n\n` +
+                    `⏱️ Waktu proses: ${result.processingTime}`;
+
+                await bot.sendMessage(message.from, summary);
+                logger.info('Proses rekap ulang selesai:', result);
+
+            } catch (error) {
+                logger.error('Error dalam proses rekap ulang:', error);
+                await bot.sendMessage(message.from, `❌ Terjadi error dalam proses rekap ulang: ${error.message}`);
+            }
+
         } else if (message.body.startsWith('!apartemen')) {
             logger.info(`Memproses command apartemen dari ${message.from}: ${message.body}`);
 
@@ -375,6 +408,158 @@ async function performRecovery() {
     } catch (error) {
         logger.error('Error during recovery:', error);
     }
+}
+
+// Fungsi untuk reprocess semua pesan di semua grup
+async function reprocessAllGroupMessages() {
+    const startTime = Date.now();
+    const result = {
+        groupsProcessed: 0,
+        totalMessagesChecked: 0,
+        bookingMessagesFound: 0,
+        newDataAdded: 0,
+        duplicatesSkipped: 0,
+        errors: 0,
+        processingTime: ''
+    };
+
+    try {
+        logger.info('Memulai proses rekap ulang semua grup...');
+
+        // Ambil semua chat
+        const chats = await bot.client.getChats();
+        const groups = chats.filter(chat => chat.isGroup);
+
+        // Filter hanya grup yang ada di environment variables
+        const allowedGroupIds = config.apartments.allowedGroups || [];
+        const allowedGroups = groups.filter(group =>
+            allowedGroupIds.includes(group.id._serialized)
+        );
+
+        logger.info(`Ditemukan ${allowedGroups.length} grup yang diizinkan untuk diproses`);
+
+        for (const group of allowedGroups) {
+            try {
+                result.groupsProcessed++;
+                const groupName = group.name;
+                const apartmentName = bot.getApartmentName(groupName);
+
+                logger.info(`Memproses grup: ${groupName} (${apartmentName})`);
+
+                // Ambil pesan dari grup (limit 500 untuk menghindari timeout)
+                const messages = await group.fetchMessages({
+                    limit: 500,
+                    fromMe: false
+                });
+
+                logger.info(`Ditemukan ${messages.length} pesan di grup ${groupName}`);
+                result.totalMessagesChecked += messages.length;
+
+                for (const message of messages) {
+                    try {
+                        // Cek apakah pesan memiliki format booking
+                        const lines = message.body.split('\n').map(line => line.trim()).filter(line => line);
+                        if (lines.length >= 2 && lines[1].toLowerCase().includes('unit')) {
+                            result.bookingMessagesFound++;
+
+                            // Cek apakah pesan sudah diproses sebelumnya
+                            const isProcessed = await database.isMessageProcessed(message.id.id);
+                            if (isProcessed) {
+                                result.duplicatesSkipped++;
+                                continue;
+                            }
+
+                            // Parse pesan
+                            const parseResult = messageParser.parseBookingMessage(
+                                message.body,
+                                message.id.id,
+                                apartmentName
+                            );
+
+                            if (parseResult.status === 'VALID') {
+                                // Cek apakah transaksi sudah ada berdasarkan data transaksi
+                                const data = parseResult.data;
+                                const exists = await database.isTransactionExists(
+                                    data.unit,
+                                    data.dateOnly,
+                                    data.csName,
+                                    data.checkoutTime
+                                );
+
+                                if (!exists) {
+                                    // Simpan transaksi baru
+                                    await database.saveTransaction(data);
+                                    await database.markMessageProcessed(message.id.id, message.from);
+                                    result.newDataAdded++;
+
+                                    logger.info(`Data baru ditambahkan: Unit ${data.unit}, CS ${data.csName}, Apartemen ${apartmentName}`);
+                                } else {
+                                    // Mark sebagai processed meskipun sudah ada
+                                    await database.markMessageProcessed(message.id.id, message.from);
+                                    result.duplicatesSkipped++;
+                                }
+                            } else {
+                                // Mark sebagai processed meskipun format salah
+                                await database.markMessageProcessed(message.id.id, message.from);
+                            }
+                        }
+                    } catch (messageError) {
+                        logger.error(`Error memproses pesan ${message.id.id}:`, messageError);
+                        result.errors++;
+                    }
+                }
+
+                logger.info(`Selesai memproses grup ${groupName}: ${result.newDataAdded} data baru ditambahkan`);
+
+            } catch (groupError) {
+                logger.error(`Error memproses grup ${group.name}:`, groupError);
+                result.errors++;
+            }
+        }
+
+        const endTime = Date.now();
+        const processingTimeMs = endTime - startTime;
+        const processingTimeMin = Math.round(processingTimeMs / 1000 / 60 * 100) / 100;
+        result.processingTime = `${processingTimeMin} menit`;
+
+        logger.info('Proses rekap ulang selesai:', result);
+        return result;
+
+    } catch (error) {
+        logger.error('Error dalam proses rekap ulang:', error);
+        throw error;
+    }
+}
+
+// Fungsi untuk mencari apartemen berdasarkan nama parsial
+function findApartmentByPartialName(partialName) {
+    if (!partialName) return null;
+
+    const searchTerm = partialName.toLowerCase();
+    const apartmentMapping = config.apartments.groupMapping;
+
+    // Cari berdasarkan nama apartemen
+    for (const [, apartmentName] of Object.entries(apartmentMapping)) {
+        if (apartmentName.toLowerCase().includes(searchTerm)) {
+            return apartmentName;
+        }
+    }
+
+    // Cari berdasarkan kata kunci
+    const keywords = {
+        'sky': 'SKY HOUSE',
+        'skyhouse': 'SKY HOUSE',
+        'tree': 'TREEPARK BSD',
+        'treepark': 'TREEPARK BSD',
+        'emerald': 'EMERALD BINTARO',
+        'springwood': 'SPRINGWOOD RESIDENCES',
+        'serpong': 'SERPONG GARDEN',
+        'tokyo': 'TOKYO RIVERSIDE PIK2',
+        'testing': 'TESTING BOT',
+        'test': 'TESTING BOT'
+    };
+
+    return keywords[searchTerm] || null;
 }
 
 // Daftarkan message handler
