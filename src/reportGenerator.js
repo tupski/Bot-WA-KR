@@ -475,12 +475,13 @@ ${commissionSection}`;
         // Komisi Marketing
         report += `💼 *KOMISI MARKETING*\n\n`;
 
-        // Group by marketing (berdasarkan CS yang bukan APK)
+        // Group by marketing (berdasarkan CS yang bukan APK dan bukan AMEL)
         const marketingStats = {};
         Object.entries(stats.csSummary).forEach(([csName, data]) => {
-            if (csName.toLowerCase() !== 'apk') {
-                // Anggap setiap CS adalah marketing
-                marketingStats[csName] = {
+            if (csName.toLowerCase() !== 'apk' && csName.toLowerCase() !== 'amel') {
+                // Gunakan nama asli CS dengan capitalize first letter
+                const displayName = csName.charAt(0).toUpperCase() + csName.slice(1).toLowerCase();
+                marketingStats[displayName] = {
                     totalCS: data.count,
                     totalKomisi: data.commission
                 };
