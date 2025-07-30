@@ -28,24 +28,24 @@ class Configuration {
             apartments: {
                 // Mapping nama grup WhatsApp ke nama apartemen
                 groupMapping: {
-                    'SKY HOUSE CHECKIN': 'SKY HOUSE',
-                    'TREE PARK BSD CHECKIN': 'TREEPARK BSD',
-                    'SPRINGWOOD CHECKIN': 'SPRINGWOOD RESIDENCES',
-                    'EMERALD CHECKIN': 'EMERALD BINTARO',
-                    'TOKYO PIK2 CHECKIN': 'TOKYO RIVERSIDE PIK2',
-                    'SERPONG GARDEN CHECKIN': 'SERPONG GARDEN',
+                    'SKY HOUSE CHEKIN🟢': 'SKY HOUSE',
+                    'TREE PARK BSD CHEKIN🟡': 'TREEPARK BSD',
+                    'SPRINGWOOD CHEKIN⚪': 'SPRINGWOOD RESIDENCES',
+                    'EMERALD CHEKIN⚫': 'EMERALD BINTARO',
+                    'TOKYO PIK2 CHEKIN🤎': 'TOKYO RIVERSIDE PIK2',
+                    'SERPONG GARDEN CHEKIN🟠': 'SERPONG GARDEN',
                     'Code Tester' : 'TESTING BOT'
                 },
 
                 // Grup yang diizinkan (opsional - untuk keamanan)
                 allowedGroups: [
                     'Code Tester',
-                    'SKY HOUSE',
-                    'TREEPARK BSD ',
-                    'SPRINGWOOD RESIDENCES',
-                    'EMERALD BINTARO',
-                    'TOKYO RIVERSIDE PIK2',
-                    'SERPONG GARDEN'
+                    'SKY HOUSE CHEKIN🟢',
+                    'TREE PARK BSD CHEKIN🟡',
+                    'SPRINGWOOD CHEKIN⚪',
+                    'EMERALD CHEKIN⚫',
+                    'TOKYO PIK2 CHEKIN🤎',
+                    'SERPONG GARDEN CHEKIN🟠'
                 ],
 
                 // Default apartemen jika grup tidak dikenali
