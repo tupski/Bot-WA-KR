@@ -149,19 +149,19 @@ class WhatsAppBot {
     }
 
     /**
-     * Dapatkan nama apartemen berdasarkan nama grup
+     * Dapatkan nama apartemen berdasarkan ID grup
      */
-    getApartmentName(groupName) {
-        if (!groupName) return config.apartments.defaultApartment;
+    getApartmentName(groupId) {
+        if (!groupId) return config.apartments.defaultApartment;
 
-        // Cek mapping grup ke apartemen
-        const apartmentName = config.apartments.groupMapping[groupName];
+        // Cek mapping grup ID ke apartemen
+        const apartmentName = config.apartments.groupMapping[groupId];
         if (apartmentName) {
             return apartmentName;
         }
 
-        // Jika tidak ada mapping, gunakan nama grup langsung
-        return groupName;
+        // Jika tidak ada mapping, return default
+        return config.apartments.defaultApartment;
     }
 
     /**

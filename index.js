@@ -70,7 +70,7 @@ async function handleMessage(message) {
                 return;
             }
 
-            apartmentName = bot.getApartmentName(groupName);
+            apartmentName = bot.getApartmentName(message.from);
         }
 
         // Cek apakah pesan adalah command
@@ -206,6 +206,9 @@ async function handleCommand(message, apartmentName) {
             }
 
             if (rekapData) {
+                // Debug logging
+                logger.info(`Mencari data untuk apartemen: "${targetApartment}" pada periode ${rekapData.startDate} - ${rekapData.endDate}`);
+
                 // Generate laporan berdasarkan parameter
                 const report = await reportGenerator.generateReportByDateRange(
                     rekapData.startDate,
@@ -220,6 +223,19 @@ async function handleCommand(message, apartmentName) {
                     const logMsg = targetApartment ? `untuk apartemen: ${targetApartment}` : 'untuk semua apartemen';
                     logger.info(`Laporan rekap berhasil dikirim ${logMsg}`);
                 } else {
+                    // Debug: cek data apa yang ada di database
+                    const allTransactions = await database.getTransactionsByDateRange(
+                        rekapData.startDate,
+                        rekapData.endDate,
+                        null // Ambil semua apartemen untuk debug
+                    );
+
+                    logger.info(`Debug: Total transaksi ditemukan: ${allTransactions.length}`);
+                    if (allTransactions.length > 0) {
+                        const uniqueLocations = [...new Set(allTransactions.map(t => t.location))];
+                        logger.info(`Debug: Lokasi yang ada di database: ${uniqueLocations.join(', ')}`);
+                    }
+
                     const errorMsg = targetApartment ?
                         `Tidak ada data untuk apartemen ${targetApartment} pada periode yang diminta.` :
                         'Tidak ada data untuk periode yang diminta.';
@@ -352,6 +368,59 @@ async function handleCommand(message, apartmentName) {
                 await bot.sendMessage(message.from, `❌ Terjadi error dalam proses rekap ulang: ${error.message}`);
             }
 
+        } else if (message.body.startsWith('!debug')) {
+            logger.info(`Memproses command debug dari ${message.from}: ${message.body}`);
+
+            // Hanya bisa dipanggil dari private message untuk keamanan
+            const isFromGroup = message.from.includes('@g.us');
+            if (isFromGroup) {
+                await bot.sendMessage(message.from, '❌ Command !debug hanya bisa digunakan melalui pesan pribadi untuk keamanan.');
+                return;
+            }
+
+            try {
+                // Ambil semua transaksi dari 7 hari terakhir
+                const moment = require('moment-timezone');
+                const endDate = moment().tz('Asia/Jakarta').format('YYYY-MM-DD');
+                const startDate = moment().tz('Asia/Jakarta').subtract(7, 'days').format('YYYY-MM-DD');
+
+                const allTransactions = await database.getTransactionsByDateRange(startDate, endDate, null);
+
+                if (allTransactions.length === 0) {
+                    await bot.sendMessage(message.from, '❌ Tidak ada transaksi dalam 7 hari terakhir.');
+                    return;
+                }
+
+                // Analisis data
+                const uniqueLocations = [...new Set(allTransactions.map(t => t.location))];
+                const locationCounts = {};
+                allTransactions.forEach(t => {
+                    locationCounts[t.location] = (locationCounts[t.location] || 0) + 1;
+                });
+
+                let debugMsg = `🔍 *Debug Info Database*\n\n`;
+                debugMsg += `📊 *Periode: ${startDate} - ${endDate}*\n`;
+                debugMsg += `📈 Total transaksi: ${allTransactions.length}\n\n`;
+                debugMsg += `🏢 *Lokasi di database:*\n`;
+
+                uniqueLocations.forEach(location => {
+                    debugMsg += `- "${location}": ${locationCounts[location]} transaksi\n`;
+                });
+
+                debugMsg += `\n🔧 *Config Mapping:*\n`;
+                const groupMapping = config.apartments.groupMapping;
+                Object.entries(groupMapping).forEach(([groupId, apartmentName]) => {
+                    debugMsg += `- ${groupId.substring(0, 20)}...: "${apartmentName}"\n`;
+                });
+
+                await bot.sendMessage(message.from, debugMsg);
+                logger.info('Debug info berhasil dikirim');
+
+            } catch (error) {
+                logger.error('Error dalam debug command:', error);
+                await bot.sendMessage(message.from, `❌ Terjadi error: ${error.message}`);
+            }
+
         } else if (message.body.startsWith('!apartemen')) {
             logger.info(`Memproses command apartemen dari ${message.from}: ${message.body}`);
 
@@ -457,7 +526,7 @@ async function reprocessAllGroupMessages() {
             try {
                 result.groupsProcessed++;
                 const groupName = group.name;
-                const apartmentName = bot.getApartmentName(groupName);
+                const apartmentName = bot.getApartmentName(group.id._serialized);
 
                 // Counter per grup
                 let groupBookingMessages = 0;
@@ -465,6 +534,7 @@ async function reprocessAllGroupMessages() {
                 let groupDuplicates = 0;
 
                 logger.info(`[${result.groupsProcessed}/${allowedGroups.length}] Memproses grup: ${groupName} (${apartmentName})`);
+                logger.info(`Debug: Group ID: ${group.id._serialized}, Apartment Name: ${apartmentName}`);
 
                 // Ambil pesan dari grup (limit 500 untuk menghindari timeout)
                 const messages = await group.fetchMessages({
