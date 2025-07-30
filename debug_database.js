@@ -45,8 +45,11 @@ async function debugDatabase() {
         }
         
         // 3. Cek transaksi dalam rentang waktu !rekap (12:00 - sekarang)
-        const startTime = moment().tz('Asia/Jakarta').hour(12).minute(0).second(0).format('YYYY-MM-DD HH:mm:ss');
-        const endTime = moment().tz('Asia/Jakarta').format('YYYY-MM-DD HH:mm:ss');
+        const now = moment().tz('Asia/Jakarta');
+        const startTime = now.clone().hour(12).minute(0).second(0).format('YYYY-MM-DD HH:mm:ss');
+        const endTime = now.format('YYYY-MM-DD HH:mm:ss');
+
+        console.log(`\n🕐 WAKTU SEKARANG: ${now.format('YYYY-MM-DD HH:mm:ss')} WIB`);
         
         console.log(`\n⏰ TRANSAKSI RENTANG REKAP (${startTime} - ${endTime}):`);
         const rekapTransactions = await database.getTransactionsByDateRange(startTime, endTime);

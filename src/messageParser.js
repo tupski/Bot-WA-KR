@@ -120,7 +120,7 @@ class MessageParser {
 
             const parsedData = {
                 messageId: messageId,
-                location: groupName,
+                location: groupPrefix, // Gunakan groupPrefix sebagai location
                 groupPrefix: groupPrefix, // Nama grup dari prefix 🟢
                 unit: data.unit,
                 checkoutTime: data.checkoutTime || '',

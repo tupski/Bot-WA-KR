@@ -344,7 +344,8 @@ ${commissionSection}`;
             const stats = this.calculateRangeStats(transactions);
 
             // Format laporan
-            const report = this.formatRangeReport(stats, displayDate);
+            const defaultDisplayDate = displayDate || 'RENTANG WAKTU';
+            const report = this.formatRangeReport(stats, defaultDisplayDate);
 
             return report;
 
@@ -375,14 +376,25 @@ ${commissionSection}`;
             const commission = parseFloat(transaction.commission || 0);
             const paymentMethod = transaction.payment_method || transaction.paymentMethod || '';
 
-            // Inisialisasi CS summary
+            // Mapping CS berdasarkan aturan:
+            // amel → amel, apk/APK → apk, lainnya → kr
+            let mappedCS;
+            if (csName.toLowerCase() === 'amel') {
+                mappedCS = 'amel';
+            } else if (csName.toLowerCase() === 'apk') {
+                mappedCS = 'apk';
+            } else {
+                mappedCS = 'kr';
+            }
+
+            // Inisialisasi CS summary (gunakan nama asli untuk summary)
             if (!stats.csSummary[csName]) {
                 stats.csSummary[csName] = { count: 0, amount: 0, commission: 0, net: 0 };
             }
 
-            // Inisialisasi CS payment breakdown
-            if (!stats.csPaymentBreakdown[csName.toLowerCase()]) {
-                stats.csPaymentBreakdown[csName.toLowerCase()] = { cash: 0, transfer: 0 };
+            // Inisialisasi CS payment breakdown (gunakan mapped CS)
+            if (!stats.csPaymentBreakdown[mappedCS]) {
+                stats.csPaymentBreakdown[mappedCS] = { cash: 0, transfer: 0 };
             }
 
             // Hitung CS count
@@ -404,13 +416,13 @@ ${commissionSection}`;
             stats.csSummary[csName].commission += commission;
             stats.csSummary[csName].net += (amount - commission);
 
-            // Payment Methods breakdown per CS
+            // Payment Methods breakdown per CS (gunakan mapped CS)
             if (paymentMethod.toLowerCase().includes('cash')) {
                 stats.paymentMethods.Cash += amount;
-                stats.csPaymentBreakdown[csName.toLowerCase()].cash += amount;
+                stats.csPaymentBreakdown[mappedCS].cash += amount;
             } else if (paymentMethod.toLowerCase().includes('transfer') || paymentMethod.toLowerCase().includes('tf')) {
                 stats.paymentMethods.Transfer += amount;
-                stats.csPaymentBreakdown[csName.toLowerCase()].transfer += amount;
+                stats.csPaymentBreakdown[mappedCS].transfer += amount;
             }
 
             // Locations

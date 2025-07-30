@@ -136,8 +136,8 @@ class Database {
     async saveTransaction(data) {
         const query = `
             INSERT INTO transactions
-            (message_id, location, unit, checkout_time, duration, payment_method, cs_name, commission, amount, net_amount, skip_financial, date_only)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (message_id, location, unit, checkout_time, duration, payment_method, cs_name, commission, amount, net_amount, skip_financial, date_only, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         const params = [
@@ -152,7 +152,8 @@ class Database {
             data.amount,
             data.netAmount || (data.amount - data.commission),
             data.skipFinancial || false,
-            data.date
+            data.date,
+            data.createdAt // Tambahkan created_at dengan timezone Indonesia
         ];
 
         const result = await this.executeQuery(query, params);
