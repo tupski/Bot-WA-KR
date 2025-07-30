@@ -169,15 +169,24 @@ class WhatsAppBot {
      * Dapatkan nama apartemen berdasarkan ID grup
      */
     getApartmentName(groupId) {
-        if (!groupId) return config.apartments.defaultApartment;
+        if (!groupId) {
+            logger.warn('getApartmentName: groupId is null/undefined');
+            return config.apartments.defaultApartment;
+        }
+
+        // Debug logging
+        logger.info(`getApartmentName: Looking for groupId "${groupId}"`);
+        logger.info(`getApartmentName: Available mappings: ${JSON.stringify(Object.keys(config.apartments.groupMapping))}`);
 
         // Cek mapping grup ID ke apartemen
         const apartmentName = config.apartments.groupMapping[groupId];
         if (apartmentName) {
+            logger.info(`getApartmentName: Found mapping "${groupId}" -> "${apartmentName}"`);
             return apartmentName;
         }
 
         // Jika tidak ada mapping, return default
+        logger.warn(`getApartmentName: No mapping found for "${groupId}", using default: "${config.apartments.defaultApartment}"`);
         return config.apartments.defaultApartment;
     }
 

@@ -71,6 +71,9 @@ async function handleMessage(message, isEdit = false) {
             }
 
             apartmentName = bot.getApartmentName(message.from);
+
+            // Debug logging untuk troubleshooting
+            logger.info(`Debug mapping - Group ID: ${message.from}, Group Name: ${groupName}, Apartment Name: ${apartmentName}`);
         }
 
         // Cek apakah pesan adalah command
@@ -433,6 +436,53 @@ async function handleCommand(message, apartmentName) {
                 await bot.sendMessage(message.from, `❌ Terjadi error dalam proses rekap ulang: ${error.message}`);
             }
 
+        } else if (message.body.startsWith('!mapping')) {
+            logger.info(`Memproses command mapping dari ${message.from}: ${message.body}`);
+
+            // Hanya bisa dipanggil dari private message untuk keamanan
+            const isFromGroup = message.from.includes('@g.us');
+            if (isFromGroup) {
+                await bot.sendMessage(message.from, '❌ Command !mapping hanya bisa digunakan melalui pesan pribadi untuk keamanan.');
+                return;
+            }
+
+            try {
+                let mappingMsg = `🗺️ *Current Group Mapping*\n\n`;
+
+                const groupMapping = config.apartments.groupMapping;
+                const allowedGroups = config.apartments.allowedGroups;
+
+                mappingMsg += `📋 *Group Mapping:*\n`;
+                if (Object.keys(groupMapping).length === 0) {
+                    mappingMsg += `❌ Tidak ada mapping yang aktif!\n\n`;
+                } else {
+                    Object.entries(groupMapping).forEach(([groupId, apartmentName]) => {
+                        mappingMsg += `- ${groupId}: "${apartmentName}"\n`;
+                    });
+                }
+
+                mappingMsg += `\n✅ *Allowed Groups:*\n`;
+                if (allowedGroups.length === 0) {
+                    mappingMsg += `❌ Tidak ada grup yang diizinkan!\n\n`;
+                } else {
+                    allowedGroups.forEach(groupId => {
+                        mappingMsg += `- ${groupId}\n`;
+                    });
+                }
+
+                mappingMsg += `\n🔧 *Environment Variables:*\n`;
+                mappingMsg += `- GROUP_SKYHOUSE_ID: ${process.env.GROUP_SKYHOUSE_ID}\n`;
+                mappingMsg += `- GROUP_SKYHOUSE_NAME: ${process.env.GROUP_SKYHOUSE_NAME}\n`;
+                mappingMsg += `- GROUP_SKYHOUSE_ENABLED: ${process.env.GROUP_SKYHOUSE_ENABLED}\n`;
+
+                await bot.sendMessage(message.from, mappingMsg);
+                logger.info('Mapping info berhasil dikirim');
+
+            } catch (error) {
+                logger.error('Error dalam mapping command:', error);
+                await bot.sendMessage(message.from, `❌ Terjadi error: ${error.message}`);
+            }
+
         } else if (message.body.startsWith('!reload')) {
             logger.info(`Memproses command reload dari ${message.from}: ${message.body}`);
 
@@ -445,18 +495,30 @@ async function handleCommand(message, apartmentName) {
 
             try {
                 // Reload konfigurasi dengan mengakses instance
-                const configInstance = require('./config/config').instance;
-                config.apartments.groupMapping = configInstance.buildGroupMapping();
-                config.apartments.allowedGroups = configInstance.buildAllowedGroups();
+                const { instance: configInstance } = require('./config/config');
+
+                // Rebuild mapping dan allowed groups
+                const newGroupMapping = configInstance.buildGroupMapping();
+                const newAllowedGroups = configInstance.buildAllowedGroups();
+
+                // Update config global
+                config.apartments.groupMapping = newGroupMapping;
+                config.apartments.allowedGroups = newAllowedGroups;
 
                 let reloadMsg = `✅ *Konfigurasi berhasil di-reload!*\n\n`;
-                reloadMsg += `🔧 *Group Mapping:*\n`;
-                Object.entries(config.apartments.groupMapping).forEach(([groupId, apartmentName]) => {
-                    reloadMsg += `- ${groupId.substring(0, 20)}...: "${apartmentName}"\n`;
+                reloadMsg += `🔧 *Group Mapping (${Object.keys(newGroupMapping).length} entries):*\n`;
+                Object.entries(newGroupMapping).forEach(([groupId, apartmentName]) => {
+                    reloadMsg += `- ${groupId.substring(0, 25)}...: "${apartmentName}"\n`;
+                });
+
+                reloadMsg += `\n✅ *Allowed Groups (${newAllowedGroups.length} groups):*\n`;
+                newAllowedGroups.forEach(groupId => {
+                    reloadMsg += `- ${groupId.substring(0, 25)}...\n`;
                 });
 
                 await bot.sendMessage(message.from, reloadMsg);
                 logger.info('Konfigurasi berhasil di-reload');
+                logger.info(`New mapping: ${JSON.stringify(newGroupMapping, null, 2)}`);
 
             } catch (error) {
                 logger.error('Error dalam reload command:', error);
