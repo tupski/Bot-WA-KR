@@ -1,4 +1,4 @@
-// Bot WhatsApp untuk Manajemen Booking Kamar SKY HOUSE
+// Bot WhatsApp untuk Manajemen Booking Kamar Kakarama Room
 // Entry point utama
 
 // Load environment variables FIRST
@@ -513,6 +513,170 @@ async function handleCommand(message, apartmentName) {
                 await bot.sendMessage(message.from, `❌ Terjadi error dalam proses rekap ulang: ${error.message}`);
             }
 
+        } else if (message.body.startsWith('!fixenv')) {
+            logger.info(`Memproses command fixenv dari ${message.from}: ${message.body}`);
+
+            // Hanya bisa dipanggil dari private message untuk keamanan
+            const isFromGroup = message.from.includes('@g.us');
+            if (isFromGroup) {
+                await bot.sendMessage(message.from, '❌ Command !fixenv hanya bisa digunakan melalui pesan pribadi untuk keamanan.');
+                return;
+            }
+
+            try {
+                const fs = require('fs');
+                const path = require('path');
+
+                // Read .env file directly and parse manually
+                const envPath = path.join(process.cwd(), '.env');
+                const envContent = fs.readFileSync(envPath, 'utf8');
+
+                // Parse .env manually
+                const envVars = {};
+                const lines = envContent.split('\n');
+
+                lines.forEach(line => {
+                    line = line.trim();
+                    if (line && !line.startsWith('#') && line.includes('=')) {
+                        const [key, ...valueParts] = line.split('=');
+                        const value = valueParts.join('=').trim();
+                        envVars[key.trim()] = value;
+                    }
+                });
+
+                // Set environment variables manually
+                Object.keys(envVars).forEach(key => {
+                    if (key.startsWith('GROUP_')) {
+                        process.env[key] = envVars[key];
+                    }
+                });
+
+                // Manual rebuild mapping
+                const manualMapping = {};
+                const groups = ['SKYHOUSE', 'TREEPARK', 'EMERALD', 'SPRINGWOOD', 'SERPONG', 'TOKYO', 'TESTER'];
+
+                let fixMsg = `🔧 *Fix Environment Variables*\n\n`;
+                fixMsg += `📁 *Manual .env Parsing:*\n`;
+                fixMsg += `- .env file size: ${envContent.length} bytes\n`;
+                fixMsg += `- Total lines: ${lines.length}\n`;
+                fixMsg += `- Parsed variables: ${Object.keys(envVars).length}\n`;
+                fixMsg += `- GROUP_* variables: ${Object.keys(envVars).filter(k => k.startsWith('GROUP_')).length}\n\n`;
+
+                fixMsg += `📋 *Group Variables Status:*\n`;
+                groups.forEach(group => {
+                    const id = envVars[`GROUP_${group}_ID`];
+                    const name = envVars[`GROUP_${group}_NAME`];
+                    const enabled = envVars[`GROUP_${group}_ENABLED`];
+
+                    fixMsg += `${group}: ${id ? '✅' : '❌'} ${name ? '✅' : '❌'} ${enabled === 'true' ? '✅' : '❌'}\n`;
+
+                    if (id && name && enabled === 'true') {
+                        manualMapping[id] = name;
+                        // Set to process.env
+                        process.env[`GROUP_${group}_ID`] = id;
+                        process.env[`GROUP_${group}_NAME`] = name;
+                        process.env[`GROUP_${group}_ENABLED`] = enabled;
+                    }
+                });
+
+                // Update global config
+                config.apartments.groupMapping = manualMapping;
+                config.apartments.allowedGroups = Object.keys(manualMapping);
+
+                fixMsg += `\n🔧 *Manual Group Mapping (${Object.keys(manualMapping).length} entries):*\n`;
+                Object.entries(manualMapping).forEach(([groupId, apartmentName]) => {
+                    fixMsg += `- ${groupId.substring(0, 20)}...: "${apartmentName}"\n`;
+                });
+
+                fixMsg += `\n✅ *Environment variables fixed manually!*\n`;
+                fixMsg += `- Process.env updated\n`;
+                fixMsg += `- Config.apartments.groupMapping updated\n`;
+                fixMsg += `- Ready to test with !rekap from groups`;
+
+                await bot.sendMessage(message.from, fixMsg);
+                logger.info('Fix environment variables berhasil');
+                logger.info(`Manual mapping after fix: ${JSON.stringify(manualMapping, null, 2)}`);
+
+            } catch (error) {
+                logger.error('Error dalam fixenv command:', error);
+                await bot.sendMessage(message.from, `❌ Terjadi error: ${error.message}`);
+            }
+
+        } else if (message.body.startsWith('!testdotenv')) {
+            logger.info(`Memproses command testdotenv dari ${message.from}: ${message.body}`);
+
+            // Hanya bisa dipanggil dari private message untuk keamanan
+            const isFromGroup = message.from.includes('@g.us');
+            if (isFromGroup) {
+                await bot.sendMessage(message.from, '❌ Command !testdotenv hanya bisa digunakan melalui pesan pribadi untuk keamanan.');
+                return;
+            }
+
+            try {
+                const fs = require('fs');
+                const path = require('path');
+
+                let testMsg = `🧪 *Test Dotenv Loading*\n\n`;
+
+                // Test file .env
+                const envPath = path.join(process.cwd(), '.env');
+                testMsg += `📁 *File System:*\n`;
+                testMsg += `- Working Directory: ${process.cwd()}\n`;
+                testMsg += `- .env Path: ${envPath}\n`;
+                testMsg += `- .env Exists: ${fs.existsSync(envPath) ? '✅ Yes' : '❌ No'}\n`;
+
+                if (fs.existsSync(envPath)) {
+                    const envContent = fs.readFileSync(envPath, 'utf8');
+                    const lines = envContent.split('\n');
+                    const groupLines = lines.filter(line => line.startsWith('GROUP_'));
+                    testMsg += `- .env Size: ${envContent.length} bytes\n`;
+                    testMsg += `- Total Lines: ${lines.length}\n`;
+                    testMsg += `- GROUP_* Lines: ${groupLines.length}\n\n`;
+
+                    testMsg += `📋 *GROUP Lines in .env:*\n`;
+                    groupLines.slice(0, 5).forEach(line => {
+                        testMsg += `- ${line.substring(0, 50)}...\n`;
+                    });
+                    testMsg += `\n`;
+                }
+
+                // Test manual dotenv load
+                testMsg += `🔄 *Manual Dotenv Test:*\n`;
+                try {
+                    // Clear existing env vars
+                    const groupKeys = Object.keys(process.env).filter(key => key.startsWith('GROUP_'));
+                    testMsg += `- Existing GROUP_* vars: ${groupKeys.length}\n`;
+
+                    // Force reload dotenv
+                    delete require.cache[require.resolve('dotenv')];
+                    const dotenv = require('dotenv');
+                    const result = dotenv.config({ path: envPath, override: true });
+
+                    testMsg += `- Dotenv result: ${result.error ? '❌ Error' : '✅ Success'}\n`;
+                    if (result.error) {
+                        testMsg += `- Error: ${result.error.message}\n`;
+                    }
+
+                    // Test specific variables
+                    const testVars = ['GROUP_SKYHOUSE_ID', 'GROUP_SKYHOUSE_NAME', 'GROUP_SKYHOUSE_ENABLED'];
+                    testMsg += `\n🔍 *Test Specific Variables:*\n`;
+                    testVars.forEach(varName => {
+                        const value = process.env[varName];
+                        testMsg += `- ${varName}: ${value ? '✅ ' + value.substring(0, 20) + '...' : '❌ undefined'}\n`;
+                    });
+
+                } catch (dotenvError) {
+                    testMsg += `- Dotenv Error: ${dotenvError.message}\n`;
+                }
+
+                await bot.sendMessage(message.from, testMsg);
+                logger.info('Test dotenv berhasil dikirim');
+
+            } catch (error) {
+                logger.error('Error dalam testdotenv command:', error);
+                await bot.sendMessage(message.from, `❌ Terjadi error: ${error.message}`);
+            }
+
         } else if (message.body.startsWith('!envdetail')) {
             logger.info(`Memproses command envdetail dari ${message.from}: ${message.body}`);
 
@@ -673,8 +837,18 @@ async function handleCommand(message, apartmentName) {
             }
 
             try {
-                // Force reload dotenv
-                require('dotenv').config({ override: true });
+                const fs = require('fs');
+                const path = require('path');
+
+                // Clear dotenv cache first
+                delete require.cache[require.resolve('dotenv')];
+
+                // Force reload dotenv with explicit path
+                const envPath = path.join(process.cwd(), '.env');
+                const dotenv = require('dotenv');
+                const dotenvResult = dotenv.config({ path: envPath, override: true });
+
+                logger.info(`Force reload dotenv result: ${dotenvResult.error ? 'Error: ' + dotenvResult.error.message : 'Success'}`);
 
                 // Clear all config cache
                 Object.keys(require.cache).forEach(key => {
@@ -690,10 +864,13 @@ async function handleCommand(message, apartmentName) {
                 const manualMapping = {};
                 const groups = ['SKYHOUSE', 'TREEPARK', 'EMERALD', 'SPRINGWOOD', 'SERPONG', 'TOKYO', 'TESTER'];
 
+                logger.info('Force reload: Checking environment variables...');
                 groups.forEach(group => {
                     const id = process.env[`GROUP_${group}_ID`];
                     const name = process.env[`GROUP_${group}_NAME`];
                     const enabled = process.env[`GROUP_${group}_ENABLED`];
+
+                    logger.info(`Force reload: ${group} - ID: ${id ? 'OK' : 'MISSING'}, NAME: ${name ? 'OK' : 'MISSING'}, ENABLED: ${enabled}`);
 
                     if (id && name && enabled === 'true') {
                         manualMapping[id] = name;
