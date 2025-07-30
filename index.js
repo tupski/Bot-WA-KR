@@ -528,8 +528,36 @@ async function handleCommand(message, apartmentName) {
                 const path = require('path');
 
                 // Read .env file directly and parse manually
-                const envPath = path.join(process.cwd(), '.env');
-                const envContent = fs.readFileSync(envPath, 'utf8');
+                // Try multiple possible paths
+                const possiblePaths = [
+                    path.join(process.cwd(), '.env'),
+                    path.join(__dirname, '.env'),
+                    '/home/tupas/Bot-KR/.env',
+                    './.env'
+                ];
+
+                let envPath = null;
+                let envContent = null;
+
+                for (const testPath of possiblePaths) {
+                    try {
+                        if (fs.existsSync(testPath)) {
+                            const content = fs.readFileSync(testPath, 'utf8');
+                            // Check if this file has GROUP_SKYHOUSE variables
+                            if (content.includes('GROUP_SKYHOUSE_ID')) {
+                                envPath = testPath;
+                                envContent = content;
+                                break;
+                            }
+                        }
+                    } catch (err) {
+                        // Continue to next path
+                    }
+                }
+
+                if (!envContent) {
+                    throw new Error('Could not find .env file with GROUP_SKYHOUSE variables');
+                }
 
                 // Parse .env manually
                 const envVars = {};
@@ -557,6 +585,7 @@ async function handleCommand(message, apartmentName) {
 
                 let fixMsg = `🔧 *Fix Environment Variables*\n\n`;
                 fixMsg += `📁 *Manual .env Parsing:*\n`;
+                fixMsg += `- .env file path: ${envPath}\n`;
                 fixMsg += `- .env file size: ${envContent.length} bytes\n`;
                 fixMsg += `- Total lines: ${lines.length}\n`;
                 fixMsg += `- Parsed variables: ${Object.keys(envVars).length}\n`;
@@ -618,26 +647,59 @@ async function handleCommand(message, apartmentName) {
 
                 let testMsg = `🧪 *Test Dotenv Loading*\n\n`;
 
-                // Test file .env
-                const envPath = path.join(process.cwd(), '.env');
+                // Test multiple possible .env paths
+                const possiblePaths = [
+                    path.join(process.cwd(), '.env'),
+                    path.join(__dirname, '.env'),
+                    '/home/tupas/Bot-KR/.env',
+                    './.env'
+                ];
+
                 testMsg += `📁 *File System:*\n`;
                 testMsg += `- Working Directory: ${process.cwd()}\n`;
-                testMsg += `- .env Path: ${envPath}\n`;
-                testMsg += `- .env Exists: ${fs.existsSync(envPath) ? '✅ Yes' : '❌ No'}\n`;
+                testMsg += `- __dirname: ${__dirname}\n\n`;
 
-                if (fs.existsSync(envPath)) {
-                    const envContent = fs.readFileSync(envPath, 'utf8');
-                    const lines = envContent.split('\n');
+                testMsg += `📋 *Testing .env Paths:*\n`;
+                let correctEnvPath = null;
+                let correctEnvContent = null;
+
+                possiblePaths.forEach(testPath => {
+                    const exists = fs.existsSync(testPath);
+                    testMsg += `- ${testPath}: ${exists ? '✅ Exists' : '❌ Not found'}\n`;
+
+                    if (exists) {
+                        try {
+                            const content = fs.readFileSync(testPath, 'utf8');
+                            const hasGroupVars = content.includes('GROUP_SKYHOUSE_ID');
+                            testMsg += `  Size: ${content.length} bytes, Has GROUP_SKYHOUSE: ${hasGroupVars ? '✅' : '❌'}\n`;
+
+                            if (hasGroupVars && !correctEnvPath) {
+                                correctEnvPath = testPath;
+                                correctEnvContent = content;
+                            }
+                        } catch (err) {
+                            testMsg += `  Error reading: ${err.message}\n`;
+                        }
+                    }
+                });
+
+                testMsg += `\n`;
+
+                if (correctEnvContent) {
+                    const lines = correctEnvContent.split('\n');
                     const groupLines = lines.filter(line => line.startsWith('GROUP_'));
-                    testMsg += `- .env Size: ${envContent.length} bytes\n`;
+                    testMsg += `📋 *Correct .env File (${correctEnvPath}):*\n`;
+                    testMsg += `- Size: ${correctEnvContent.length} bytes\n`;
                     testMsg += `- Total Lines: ${lines.length}\n`;
                     testMsg += `- GROUP_* Lines: ${groupLines.length}\n\n`;
 
-                    testMsg += `📋 *GROUP Lines in .env:*\n`;
+                    testMsg += `📋 *GROUP Lines in correct .env:*\n`;
                     groupLines.slice(0, 5).forEach(line => {
                         testMsg += `- ${line.substring(0, 50)}...\n`;
                     });
                     testMsg += `\n`;
+                } else {
+                    testMsg += `❌ *No .env file with GROUP_SKYHOUSE variables found!*\n\n`;
                 }
 
                 // Test manual dotenv load
