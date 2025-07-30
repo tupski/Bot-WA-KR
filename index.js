@@ -304,36 +304,39 @@ async function handleCommand(message, apartmentName) {
                 const year = dateStr.substring(4, 8);
                 const targetDate = `${year}-${month}-${day}`;
 
+                // Gunakan moment untuk handle overflow tanggal dengan benar
+                const moment = require('moment-timezone');
+                const startMoment = moment.tz(`${year}-${month}-${day}`, 'YYYY-MM-DD', 'Asia/Jakarta');
+                const endMoment = startMoment.clone().add(1, 'day');
+
                 rekapData = {
-                    startDate: `${targetDate} 12:00:00`,
-                    endDate: `${year}-${month}-${String(parseInt(day) + 1).padStart(2, '0')} 11:59:59`,
+                    startDate: startMoment.format('YYYY-MM-DD') + ' 12:00:00',
+                    endDate: endMoment.format('YYYY-MM-DD') + ' 11:59:59',
                     displayDate: `${day}/${month}/${year}`
                 };
             } else {
-                // Default: hari ini dari jam 12:00 sampai jam 11:59 besok
+                // Default: business day dimulai jam 12:00 siang
                 const moment = require('moment-timezone');
-                const today = moment().tz('Asia/Jakarta');
+                const now = moment().tz('Asia/Jakarta');
 
-                // Jika sekarang masih sebelum jam 12:00, ambil data kemarin jam 12:00 - hari ini jam 11:59
-                // Jika sekarang sudah lewat jam 12:00, ambil data hari ini jam 12:00 - besok jam 11:59
-                let startDate, endDate;
-
-                if (today.hour() < 12) {
-                    // Sebelum jam 12:00 - ambil data kemarin
-                    const yesterday = today.clone().subtract(1, 'day');
-                    startDate = yesterday.format('YYYY-MM-DD') + ' 12:00:00';
-                    endDate = today.format('YYYY-MM-DD') + ' 11:59:59';
+                // Tentukan business day saat ini
+                let businessDay;
+                if (now.hour() < 12) {
+                    // Sebelum jam 12:00 - masih business day kemarin
+                    businessDay = now.clone().subtract(1, 'day');
                 } else {
-                    // Setelah jam 12:00 - ambil data hari ini
-                    const tomorrow = today.clone().add(1, 'day');
-                    startDate = today.format('YYYY-MM-DD') + ' 12:00:00';
-                    endDate = tomorrow.format('YYYY-MM-DD') + ' 11:59:59';
+                    // Setelah jam 12:00 - sudah business day hari ini
+                    businessDay = now.clone();
                 }
+
+                // Rentang waktu: business day jam 12:00 - business day+1 jam 11:59
+                const startDate = businessDay.format('YYYY-MM-DD') + ' 12:00:00';
+                const endDate = businessDay.clone().add(1, 'day').format('YYYY-MM-DD') + ' 11:59:59';
 
                 rekapData = {
                     startDate: startDate,
                     endDate: endDate,
-                    displayDate: today.format('DD/MM/YYYY')
+                    displayDate: businessDay.format('DD/MM/YYYY')
                 };
             }
 
@@ -426,9 +429,14 @@ async function handleCommand(message, apartmentName) {
                         const month = dateStr.substring(2, 4);
                         const year = dateStr.substring(4, 8);
 
+                        // Gunakan moment untuk handle overflow tanggal dengan benar
+                        const moment = require('moment-timezone');
+                        const startMoment = moment.tz(`${year}-${month}-${day}`, 'YYYY-MM-DD', 'Asia/Jakarta');
+                        const endMoment = startMoment.clone().add(1, 'day');
+
                         dateRange = {
-                            startDate: `${year}-${month}-${day} 12:00:00`,
-                            endDate: `${year}-${month}-${String(parseInt(day) + 1).padStart(2, '0')} 11:59:59`
+                            startDate: startMoment.format('YYYY-MM-DD') + ' 12:00:00',
+                            endDate: endMoment.format('YYYY-MM-DD') + ' 11:59:59'
                         };
                         // targetApartment tetap null (semua apartemen)
                     } else {
@@ -442,9 +450,14 @@ async function handleCommand(message, apartmentName) {
                             const month = dateStr.substring(2, 4);
                             const year = dateStr.substring(4, 8);
 
+                            // Gunakan moment untuk handle overflow tanggal dengan benar
+                            const moment = require('moment-timezone');
+                            const startMoment = moment.tz(`${year}-${month}-${day}`, 'YYYY-MM-DD', 'Asia/Jakarta');
+                            const endMoment = startMoment.clone().add(1, 'day');
+
                             dateRange = {
-                                startDate: `${year}-${month}-${day} 12:00:00`,
-                                endDate: `${year}-${month}-${String(parseInt(day) + 1).padStart(2, '0')} 11:59:59`
+                                startDate: startMoment.format('YYYY-MM-DD') + ' 12:00:00',
+                                endDate: endMoment.format('YYYY-MM-DD') + ' 11:59:59'
                             };
                         }
                     }
@@ -732,47 +745,121 @@ async function handleCommand(message, apartmentName) {
                 const moment = require('moment-timezone');
                 const now = moment().tz('Asia/Jakarta');
 
-                let debugMsg = `🕐 *Debug DateTime*\n\n`;
+                let debugMsg = `🕐 *Debug DateTime - Business Day Logic*\n\n`;
                 debugMsg += `📅 *Current Time:*\n`;
                 debugMsg += `- Jakarta Time: ${now.format('YYYY-MM-DD HH:mm:ss')}\n`;
                 debugMsg += `- Hour: ${now.hour()}\n`;
                 debugMsg += `- Is before 12:00? ${now.hour() < 12 ? 'Yes' : 'No'}\n\n`;
 
-                // Test rekap logic
-                let startDate, endDate;
+                // Business day logic
+                let businessDay;
                 if (now.hour() < 12) {
-                    const yesterday = now.clone().subtract(1, 'day');
-                    startDate = yesterday.format('YYYY-MM-DD') + ' 12:00:00';
-                    endDate = now.format('YYYY-MM-DD') + ' 11:59:59';
-                    debugMsg += `📊 *Rekap Range (Before 12:00):*\n`;
+                    businessDay = now.clone().subtract(1, 'day');
+                    debugMsg += `🏢 *Business Day (Before 12:00):*\n`;
+                    debugMsg += `- Current business day: ${businessDay.format('DD/MM/YYYY')} (kemarin)\n`;
                 } else {
-                    const tomorrow = now.clone().add(1, 'day');
-                    startDate = now.format('YYYY-MM-DD') + ' 12:00:00';
-                    endDate = tomorrow.format('YYYY-MM-DD') + ' 11:59:59';
-                    debugMsg += `📊 *Rekap Range (After 12:00):*\n`;
+                    businessDay = now.clone();
+                    debugMsg += `🏢 *Business Day (After 12:00):*\n`;
+                    debugMsg += `- Current business day: ${businessDay.format('DD/MM/YYYY')} (hari ini)\n`;
                 }
 
+                // Rekap range
+                const startDate = businessDay.format('YYYY-MM-DD') + ' 12:00:00';
+                const endDate = businessDay.clone().add(1, 'day').format('YYYY-MM-DD') + ' 11:59:59';
+
+                debugMsg += `\n📊 *Rekap Range:*\n`;
                 debugMsg += `- Start: ${startDate}\n`;
                 debugMsg += `- End: ${endDate}\n`;
-                debugMsg += `- Display: ${now.format('DD/MM/YYYY')}\n\n`;
+                debugMsg += `- Display Date: ${businessDay.format('DD/MM/YYYY')}\n\n`;
 
                 // Test specific date
                 const testDate = '31072025';
                 const day = testDate.substring(0, 2);
                 const month = testDate.substring(2, 4);
                 const year = testDate.substring(4, 8);
-                const testStartDate = `${year}-${month}-${day} 12:00:00`;
-                const testEndDate = `${year}-${month}-${String(parseInt(day) + 1).padStart(2, '0')} 11:59:59`;
+
+                // Gunakan moment untuk handle overflow tanggal dengan benar
+                const testStartMoment = moment.tz(`${year}-${month}-${day}`, 'YYYY-MM-DD', 'Asia/Jakarta');
+                const testEndMoment = testStartMoment.clone().add(1, 'day');
+
+                const testStartDate = testStartMoment.format('YYYY-MM-DD') + ' 12:00:00';
+                const testEndDate = testEndMoment.format('YYYY-MM-DD') + ' 11:59:59';
 
                 debugMsg += `🧪 *Test Date (${testDate}):*\n`;
                 debugMsg += `- Start: ${testStartDate}\n`;
                 debugMsg += `- End: ${testEndDate}\n`;
+                debugMsg += `- Next Day: ${testEndMoment.format('DD/MM/YYYY')}\n\n`;
+
+                debugMsg += `💡 *Business Day Examples:*\n`;
+                debugMsg += `- 31 Juli 2025 jam 00:14 → Business Day: 30 Juli 2025\n`;
+                debugMsg += `- 31 Juli 2025 jam 11:59 → Business Day: 30 Juli 2025\n`;
+                debugMsg += `- 31 Juli 2025 jam 12:00 → Business Day: 31 Juli 2025\n`;
+                debugMsg += `- 31 Juli 2025 jam 23:59 → Business Day: 31 Juli 2025\n\n`;
+
+                debugMsg += `📋 *Rekap Logic:*\n`;
+                debugMsg += `- !rekap = data business day saat ini\n`;
+                debugMsg += `- !rekap 30072025 = data 30 Juli 12:00 - 31 Juli 11:59\n`;
+                debugMsg += `- Ganti hari/tanggal pada jam 12:00 siang`;
 
                 await bot.sendMessage(message.from, debugMsg);
                 logger.info('DateTime debug info berhasil dikirim');
 
             } catch (error) {
                 logger.error('Error dalam datetime command:', error);
+                await bot.sendMessage(message.from, `❌ Terjadi error: ${error.message}`);
+            }
+
+        } else if (message.body.startsWith('!testbusiness')) {
+            logger.info(`Memproses command testbusiness dari ${message.from}: ${message.body}`);
+
+            // Hanya bisa dipanggil dari private message untuk keamanan
+            const isFromGroup = message.from.includes('@g.us');
+            if (isFromGroup) {
+                await bot.sendMessage(message.from, '❌ Command !testbusiness hanya bisa digunakan melalui pesan pribadi untuk keamanan.');
+                return;
+            }
+
+            try {
+                const moment = require('moment-timezone');
+
+                let testMsg = `🏢 *Test Business Day Logic*\n\n`;
+
+                // Test berbagai waktu pada tanggal 31 Juli 2025
+                const testTimes = [
+                    { hour: 0, minute: 14, desc: 'Tengah malam' },
+                    { hour: 6, minute: 0, desc: 'Pagi' },
+                    { hour: 11, minute: 59, desc: 'Sebelum jam 12' },
+                    { hour: 12, minute: 0, desc: 'Tepat jam 12' },
+                    { hour: 15, minute: 30, desc: 'Sore' },
+                    { hour: 23, minute: 59, desc: 'Malam' }
+                ];
+
+                testTimes.forEach(time => {
+                    const testTime = moment.tz('2025-07-31', 'YYYY-MM-DD', 'Asia/Jakarta')
+                        .hour(time.hour).minute(time.minute).second(0);
+
+                    let businessDay;
+                    if (testTime.hour() < 12) {
+                        businessDay = testTime.clone().subtract(1, 'day');
+                    } else {
+                        businessDay = testTime.clone();
+                    }
+
+                    testMsg += `⏰ *${time.desc} (${testTime.format('HH:mm')}):*\n`;
+                    testMsg += `   Business Day: ${businessDay.format('DD/MM/YYYY')}\n`;
+                    testMsg += `   Rekap Range: ${businessDay.format('DD/MM')} 12:00 - ${businessDay.clone().add(1, 'day').format('DD/MM')} 11:59\n\n`;
+                });
+
+                testMsg += `💡 *Kesimpulan:*\n`;
+                testMsg += `- Sebelum jam 12:00 = masih business day kemarin\n`;
+                testMsg += `- Setelah jam 12:00 = sudah business day hari ini\n`;
+                testMsg += `- Ganti business day tepat jam 12:00 siang`;
+
+                await bot.sendMessage(message.from, testMsg);
+                logger.info('Test business day info berhasil dikirim');
+
+            } catch (error) {
+                logger.error('Error dalam testbusiness command:', error);
                 await bot.sendMessage(message.from, `❌ Terjadi error: ${error.message}`);
             }
 

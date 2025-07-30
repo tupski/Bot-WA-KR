@@ -259,30 +259,28 @@ class MessageParser {
             const parts = content.split(/\s+/);
 
             if (parts.length === 1) {
-                // !rekap tanpa tanggal - dari jam 12:00 sampai jam 11:59 hari berikutnya
-                const today = moment().tz(this.timezone);
+                // !rekap tanpa tanggal - business day dimulai jam 12:00 siang
+                const now = moment().tz(this.timezone);
 
-                // Jika sekarang masih sebelum jam 12:00, ambil data kemarin jam 12:00 - hari ini jam 11:59
-                // Jika sekarang sudah lewat jam 12:00, ambil data hari ini jam 12:00 - besok jam 11:59
-                let startTime, endTime;
-
-                if (today.hour() < 12) {
-                    // Sebelum jam 12:00 - ambil data kemarin
-                    const yesterday = today.clone().subtract(1, 'day');
-                    startTime = yesterday.hour(12).minute(0).second(0);
-                    endTime = today.hour(11).minute(59).second(59);
+                // Tentukan business day saat ini
+                let businessDay;
+                if (now.hour() < 12) {
+                    // Sebelum jam 12:00 - masih business day kemarin
+                    businessDay = now.clone().subtract(1, 'day');
                 } else {
-                    // Setelah jam 12:00 - ambil data hari ini
-                    const tomorrow = today.clone().add(1, 'day');
-                    startTime = today.hour(12).minute(0).second(0);
-                    endTime = tomorrow.hour(11).minute(59).second(59);
+                    // Setelah jam 12:00 - sudah business day hari ini
+                    businessDay = now.clone();
                 }
+
+                // Rentang waktu: business day jam 12:00 - business day+1 jam 11:59
+                const startTime = businessDay.hour(12).minute(0).second(0);
+                const endTime = businessDay.clone().add(1, 'day').hour(11).minute(59).second(59);
 
                 return {
                     type: 'rekap_today',
                     startDate: startTime.format('YYYY-MM-DD HH:mm:ss'),
                     endDate: endTime.format('YYYY-MM-DD HH:mm:ss'),
-                    displayDate: today.format('DD/MM/YYYY')
+                    displayDate: businessDay.format('DD/MM/YYYY')
                 };
             } else if (parts.length === 2) {
                 // !rekap dengan tanggal - format: 28062025
