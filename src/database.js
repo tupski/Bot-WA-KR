@@ -453,7 +453,7 @@ class Database {
         const query = `
             SELECT * FROM transactions
             WHERE location = ?
-            AND date BETWEEN ? AND ?
+            AND date_only BETWEEN ? AND ?
             ORDER BY created_at DESC
         `;
         return await this.executeQuery(query, [location, startDate, endDate]);
@@ -468,7 +468,7 @@ class Database {
                 SUM(commission) as total_commission,
                 SUM(net_amount) as total_net
             FROM transactions
-            WHERE date = ?
+            WHERE date_only = ?
             GROUP BY location
             ORDER BY total_amount DESC
         `;
