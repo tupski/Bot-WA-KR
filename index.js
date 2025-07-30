@@ -310,8 +310,31 @@ async function handleCommand(message, apartmentName) {
                     displayDate: `${day}/${month}/${year}`
                 };
             } else {
-                // Default: hari ini dari jam 12:00
-                rekapData = messageParser.parseRekapCommand('!rekap');
+                // Default: hari ini dari jam 12:00 sampai jam 11:59 besok
+                const moment = require('moment-timezone');
+                const today = moment().tz('Asia/Jakarta');
+
+                // Jika sekarang masih sebelum jam 12:00, ambil data kemarin jam 12:00 - hari ini jam 11:59
+                // Jika sekarang sudah lewat jam 12:00, ambil data hari ini jam 12:00 - besok jam 11:59
+                let startDate, endDate;
+
+                if (today.hour() < 12) {
+                    // Sebelum jam 12:00 - ambil data kemarin
+                    const yesterday = today.clone().subtract(1, 'day');
+                    startDate = yesterday.format('YYYY-MM-DD') + ' 12:00:00';
+                    endDate = today.format('YYYY-MM-DD') + ' 11:59:59';
+                } else {
+                    // Setelah jam 12:00 - ambil data hari ini
+                    const tomorrow = today.clone().add(1, 'day');
+                    startDate = today.format('YYYY-MM-DD') + ' 12:00:00';
+                    endDate = tomorrow.format('YYYY-MM-DD') + ' 11:59:59';
+                }
+
+                rekapData = {
+                    startDate: startDate,
+                    endDate: endDate,
+                    displayDate: today.format('DD/MM/YYYY')
+                };
             }
 
             if (rekapData) {
@@ -692,6 +715,113 @@ async function handleCommand(message, apartmentName) {
 
             } catch (error) {
                 logger.error('Error dalam testedit command:', error);
+                await bot.sendMessage(message.from, `❌ Terjadi error: ${error.message}`);
+            }
+
+        } else if (message.body.startsWith('!datetime')) {
+            logger.info(`Memproses command datetime dari ${message.from}: ${message.body}`);
+
+            // Hanya bisa dipanggil dari private message untuk keamanan
+            const isFromGroup = message.from.includes('@g.us');
+            if (isFromGroup) {
+                await bot.sendMessage(message.from, '❌ Command !datetime hanya bisa digunakan melalui pesan pribadi untuk keamanan.');
+                return;
+            }
+
+            try {
+                const moment = require('moment-timezone');
+                const now = moment().tz('Asia/Jakarta');
+
+                let debugMsg = `🕐 *Debug DateTime*\n\n`;
+                debugMsg += `📅 *Current Time:*\n`;
+                debugMsg += `- Jakarta Time: ${now.format('YYYY-MM-DD HH:mm:ss')}\n`;
+                debugMsg += `- Hour: ${now.hour()}\n`;
+                debugMsg += `- Is before 12:00? ${now.hour() < 12 ? 'Yes' : 'No'}\n\n`;
+
+                // Test rekap logic
+                let startDate, endDate;
+                if (now.hour() < 12) {
+                    const yesterday = now.clone().subtract(1, 'day');
+                    startDate = yesterday.format('YYYY-MM-DD') + ' 12:00:00';
+                    endDate = now.format('YYYY-MM-DD') + ' 11:59:59';
+                    debugMsg += `📊 *Rekap Range (Before 12:00):*\n`;
+                } else {
+                    const tomorrow = now.clone().add(1, 'day');
+                    startDate = now.format('YYYY-MM-DD') + ' 12:00:00';
+                    endDate = tomorrow.format('YYYY-MM-DD') + ' 11:59:59';
+                    debugMsg += `📊 *Rekap Range (After 12:00):*\n`;
+                }
+
+                debugMsg += `- Start: ${startDate}\n`;
+                debugMsg += `- End: ${endDate}\n`;
+                debugMsg += `- Display: ${now.format('DD/MM/YYYY')}\n\n`;
+
+                // Test specific date
+                const testDate = '31072025';
+                const day = testDate.substring(0, 2);
+                const month = testDate.substring(2, 4);
+                const year = testDate.substring(4, 8);
+                const testStartDate = `${year}-${month}-${day} 12:00:00`;
+                const testEndDate = `${year}-${month}-${String(parseInt(day) + 1).padStart(2, '0')} 11:59:59`;
+
+                debugMsg += `🧪 *Test Date (${testDate}):*\n`;
+                debugMsg += `- Start: ${testStartDate}\n`;
+                debugMsg += `- End: ${testEndDate}\n`;
+
+                await bot.sendMessage(message.from, debugMsg);
+                logger.info('DateTime debug info berhasil dikirim');
+
+            } catch (error) {
+                logger.error('Error dalam datetime command:', error);
+                await bot.sendMessage(message.from, `❌ Terjadi error: ${error.message}`);
+            }
+
+        } else if (message.body.startsWith('!rawdata')) {
+            logger.info(`Memproses command rawdata dari ${message.from}: ${message.body}`);
+
+            // Hanya bisa dipanggil dari private message untuk keamanan
+            const isFromGroup = message.from.includes('@g.us');
+            if (isFromGroup) {
+                await bot.sendMessage(message.from, '❌ Command !rawdata hanya bisa digunakan melalui pesan pribadi untuk keamanan.');
+                return;
+            }
+
+            try {
+                // Ambil 10 transaksi terbaru
+                const recentTransactions = await database.getLastTransactions(10);
+
+                let rawMsg = `📊 *Raw Data - 10 Transaksi Terbaru*\n\n`;
+
+                if (recentTransactions.length === 0) {
+                    rawMsg += `❌ Tidak ada transaksi di database`;
+                } else {
+                    recentTransactions.forEach((transaction, index) => {
+                        rawMsg += `${index + 1}. **${transaction.location}**\n`;
+                        rawMsg += `   Unit: ${transaction.unit}\n`;
+                        rawMsg += `   CS: ${transaction.cs_name}\n`;
+                        rawMsg += `   Amount: ${transaction.amount.toLocaleString('id-ID')}\n`;
+                        rawMsg += `   Date: ${transaction.date_only}\n`;
+                        rawMsg += `   Created: ${transaction.created_at}\n`;
+                        rawMsg += `   Message ID: ${transaction.message_id}\n\n`;
+                    });
+
+                    // Statistik per lokasi
+                    const locationStats = {};
+                    recentTransactions.forEach(t => {
+                        locationStats[t.location] = (locationStats[t.location] || 0) + 1;
+                    });
+
+                    rawMsg += `📈 *Statistik per Lokasi:*\n`;
+                    Object.entries(locationStats).forEach(([location, count]) => {
+                        rawMsg += `- ${location}: ${count} transaksi\n`;
+                    });
+                }
+
+                await bot.sendMessage(message.from, rawMsg);
+                logger.info('Raw data berhasil dikirim');
+
+            } catch (error) {
+                logger.error('Error dalam rawdata command:', error);
                 await bot.sendMessage(message.from, `❌ Terjadi error: ${error.message}`);
             }
 

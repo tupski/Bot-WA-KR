@@ -259,10 +259,24 @@ class MessageParser {
             const parts = content.split(/\s+/);
 
             if (parts.length === 1) {
-                // !rekap tanpa tanggal - dari jam 12:00 WIB hari ini sampai sekarang
+                // !rekap tanpa tanggal - dari jam 12:00 sampai jam 11:59 hari berikutnya
                 const today = moment().tz(this.timezone);
-                const startTime = today.clone().hour(12).minute(0).second(0);
-                const endTime = today.clone();
+
+                // Jika sekarang masih sebelum jam 12:00, ambil data kemarin jam 12:00 - hari ini jam 11:59
+                // Jika sekarang sudah lewat jam 12:00, ambil data hari ini jam 12:00 - besok jam 11:59
+                let startTime, endTime;
+
+                if (today.hour() < 12) {
+                    // Sebelum jam 12:00 - ambil data kemarin
+                    const yesterday = today.clone().subtract(1, 'day');
+                    startTime = yesterday.hour(12).minute(0).second(0);
+                    endTime = today.hour(11).minute(59).second(59);
+                } else {
+                    // Setelah jam 12:00 - ambil data hari ini
+                    const tomorrow = today.clone().add(1, 'day');
+                    startTime = today.hour(12).minute(0).second(0);
+                    endTime = tomorrow.hour(11).minute(59).second(59);
+                }
 
                 return {
                     type: 'rekap_today',
@@ -282,8 +296,9 @@ class MessageParser {
                     const targetDate = moment.tz(`${year}-${month}-${day}`, this.timezone);
 
                     if (targetDate.isValid()) {
-                        const startTime = targetDate.clone().startOf('day');
-                        const endTime = targetDate.clone().endOf('day');
+                        // Dari jam 12:00 tanggal target sampai jam 11:59 hari berikutnya
+                        const startTime = targetDate.clone().hour(12).minute(0).second(0);
+                        const endTime = targetDate.clone().add(1, 'day').hour(11).minute(59).second(59);
 
                         return {
                             type: 'rekap_date',
