@@ -110,9 +110,10 @@ ALLOWED_GROUPS=group1@g.us,group2@g.us
 
 ## Format Pesan
 
-Bot memproses pesan yang dimulai dengan "Unit". Contoh format:
+Bot memproses pesan yang dimulai dengan 🟢 dan nama grup. Contoh format:
 
 ```
+🟢SKY HOUSE
 Unit      : L3/30N
 Cek out   : 05:00
 Untuk     : 6 jam
@@ -123,13 +124,14 @@ Komisi    : 50
 
 ### Komponen Pesan
 
+- **🟢[NAMA GRUP]**: Prefix wajib dengan nama grup (🟢SKY HOUSE, 🟢TREEPARK BSD, dll.)
 - **Unit**: Identifier unit/kamar (L3/30N, A1, B2, dll.)
 - **Cek out**: Waktu checkout dalam format HH:MM
 - **Untuk**: Durasi dalam jam (contoh: "6 jam", "2.5 jam")
 - **Cash/Tf**: Metode pembayaran dan jumlah
   - Format: "cash 250" atau "tf kr 250" atau "tf amel"
   - Komisi akan dikurangi dari jumlah Cash/Tf
-- **Cs**: Nama customer service
+- **Cs**: Nama customer (CS = Customer)
 - **Komisi**: Jumlah komisi dalam ribu (contoh: "50" = 50.000)
 
 ### Kasus Khusus
@@ -137,6 +139,7 @@ Komisi    : 50
 - **CS APK**: Tidak dihitung dalam perhitungan keuangan
 - **Tf Amel**: Tanpa jumlah, hanya mencatat transaksi
 - **Spasi Fleksibel**: Bot dapat menangani variasi spasi di sekitar tanda titik dua
+- **Multi-Grup**: Setiap grup memiliki prefix sendiri (🟢SKY HOUSE, 🟢TREEPARK BSD, dll.)
 
 ## Command System
 

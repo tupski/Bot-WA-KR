@@ -48,8 +48,8 @@ async function handleMessage(message) {
             return;
         }
 
-        // Cek apakah pesan dimulai dengan Unit (format booking)
-        if (message.body.toLowerCase().startsWith('unit')) {
+        // Cek apakah pesan dimulai dengan 🟢 (format booking)
+        if (message.body.startsWith('🟢')) {
             logger.info(`Memproses pesan booking dari ${apartmentName || groupName || 'private'}: ${message.body.substring(0, 50)}...`);
 
             // Cek apakah pesan sudah diproses sebelumnya

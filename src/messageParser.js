@@ -16,7 +16,7 @@ class MessageParser {
      * Cek out: 05:00
      * Untuk   : 6 jam
      * Cash/Tf: tf kr 250
-     * Cs    : dreamy
+     * Cs    : dreamy (CS = Customer)
      * Komisi: 50
      */
     parseBookingMessage(messageBody, messageId = null, groupName = '') {
@@ -24,8 +24,8 @@ class MessageParser {
             // Pisahkan baris-baris pesan
             const lines = messageBody.split('\n').map(line => line.trim()).filter(line => line);
 
-            // Cek apakah pesan dimulai dengan Unit
-            if (lines.length === 0 || !lines[0].toLowerCase().includes('unit')) {
+            // Cek apakah pesan dimulai dengan 🟢 dan nama grup
+            if (lines.length === 0 || !lines[0].startsWith('🟢')) {
                 return {
                     status: 'WRONG_PREFIX',
                     data: null,
@@ -34,20 +34,23 @@ class MessageParser {
                 };
             }
 
-            // Cek format dasar - minimal harus ada 5 baris (akan divalidasi lebih detail nanti)
-            if (lines.length < 5) {
+            // Cek format dasar - minimal harus ada 6 baris (prefix + 5 field minimal)
+            if (lines.length < 6) {
                 return {
                     status: 'WRONG_FORMAT',
                     data: null,
                     missingField: null,
-                    message: 'Salah anjing. yang bener gini:\n\nUnit      :L3/30N\nCek out: 05:00\nUntuk   : 6 jam\nCash/Tf: tf kr 250\nCs    : dreamy\nKomisi: 50'
+                    message: 'Salah anjing. yang bener gini:\n\n🟢SKY HOUSE\nUnit      :L3/30N\nCek out: 05:00\nUntuk   : 6 jam\nCash/Tf: tf kr 250\nCs    : dreamy\nKomisi: 50'
                 };
             }
 
-            // Parse setiap baris
+            // Ekstrak nama grup dari baris pertama
+            const groupPrefix = lines[0].replace('🟢', '').trim(); // Hapus 🟢 dan ambil nama grup
+
+            // Parse setiap baris mulai dari baris kedua
             const data = {};
 
-            for (let i = 0; i < lines.length; i++) {
+            for (let i = 1; i < lines.length; i++) {
                 const line = lines[i];
 
                 if (line.toLowerCase().includes('unit')) {
@@ -111,6 +114,7 @@ class MessageParser {
             const parsedData = {
                 messageId: messageId,
                 location: groupName,
+                groupPrefix: groupPrefix, // Nama grup dari prefix 🟢
                 unit: data.unit,
                 checkoutTime: data.checkoutTime || '',
                 duration: data.duration || '',

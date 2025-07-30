@@ -6,7 +6,8 @@ const messageParser = require('../src/messageParser');
 // Test data dengan format baru
 const testMessages = [
     {
-        input: `Unit      :L3/30N
+        input: `🟢SKY HOUSE
+Unit      :L3/30N
 Cek out: 05:00
 Untuk   : 6 jam
 Cash/Tf: cash 250
@@ -15,6 +16,7 @@ Komisi: 50`,
         groupName: 'SKY HOUSE',
         expected: {
             location: 'SKY HOUSE',
+            groupPrefix: 'SKY HOUSE',
             unit: 'L3/30N',
             checkoutTime: '05:00',
             duration: '6 jam',
@@ -25,15 +27,17 @@ Komisi: 50`,
         }
     },
     {
-        input: `Unit      :A1/20N
+        input: `🟢TREEPARK BSD
+Unit      :A1/20N
 Cek out: 14:30
 Untuk   : 3 jam
 Cash/Tf: tf kr 350
 Cs    : amel
 Komisi: 75`,
-        groupName: 'SKY HOUSE',
+        groupName: 'TREEPARK BSD',
         expected: {
-            location: 'SKY HOUSE',
+            location: 'TREEPARK BSD',
+            groupPrefix: 'TREEPARK BSD',
             unit: 'A1/20N',
             checkoutTime: '14:30',
             duration: '3 jam',
@@ -44,7 +48,8 @@ Komisi: 75`,
         }
     },
     {
-        input: `Unit      :B2/15N
+        input: `🟢SKY HOUSE
+Unit      :B2/15N
 Cek out: 16:00
 Untuk   : 4 jam
 Cash/Tf: tf amel
@@ -53,6 +58,7 @@ Komisi: 0`,
         groupName: 'SKY HOUSE',
         expected: {
             location: 'SKY HOUSE',
+            groupPrefix: 'SKY HOUSE',
             unit: 'B2/15N',
             checkoutTime: '16:00',
             duration: '4 jam',
@@ -112,15 +118,16 @@ function runTests() {
     console.log('Testing pesan tidak valid...');
     const invalidMessages = [
         'Pesan biasa tanpa emoji',
-        'Cek out: 05:00', // Tidak dimulai dengan Unit
-        `Unit: A1`, // Tidak lengkap - WRONG_FORMAT
-        'Checkout: 05:00\nUnit: A1\nCs: test' // Tidak dimulai dengan Unit
+        'Cek out: 05:00', // Tidak dimulai dengan 🟢
+        `Unit: A1`, // Tidak dimulai dengan 🟢
+        'Checkout: 05:00\nUnit: A1\nCs: test' // Tidak dimulai dengan 🟢
     ];
 
     // Test missing field
     const missingFieldMessages = [
         {
-            input: `Unit      :L3/30N
+            input: `🟢SKY HOUSE
+Unit      :L3/30N
 Cek out: 05:00
 Untuk   : 6 jam
 Cash/Tf: tf kr 250
@@ -128,7 +135,8 @@ Cs    : dreamy`,
             expectedMissing: 'Komisi'
         },
         {
-            input: `Unit      :L3/30N
+            input: `🟢SKY HOUSE
+Unit      :L3/30N
 Cek out: 05:00
 Untuk   : 6 jam
 Cash/Tf: tf kr 250
