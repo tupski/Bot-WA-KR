@@ -443,12 +443,16 @@ ${commissionSection}`;
     formatRangeReport(stats, displayDate, apartmentName = null) {
         const now = moment().tz(this.timezone);
 
-        let report = `📊 *REKAP LAPORAN ${now.format('DD/MM/YYYY')}*\n`;
+        // Gunakan displayDate yang sudah dihitung dengan business day logic
+        const reportDate = displayDate || now.format('DD/MM/YYYY');
+
+        let report = `📊 *REKAP LAPORAN ${reportDate}*\n`;
         report += `🏢 ${this.companyName}\n`;
         if (apartmentName) {
-            report += `🏠 ${apartmentName}\n`;
+            // Ganti nama apartemen ke KAKARAMA ROOM untuk konsistensi
+            report += `🏠 KAKARAMA ROOM\n`;
         }
-        report += `📅 ${now.format('DD/MM/YYYY')} 12:00 - ${now.format('HH:mm')} WIB\n\n`;
+        report += `📅 ${reportDate} 12:00 - ${now.format('HH:mm')} WIB\n\n`;
 
         // Total CS berdasarkan mapping
         report += `👥 *TOTAL CS*\n`;
@@ -598,13 +602,23 @@ ${commissionSection}`;
                 endDate = dateRange.endDate;
                 displayDate = moment(startDate).tz(this.timezone).format('DD/MM/YYYY');
             } else {
-                // Default: dari jam 12:00 WIB hari ini sampai sekarang
+                // Default: business day logic - dimulai jam 12:00 siang
                 const now = moment().tz(this.timezone);
-                const todayStart = now.clone().hour(12).minute(0).second(0);
 
-                startDate = todayStart.format('YYYY-MM-DD HH:mm:ss');
+                // Tentukan business day saat ini
+                let businessDay;
+                if (now.hour() < 12) {
+                    // Sebelum jam 12:00 - masih business day kemarin
+                    businessDay = now.clone().subtract(1, 'day');
+                } else {
+                    // Setelah jam 12:00 - sudah business day hari ini
+                    businessDay = now.clone();
+                }
+
+                // Rentang waktu: business day jam 12:00 - sekarang
+                startDate = businessDay.format('YYYY-MM-DD') + ' 12:00:00';
                 endDate = now.format('YYYY-MM-DD HH:mm:ss');
-                displayDate = now.format('DD/MM/YYYY');
+                displayDate = businessDay.format('DD/MM/YYYY');
             }
 
             logger.info(`Membuat laporan detail untuk ${displayDate}`);
@@ -621,7 +635,8 @@ ${commissionSection}`;
             report += `🏢 ${this.companyName}\n`;
             report += `📅 ${displayDate}\n`;
             if (apartmentName) {
-                report += `🏠 ${apartmentName}\n`;
+                // Ganti nama apartemen ke KAKARAMA ROOM untuk konsistensi
+                report += `🏠 KAKARAMA ROOM\n`;
             }
             report += `\n`;
 
