@@ -120,8 +120,90 @@ print_success "Additional dependencies installed"
 if [[ "$INSTALL_MYSQL" =~ ^[Yy]$ ]]; then
     print_status "Install MySQL Server..."
     sudo apt install -y mysql-server
-    print_success "MySQL Server installed"
-    print_warning "Jalankan 'sudo mysql_secure_installation' setelah instalasi selesai"
+
+    # Start MySQL service
+    sudo systemctl start mysql
+    sudo systemctl enable mysql
+
+    # Generate random password for MySQL
+    MYSQL_ROOT_PASSWORD=$(openssl rand -base64 32)
+    MYSQL_BOT_PASSWORD=$(openssl rand -base64 24)
+
+    print_status "Configure MySQL security..."
+    # Set root password and secure installation
+    sudo mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '$MYSQL_ROOT_PASSWORD';"
+    sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "DELETE FROM mysql.user WHERE User='';"
+    sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');"
+    sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "DROP DATABASE IF EXISTS test;"
+    sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';"
+    sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "FLUSH PRIVILEGES;"
+
+    print_status "Create database and user for bot..."
+    # Create database and user for bot
+    sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "CREATE DATABASE IF NOT EXISTS kakarama_room CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+    sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "CREATE USER IF NOT EXISTS 'botuser'@'localhost' IDENTIFIED BY '$MYSQL_BOT_PASSWORD';"
+    sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "GRANT ALL PRIVILEGES ON kakarama_room.* TO 'botuser'@'localhost';"
+    sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "FLUSH PRIVILEGES;"
+
+    # Save MySQL credentials
+    cat > "$INSTALL_DIR/mysql_credentials.txt" << EOF
+MySQL Configuration for WhatsApp Bot Kakarama Room
+================================================
+
+Root User:
+Username: root
+Password: $MYSQL_ROOT_PASSWORD
+
+Bot User:
+Username: botuser
+Password: $MYSQL_BOT_PASSWORD
+Database: kakarama_room
+
+Connection String:
+mysql://botuser:$MYSQL_BOT_PASSWORD@localhost:3306/kakarama_room
+
+IMPORTANT: Keep this file secure and backup these credentials!
+EOF
+    chmod 600 "$INSTALL_DIR/mysql_credentials.txt"
+
+    # Configure MySQL for better performance and data retention
+    print_status "Configure MySQL for data retention..."
+    sudo tee -a /etc/mysql/mysql.conf.d/mysqld.cnf > /dev/null << EOF
+
+# WhatsApp Bot Kakarama Room Configuration
+# Data retention and performance settings
+max_connections = 200
+innodb_buffer_pool_size = 512M
+innodb_log_file_size = 128M
+innodb_flush_log_at_trx_commit = 2
+query_cache_size = 64M
+query_cache_type = 1
+
+# Disable binary logging to save space (optional)
+# skip-log-bin
+
+# Data retention settings - keep data forever
+expire_logs_days = 0
+max_binlog_size = 100M
+EOF
+
+    sudo systemctl restart mysql
+
+    print_success "MySQL Server configured with database 'kakarama_room'"
+    print_success "Credentials saved to: $INSTALL_DIR/mysql_credentials.txt"
+
+    # Update DB_TYPE to mysql in environment
+    DB_TYPE="mysql"
+    DB_HOST="localhost"
+    DB_USER="botuser"
+    DB_PASSWORD="$MYSQL_BOT_PASSWORD"
+    DB_NAME="kakarama_room"
+else
+    DB_TYPE="sqlite"
+    DB_HOST=""
+    DB_USER=""
+    DB_PASSWORD=""
+    DB_NAME=""
 fi
 
 # Setup firewall
@@ -230,14 +312,15 @@ WHATSAPP_SESSION_PATH=./session
 PUPPETEER_HEADLESS=true
 
 # Database Configuration
-DB_TYPE=sqlite
+DB_TYPE=$DB_TYPE
 SQLITE_PATH=./data/bot-kr.db
 
-# MySQL Configuration (if using MySQL)
-DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=
-DB_NAME=kakarama_room
+# MySQL Configuration
+DB_HOST=$DB_HOST
+DB_USER=$DB_USER
+DB_PASSWORD=$DB_PASSWORD
+DB_NAME=$DB_NAME
+DB_PORT=3306
 
 # Email Configuration
 EMAIL_ENABLED=true
@@ -250,6 +333,12 @@ LOG_LEVEL=info
 LOG_ENABLE_FILE=true
 LOG_MAX_FILES=10
 LOG_MAX_SIZE=50m
+
+# Data Retention Configuration
+# Keep all data forever - no automatic cleanup
+DATA_RETENTION_DAYS=0
+AUTO_CLEANUP_ENABLED=false
+BACKUP_RETENTION_DAYS=0
 
 # Timezone Configuration
 TIMEZONE=Asia/Jakarta
@@ -308,9 +397,19 @@ print_success "Log rotation configured"
 
 # Setup backup cron
 print_status "Setup automated backup..."
-(crontab -l 2>/dev/null; echo "0 2 * * * cp $INSTALL_DIR/data/bot-kr.db $HOME/backup/bot-kr-\$(date +\\%Y\\%m\\%d).db") | crontab -
+if [[ "$DB_TYPE" == "mysql" ]]; then
+    # MySQL backup
+    (crontab -l 2>/dev/null; echo "0 2 * * * mysqldump -u $DB_USER -p'$DB_PASSWORD' $DB_NAME > $HOME/backup/kakarama-db-\$(date +\\%Y\\%m\\%d).sql") | crontab -
+    (crontab -l 2>/dev/null; echo "0 3 * * * find $HOME/backup -name 'kakarama-db-*.sql' -mtime +30 -delete") | crontab -
+else
+    # SQLite backup
+    (crontab -l 2>/dev/null; echo "0 2 * * * cp $INSTALL_DIR/data/bot-kr.db $HOME/backup/bot-kr-\$(date +\\%Y\\%m\\%d).db") | crontab -
+fi
+# Health check - restart if not responding
 (crontab -l 2>/dev/null; echo "*/5 * * * * pm2 ping whatsapp-bot-kakarama || pm2 restart whatsapp-bot-kakarama") | crontab -
-print_success "Backup cron configured"
+# Weekly log cleanup (keep logs but compress old ones)
+(crontab -l 2>/dev/null; echo "0 1 * * 0 find $INSTALL_DIR/logs -name '*.log' -mtime +7 -exec gzip {} \\;") | crontab -
+print_success "Backup and maintenance cron configured"
 
 # Create monitoring script
 print_status "Create monitoring script..."
@@ -328,11 +427,16 @@ echo
 echo "Recent Logs (last 20 lines):"
 tail -n 20 logs/combined.log
 echo
-echo "Database Size:"
-if [ -f "data/bot-kr.db" ]; then
-    ls -lh data/bot-kr.db
+echo "Database Info:"
+if [ "$DB_TYPE" = "mysql" ]; then
+    echo "MySQL Database: $DB_NAME"
+    mysql -u $DB_USER -p'$DB_PASSWORD' -e "SELECT table_name, table_rows FROM information_schema.tables WHERE table_schema='$DB_NAME';" 2>/dev/null || echo "Database connection error"
 else
-    echo "Database not found"
+    if [ -f "data/bot-kr.db" ]; then
+        echo "SQLite Database: $(ls -lh data/bot-kr.db)"
+    else
+        echo "Database not found"
+    fi
 fi
 EOF
 chmod +x monitor.sh
@@ -426,11 +530,27 @@ echo "  Email User: $EMAIL_USER"
 echo "  Email To: $EMAIL_TO"
 echo "  ✅ Sudah dikonfigurasi otomatis"
 echo
-echo "🔒 KEAMANAN:"
+if [[ "$DB_TYPE" == "mysql" ]]; then
+echo "�️ DATABASE MYSQL:"
+echo "  Database: $DB_NAME"
+echo "  User: $DB_USER"
+echo "  Host: $DB_HOST"
+echo "  ✅ Credentials saved to: mysql_credentials.txt"
+echo "  ✅ Data retention: UNLIMITED (disimpan selamanya)"
+echo "  ✅ Auto backup: Daily at 2:00 AM"
+else
+echo "🗄️ DATABASE SQLITE:"
+echo "  File: ./data/bot-kr.db"
+echo "  ✅ Data retention: UNLIMITED (disimpan selamanya)"
+echo "  ✅ Auto backup: Daily at 2:00 AM"
+fi
+echo
+echo "�🔒 KEAMANAN:"
 echo "  ✅ UFW Firewall enabled"
 echo "  ✅ Fail2ban configured"
 echo "  ✅ Log rotation setup"
-echo "  ✅ Automated backup"
+echo "  ✅ Automated backup & maintenance"
+echo "  ✅ Data retention: UNLIMITED"
 echo
 echo "📝 FILE PENTING:"
 echo "  📄 $INSTALL_DIR/.env              # Environment config"

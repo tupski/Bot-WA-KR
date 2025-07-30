@@ -30,6 +30,10 @@ echo
 INSTALL_DIR="$HOME/whatsapp-bot"
 print_info "Install directory: $INSTALL_DIR"
 
+# Ask for MySQL installation
+read -p "Install MySQL untuk database yang lebih robust? (y/n, default: y): " INSTALL_MYSQL
+INSTALL_MYSQL=${INSTALL_MYSQL:-"y"}
+
 # Update system
 print_info "Update system..."
 sudo apt update -y
@@ -50,6 +54,48 @@ fi
 # Install dependencies
 print_info "Install dependencies..."
 sudo apt install -y git sqlite3 ufw
+
+# Install MySQL if requested
+if [[ "$INSTALL_MYSQL" =~ ^[Yy]$ ]]; then
+    print_info "Install MySQL Server..."
+    sudo apt install -y mysql-server
+    sudo systemctl start mysql
+    sudo systemctl enable mysql
+
+    # Generate passwords
+    MYSQL_ROOT_PASSWORD=$(openssl rand -base64 32)
+    MYSQL_BOT_PASSWORD=$(openssl rand -base64 24)
+
+    print_info "Configure MySQL..."
+    sudo mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '$MYSQL_ROOT_PASSWORD';"
+    sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "CREATE DATABASE IF NOT EXISTS kakarama_room CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+    sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "CREATE USER IF NOT EXISTS 'botuser'@'localhost' IDENTIFIED BY '$MYSQL_BOT_PASSWORD';"
+    sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "GRANT ALL PRIVILEGES ON kakarama_room.* TO 'botuser'@'localhost';"
+    sudo mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "FLUSH PRIVILEGES;"
+
+    DB_TYPE="mysql"
+    DB_CONFIG="DB_TYPE=mysql
+DB_HOST=localhost
+DB_USER=botuser
+DB_PASSWORD=$MYSQL_BOT_PASSWORD
+DB_NAME=kakarama_room
+DB_PORT=3306"
+
+    # Save credentials
+    cat > "$INSTALL_DIR/mysql_credentials.txt" << EOF
+MySQL Credentials:
+Root Password: $MYSQL_ROOT_PASSWORD
+Bot User: botuser
+Bot Password: $MYSQL_BOT_PASSWORD
+Database: kakarama_room
+EOF
+    chmod 600 "$INSTALL_DIR/mysql_credentials.txt"
+    print_success "MySQL configured with unlimited data retention"
+else
+    DB_TYPE="sqlite"
+    DB_CONFIG="DB_TYPE=sqlite
+SQLITE_PATH=./data/bot-kr.db"
+fi
 
 # Create directories
 print_info "Create directories..."
@@ -108,20 +154,24 @@ client.initialize();
 EOF
 
 # Create .env
-cat > .env << 'EOF'
+cat > .env << EOF
 # WhatsApp Configuration
 WHATSAPP_SESSION_PATH=./session
 PUPPETEER_HEADLESS=true
 
 # Database Configuration
-DB_TYPE=sqlite
-SQLITE_PATH=./data/bot-kr.db
+$DB_CONFIG
 
 # Email Configuration (Edit sesuai kebutuhan)
 EMAIL_ENABLED=false
 EMAIL_USER=your_email@gmail.com
 EMAIL_PASS=your_app_password
 EMAIL_TO=admin@kakarama.com
+
+# Data Retention - Keep data forever
+DATA_RETENTION_DAYS=0
+AUTO_CLEANUP_ENABLED=false
+BACKUP_RETENTION_DAYS=0
 
 # Timezone
 TIMEZONE=Asia/Jakarta
@@ -182,7 +232,11 @@ sudo ufw allow ssh
 
 # Setup backup cron
 print_info "Setup backup..."
-(crontab -l 2>/dev/null; echo "0 2 * * * cp $INSTALL_DIR/data/bot-kr.db $HOME/backup/bot-kr-\$(date +%Y%m%d).db") | crontab -
+if [[ "$DB_TYPE" == "mysql" ]]; then
+    (crontab -l 2>/dev/null; echo "0 2 * * * mysqldump -u botuser -p'$MYSQL_BOT_PASSWORD' kakarama_room > $HOME/backup/kakarama-db-\$(date +%Y%m%d).sql") | crontab -
+else
+    (crontab -l 2>/dev/null; echo "0 2 * * * cp $INSTALL_DIR/data/bot-kr.db $HOME/backup/bot-kr-\$(date +%Y%m%d).db") | crontab -
+fi
 
 echo
 print_success "🎉 INSTALASI SELESAI!"
@@ -198,7 +252,20 @@ echo "📱 UNTUK SCAN QR CODE:"
 echo "  ./logs.sh"
 echo "  Scan QR code dengan WhatsApp"
 echo
+if [[ "$DB_TYPE" == "mysql" ]]; then
+echo "🗄️ DATABASE MYSQL:"
+echo "  Database: kakarama_room"
+echo "  Credentials: mysql_credentials.txt"
+echo "  ✅ Data disimpan SELAMANYA (unlimited retention)"
+else
+echo "🗄️ DATABASE SQLITE:"
+echo "  File: ./data/bot-kr.db"
+echo "  ✅ Data disimpan SELAMANYA (unlimited retention)"
+fi
+echo
 echo "⚙️ KONFIGURASI:"
 echo "  Edit file .env untuk email dan pengaturan lain"
+echo "  ✅ Auto backup harian jam 2:00 AM"
+echo "  ✅ Data retention: UNLIMITED"
 echo
-print_success "Bot siap digunakan!"
+print_success "Bot siap digunakan dengan penyimpanan data unlimited!"

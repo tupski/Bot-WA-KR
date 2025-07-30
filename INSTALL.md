@@ -17,19 +17,24 @@ Panduan lengkap instalasi otomatis untuk Ubuntu 22.04 dan 24.04.
 
 ## 🎯 Instalasi Cepat (Recommended)
 
-### Metode 1: One-Line Install
+### Metode 1: One-Line Install (dengan MySQL)
+```bash
+curl -fsSL https://raw.githubusercontent.com/your-repo/bot-kr/main/deploy-server.sh | bash
+```
+
+### Metode 2: Quick Install (SQLite/MySQL pilihan)
 ```bash
 curl -fsSL https://raw.githubusercontent.com/your-repo/bot-kr/main/install.sh | bash
 ```
 
-### Metode 2: Download & Run
+### Metode 3: Download & Run
 ```bash
 wget https://raw.githubusercontent.com/your-repo/bot-kr/main/install.sh
 chmod +x install.sh
 ./install.sh
 ```
 
-### Metode 3: Manual Download
+### Metode 4: Manual Download
 ```bash
 git clone https://github.com/your-repo/bot-kr.git
 cd bot-kr
@@ -102,10 +107,27 @@ EMAIL_PASS=your_gmail_app_password
 EMAIL_TO=admin@kakarama.com
 ```
 
-**Konfigurasi Database:**
+**Konfigurasi Database (SQLite):**
 ```env
 DB_TYPE=sqlite
 SQLITE_PATH=./data/bot-kr.db
+```
+
+**Konfigurasi Database (MySQL):**
+```env
+DB_TYPE=mysql
+DB_HOST=localhost
+DB_USER=botuser
+DB_PASSWORD=your_mysql_password
+DB_NAME=kakarama_room
+DB_PORT=3306
+```
+
+**Data Retention (Unlimited):**
+```env
+DATA_RETENTION_DAYS=0
+AUTO_CLEANUP_ENABLED=false
+BACKUP_RETENTION_DAYS=0
 ```
 
 ### 2. Setup Gmail App Password
@@ -198,6 +220,33 @@ node -e "console.log(require('dotenv').config()); console.log(process.env.EMAIL_
 # Regenerate app password jika perlu
 ```
 
+## 🗄️ Database Management
+
+### Upgrade ke MySQL (untuk instalasi SQLite)
+```bash
+cd ~/whatsapp-bot
+wget https://raw.githubusercontent.com/your-repo/bot-kr/main/configure-mysql.sh
+chmod +x configure-mysql.sh
+./configure-mysql.sh
+```
+
+### Check Data Retention Status
+```bash
+cd ~/whatsapp-bot
+wget https://raw.githubusercontent.com/your-repo/bot-kr/main/check-data-retention.sh
+chmod +x check-data-retention.sh
+./check-data-retention.sh
+```
+
+### Manual Database Backup
+```bash
+# SQLite backup
+cp ~/whatsapp-bot/data/bot-kr.db ~/backup/bot-kr-$(date +%Y%m%d).db
+
+# MySQL backup
+mysqldump -u botuser -p kakarama_room > ~/backup/kakarama-db-$(date +%Y%m%d).sql
+```
+
 ## 📊 Monitoring & Maintenance
 
 ### Real-time Monitoring
@@ -214,6 +263,9 @@ free -h
 
 # Check bot status
 pm2 status
+
+# Check data retention status
+./check-data-retention.sh
 ```
 
 ### Log Management
@@ -225,13 +277,13 @@ tail -f ~/whatsapp-bot/logs/combined.log
 pm2 flush kakarama-bot
 ```
 
-### Database Backup
+### Database Maintenance
 ```bash
-# Manual backup
-cp ~/whatsapp-bot/data/bot-kr.db ~/backup/bot-kr-$(date +%Y%m%d).db
+# MySQL optimization (if using MySQL)
+mysql -u botuser -p -e "OPTIMIZE TABLE transactions, cs_summary, daily_summary;" kakarama_room
 
-# Check automated backup
-crontab -l
+# SQLite optimization (if using SQLite)
+sqlite3 ~/whatsapp-bot/data/bot-kr.db "VACUUM;"
 ```
 
 ## 🔒 Security Best Practices
