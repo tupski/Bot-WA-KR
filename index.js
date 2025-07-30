@@ -16,6 +16,37 @@ const bot = new WhatsAppBot();
 // Initialize scheduler
 const scheduler = new Scheduler(bot);
 
+// Helper function untuk mencari apartemen berdasarkan nama parsial
+function findApartmentByPartialName(partialName) {
+    if (!partialName) return null;
+
+    const searchTerm = partialName.toLowerCase();
+
+    // Cari di groupMapping values (nama apartemen)
+    const apartmentNames = Object.values(config.apartments.groupMapping);
+
+    for (const apartmentName of apartmentNames) {
+        if (apartmentName.toLowerCase().includes(searchTerm)) {
+            return apartmentName;
+        }
+    }
+
+    // Cari di allowedGroups
+    for (const groupName of config.apartments.allowedGroups) {
+        if (groupName.toLowerCase().includes(searchTerm)) {
+            // Cari mapping untuk grup ini
+            for (const [, value] of Object.entries(config.apartments.groupMapping)) {
+                if (value === groupName) {
+                    return value;
+                }
+            }
+            return groupName;
+        }
+    }
+
+    return null;
+}
+
 // Handler pesan untuk booking dan command
 async function handleMessage(message) {
     try {
@@ -112,14 +143,52 @@ async function handleCommand(message, apartmentName) {
         if (message.body.startsWith('!rekap')) {
             logger.info(`Memproses command rekap dari ${message.from}: ${message.body}`);
 
-            const rekapData = messageParser.parseRekapCommand(message.body);
+            // Parse command: !rekap [apartemen] [tanggal]
+            const parts = message.body.trim().split(' ');
+            let targetApartment = null;
+            let dateStr = null;
+
+            // Cek apakah ada parameter apartemen dan/atau tanggal
+            if (parts.length > 1) {
+                // Cek apakah parameter pertama adalah tanggal (8 digit)
+                if (parts[1].length === 8 && /^\d{8}$/.test(parts[1])) {
+                    dateStr = parts[1];
+                } else {
+                    // Parameter pertama adalah nama apartemen
+                    targetApartment = findApartmentByPartialName(parts[1]);
+
+                    // Cek apakah ada parameter tanggal setelah nama apartemen
+                    if (parts.length > 2 && parts[2].length === 8 && /^\d{8}$/.test(parts[2])) {
+                        dateStr = parts[2];
+                    }
+                }
+            }
+
+            let rekapData;
+            if (dateStr) {
+                // Parse tanggal manual
+                const day = dateStr.substring(0, 2);
+                const month = dateStr.substring(2, 4);
+                const year = dateStr.substring(4, 8);
+                const targetDate = `${year}-${month}-${day}`;
+
+                rekapData = {
+                    startDate: `${targetDate} 12:00:00`,
+                    endDate: `${year}-${month}-${String(parseInt(day) + 1).padStart(2, '0')} 11:59:59`,
+                    displayDate: `${day}/${month}/${year}`
+                };
+            } else {
+                // Default: hari ini dari jam 12:00
+                rekapData = messageParser.parseRekapCommand('!rekap');
+            }
 
             if (rekapData) {
                 // Generate laporan berdasarkan parameter
                 const report = await reportGenerator.generateReportByDateRange(
                     rekapData.startDate,
                     rekapData.endDate,
-                    rekapData.displayDate
+                    rekapData.displayDate,
+                    targetApartment
                 );
 
                 if (report) {
@@ -130,33 +199,52 @@ async function handleCommand(message, apartmentName) {
                     await bot.sendMessage(message.from, 'Tidak ada data untuk periode yang diminta.');
                 }
             } else {
-                await bot.sendMessage(message.from, 'Format command tidak valid. Gunakan: !rekap atau !rekap 28062025');
+                await bot.sendMessage(message.from, 'Format command tidak valid. Gunakan: !rekap, !rekap emerald, !rekap 28062025, atau !rekap emerald 28062025');
             }
 
         } else if (message.body.startsWith('!detailrekap')) {
             logger.info(`Memproses command detailrekap dari ${message.from}: ${message.body}`);
 
-            // Parse tanggal jika ada (format: !detailrekap DDMMYYYY)
+            // Parse command: !detailrekap [apartemen] [tanggal]
             const parts = message.body.trim().split(' ');
+            let targetApartment = apartmentName; // Default dari grup
             let dateRange = null;
 
+            // Cek apakah ada parameter apartemen dan/atau tanggal
             if (parts.length > 1) {
-                const dateStr = parts[1];
-                if (dateStr.length === 8) {
+                // Cek apakah parameter pertama adalah tanggal (8 digit)
+                if (parts[1].length === 8 && /^\d{8}$/.test(parts[1])) {
+                    // Parameter pertama adalah tanggal
+                    const dateStr = parts[1];
                     const day = dateStr.substring(0, 2);
                     const month = dateStr.substring(2, 4);
                     const year = dateStr.substring(4, 8);
-                    const targetDate = `${year}-${month}-${day}`;
 
                     dateRange = {
-                        startDate: targetDate,
-                        endDate: targetDate
+                        startDate: `${year}-${month}-${day} 12:00:00`,
+                        endDate: `${year}-${month}-${String(parseInt(day) + 1).padStart(2, '0')} 11:59:59`
                     };
+                } else {
+                    // Parameter pertama adalah nama apartemen
+                    targetApartment = findApartmentByPartialName(parts[1]);
+
+                    // Cek apakah ada parameter tanggal setelah nama apartemen
+                    if (parts.length > 2 && parts[2].length === 8 && /^\d{8}$/.test(parts[2])) {
+                        const dateStr = parts[2];
+                        const day = dateStr.substring(0, 2);
+                        const month = dateStr.substring(2, 4);
+                        const year = dateStr.substring(4, 8);
+
+                        dateRange = {
+                            startDate: `${year}-${month}-${day} 12:00:00`,
+                            endDate: `${year}-${month}-${String(parseInt(day) + 1).padStart(2, '0')} 11:59:59`
+                        };
+                    }
                 }
             }
 
             // Generate detailed report
-            const report = await reportGenerator.generateDetailedReport(dateRange, apartmentName);
+            const report = await reportGenerator.generateDetailedReport(dateRange, targetApartment);
 
             if (report) {
                 // Kirim laporan ke chat yang sama

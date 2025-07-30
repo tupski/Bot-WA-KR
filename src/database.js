@@ -235,7 +235,7 @@ class Database {
     }
 
     // Additional utility functions
-    async getTransactionsByDateRange(startDate, endDate) {
+    async getTransactionsByDateRange(startDate, endDate, apartmentName = null) {
         // Jika startDate dan endDate mengandung waktu, gunakan created_at
         // Jika hanya tanggal, gunakan date_only
         let query, params;
@@ -245,7 +245,6 @@ class Database {
             query = `
                 SELECT * FROM transactions
                 WHERE created_at BETWEEN ? AND ?
-                ORDER BY created_at DESC
             `;
             params = [startDate, endDate];
         } else {
@@ -253,10 +252,17 @@ class Database {
             query = `
                 SELECT * FROM transactions
                 WHERE date_only BETWEEN ? AND ?
-                ORDER BY created_at DESC
             `;
             params = [startDate, endDate];
         }
+
+        // Tambahkan filter apartemen jika ada
+        if (apartmentName) {
+            query += ` AND location = ?`;
+            params.push(apartmentName);
+        }
+
+        query += ` ORDER BY created_at DESC`;
 
         return await this.executeQuery(query, params);
     }

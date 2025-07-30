@@ -329,12 +329,12 @@ ${commissionSection}`;
     /**
      * Generate laporan berdasarkan rentang tanggal dan waktu
      */
-    async generateReportByDateRange(startDate, endDate, displayDate) {
+    async generateReportByDateRange(startDate, endDate, displayDate, apartmentName = null) {
         try {
-            logger.info(`Generating report untuk rentang: ${startDate} - ${endDate}`);
+            logger.info(`Generating report untuk rentang: ${startDate} - ${endDate}${apartmentName ? ` untuk apartemen: ${apartmentName}` : ''}`);
 
             // Ambil data dari database berdasarkan rentang waktu
-            const transactions = await database.getTransactionsByDateRange(startDate, endDate);
+            const transactions = await database.getTransactionsByDateRange(startDate, endDate, apartmentName);
 
             if (!transactions || transactions.length === 0) {
                 return null;
@@ -345,7 +345,7 @@ ${commissionSection}`;
 
             // Format laporan
             const defaultDisplayDate = displayDate || 'RENTANG WAKTU';
-            const report = this.formatRangeReport(stats, defaultDisplayDate);
+            const report = this.formatRangeReport(stats, defaultDisplayDate, apartmentName);
 
             return report;
 
@@ -440,11 +440,14 @@ ${commissionSection}`;
     /**
      * Format laporan untuk rentang waktu dengan format baru
      */
-    formatRangeReport(stats, displayDate) {
+    formatRangeReport(stats, displayDate, apartmentName = null) {
         const now = moment().tz(this.timezone);
 
         let report = `📊 *REKAP LAPORAN ${now.format('DD/MM/YYYY')}*\n`;
         report += `🏢 ${this.companyName}\n`;
+        if (apartmentName) {
+            report += `🏠 ${apartmentName}\n`;
+        }
         report += `📅 ${now.format('DD/MM/YYYY')} 12:00 - ${now.format('HH:mm')} WIB\n\n`;
 
         // Total CS berdasarkan mapping
