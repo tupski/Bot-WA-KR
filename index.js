@@ -368,6 +368,36 @@ async function handleCommand(message, apartmentName) {
                 await bot.sendMessage(message.from, `❌ Terjadi error dalam proses rekap ulang: ${error.message}`);
             }
 
+        } else if (message.body.startsWith('!reload')) {
+            logger.info(`Memproses command reload dari ${message.from}: ${message.body}`);
+
+            // Hanya bisa dipanggil dari private message untuk keamanan
+            const isFromGroup = message.from.includes('@g.us');
+            if (isFromGroup) {
+                await bot.sendMessage(message.from, '❌ Command !reload hanya bisa digunakan melalui pesan pribadi untuk keamanan.');
+                return;
+            }
+
+            try {
+                // Reload konfigurasi dengan mengakses instance
+                const configInstance = require('./config/config').instance;
+                config.apartments.groupMapping = configInstance.buildGroupMapping();
+                config.apartments.allowedGroups = configInstance.buildAllowedGroups();
+
+                let reloadMsg = `✅ *Konfigurasi berhasil di-reload!*\n\n`;
+                reloadMsg += `🔧 *Group Mapping:*\n`;
+                Object.entries(config.apartments.groupMapping).forEach(([groupId, apartmentName]) => {
+                    reloadMsg += `- ${groupId.substring(0, 20)}...: "${apartmentName}"\n`;
+                });
+
+                await bot.sendMessage(message.from, reloadMsg);
+                logger.info('Konfigurasi berhasil di-reload');
+
+            } catch (error) {
+                logger.error('Error dalam reload command:', error);
+                await bot.sendMessage(message.from, `❌ Terjadi error: ${error.message}`);
+            }
+
         } else if (message.body.startsWith('!debug')) {
             logger.info(`Memproses command debug dari ${message.from}: ${message.body}`);
 
@@ -643,14 +673,14 @@ function findApartmentByPartialName(partialName) {
         }
     }
 
-    // Cari berdasarkan kata kunci
+    // Cari berdasarkan kata kunci (sesuaikan dengan nama di database)
     const keywords = {
-        'sky': 'SKY HOUSE',
-        'skyhouse': 'SKY HOUSE',
+        'sky': 'SKY HOUSE BSD',
+        'skyhouse': 'SKY HOUSE BSD',
         'tree': 'TREEPARK BSD',
         'treepark': 'TREEPARK BSD',
         'emerald': 'EMERALD BINTARO',
-        'springwood': 'SPRINGWOOD RESIDENCES',
+        'springwood': 'SPRINGWOOD',
         'serpong': 'SERPONG GARDEN',
         'tokyo': 'TOKYO RIVERSIDE PIK2',
         'testing': 'TESTING BOT',
