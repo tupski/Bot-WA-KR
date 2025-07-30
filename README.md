@@ -5,7 +5,7 @@ Sistem bot WhatsApp untuk mengelola grup check-in apartemen, membuat laporan, da
 ## Fitur Utama
 
 - 🤖 **Pemrosesan Pesan Otomatis**: Memproses pesan booking otomatis
-- � **Multi-Apartemen**: Mendukung beberapa apartemen dengan deteksi grup otomatis
+- 🏢 **Multi-Apartemen**: Mendukung beberapa apartemen dengan deteksi grup otomatis
 - 📊 **Laporan Harian**: Laporan otomatis dikirim ke grup WhatsApp setiap jam 12:00 WIB
 - 📧 **Integrasi Email**: Laporan Excel harian dikirim via email
 - 💾 **Dukungan Database**: Pilihan database SQLite dan MySQL
@@ -15,8 +15,11 @@ Sistem bot WhatsApp untuk mengelola grup check-in apartemen, membuat laporan, da
 - 🛡️ **Penanganan Error**: Sistem error handling dan logging yang robust
 - ⚙️ **Dapat Dikonfigurasi**: Opsi konfigurasi ekstensif via environment variables
 - 💬 **Validasi Format**: Validasi format pesan dengan respon yang jelas
-- 🔍 **Command System**: Command !rekap dan !apartemen untuk laporan khusus
+- 🔍 **Command System**: Command !rekap, !detailrekap, dan !apartemen untuk laporan khusus
 - 🔒 **Keamanan Grup**: Kontrol akses berdasarkan grup yang diizinkan
+- ✏️ **Edit Message Support**: Otomatis update database saat pesan booking diedit
+- 🔄 **Reprocess Messages**: Command !rekapulang untuk memproses ulang semua pesan
+- 🗺️ **Dynamic Group Mapping**: Konfigurasi grup via environment variables
 
 ## Panduan Cepat
 
@@ -97,8 +100,36 @@ COMMISSION_DEFAULT=30000
 
 #### Pengaturan Multi-Apartemen
 ```env
-# Grup yang diizinkan menggunakan bot (opsional)
-ALLOWED_GROUPS=group1@g.us,group2@g.us
+# WhatsApp Group Configuration
+# Group IDs dan nama apartemen yang sesuai
+GROUP_SKYHOUSE_ID=120363317169602122@g.us
+GROUP_SKYHOUSE_NAME=SKY HOUSE BSD
+GROUP_SKYHOUSE_ENABLED=true
+
+GROUP_TREEPARK_ID=120363297431494475@g.us
+GROUP_TREEPARK_NAME=TREEPARK BSD
+GROUP_TREEPARK_ENABLED=true
+
+GROUP_EMERALD_ID=120363316413016298@g.us
+GROUP_EMERALD_NAME=EMERALD BINTARO
+GROUP_EMERALD_ENABLED=true
+
+GROUP_SPRINGWOOD_ID=120363317562284069@g.us
+GROUP_SPRINGWOOD_NAME=SPRINGWOOD
+GROUP_SPRINGWOOD_ENABLED=true
+
+GROUP_SERPONG_ID=120363417253343745@g.us
+GROUP_SERPONG_NAME=SERPONG GARDEN
+GROUP_SERPONG_ENABLED=true
+
+GROUP_TOKYO_ID=120363418040325725@g.us
+GROUP_TOKYO_NAME=TOKYO RIVERSIDE PIK2
+GROUP_TOKYO_ENABLED=true
+
+# Testing group
+GROUP_TESTER_ID=
+GROUP_TESTER_NAME=TESTING BOT
+GROUP_TESTER_ENABLED=true
 ```
 
 ### Setup Gmail App Password
@@ -126,14 +157,16 @@ Komisi    : 50
 
 ### Grup Apartemen yang Didukung
 
-| **Grup WhatsApp** | **Emoji** | **Apartemen** |
-|-------------------|-----------|---------------|
-| SKY HOUSE CHEKIN | 🟢 | SKY HOUSE |
-| TREE PARK BSD CHEKIN | 🟡 | TREEPARK BSD |
-| SPRINGWOOD CHEKIN | ⚪ | SPRINGWOOD RESIDENCES |
-| EMERALD CHEKIN | ⚫ | EMERALD BINTARO |
-| TOKYO PIK2 CHEKIN | 🤎 | TOKYO RIVERSIDE PIK2 |
-| SERPONG GARDEN CHEKIN | 🟠 | SERPONG GARDEN |
+| **Grup WhatsApp** | **Emoji** | **Apartemen** | **Status** |
+|-------------------|-----------|---------------|------------|
+| SKY HOUSE CHEKIN🟢 | 🟢 | SKY HOUSE BSD | ✅ Aktif |
+| TREE PARK BSD CHEKIN🟡 | 🟡 | TREEPARK BSD | ✅ Aktif |
+| SPRINGWOOD CHEKIN⚪ | ⚪ | SPRINGWOOD | ✅ Aktif |
+| EMERALD CHEKIN⚫ | ⚫ | EMERALD BINTARO | ✅ Aktif |
+| TOKYO PIK2 CHEKIN🤎 | 🤎 | TOKYO RIVERSIDE PIK2 | ✅ Aktif |
+| SERPONG GARDEN CHEKIN🟠 | 🟠 | SERPONG GARDEN | ✅ Aktif |
+
+> **Catatan**: Status grup dapat diatur melalui environment variable `GROUP_[NAMA]_ENABLED=true/false`
 
 ### Komponen Pesan
 
@@ -167,12 +200,36 @@ Komisi    : 50
 
 **Format**: `!rekap [apartemen] [tanggal]`
 
+#### Perilaku Berdasarkan Sumber:
+
+**Dari Grup:**
+- Hanya menampilkan data apartemen grup tersebut
+- Parameter apartemen diabaikan untuk keamanan
+- Contoh: `!rekap` atau `!rekap 30072025`
+
+**Dari Private Message:**
+- Dapat mengakses semua data apartemen
+- Tanpa parameter = semua apartemen
+- Dengan parameter = apartemen spesifik
+
 #### Contoh Penggunaan:
 
+**Dari Grup EMERALD:**
 ```
 !rekap
 ```
-*Rekap semua apartemen hari ini dari jam 12:00 WIB*
+*Rekap EMERALD BINTARO hari ini dari jam 12:00 WIB*
+
+```
+!rekap 30072025
+```
+*Rekap EMERALD BINTARO tanggal 30 Juli 2025*
+
+**Dari Private Message:**
+```
+!rekap
+```
+*Rekap SEMUA apartemen hari ini dari jam 12:00 WIB*
 
 ```
 !rekap emerald
@@ -182,7 +239,7 @@ Komisi    : 50
 ```
 !rekap 30072025
 ```
-*Rekap semua apartemen tanggal 30 Juli 2025 (12:00 WIB - 11:59 WIB hari berikutnya)*
+*Rekap SEMUA apartemen tanggal 30 Juli 2025*
 
 ```
 !rekap emerald 30072025
@@ -226,12 +283,36 @@ Komisi    : 50
 
 **Format**: `!detailrekap [apartemen] [tanggal]`
 
+#### Perilaku Berdasarkan Sumber:
+
+**Dari Grup:**
+- Hanya menampilkan data apartemen grup tersebut
+- Parameter apartemen diabaikan untuk keamanan
+- Contoh: `!detailrekap` atau `!detailrekap 29072025`
+
+**Dari Private Message:**
+- Dapat mengakses semua data apartemen
+- Tanpa parameter = semua apartemen
+- Dengan parameter = apartemen spesifik
+
 #### Contoh Penggunaan:
 
+**Dari Grup SKY HOUSE:**
 ```
 !detailrekap
 ```
-*Detail rekap semua apartemen hari ini dari jam 12:00 WIB*
+*Detail rekap SKY HOUSE BSD hari ini dari jam 12:00 WIB*
+
+```
+!detailrekap 29072025
+```
+*Detail rekap SKY HOUSE BSD tanggal 29 Juli 2025*
+
+**Dari Private Message:**
+```
+!detailrekap
+```
+*Detail rekap SEMUA apartemen hari ini dari jam 12:00 WIB*
 
 ```
 !detailrekap sky
@@ -241,7 +322,7 @@ Komisi    : 50
 ```
 !detailrekap 29072025
 ```
-*Detail rekap semua apartemen tanggal 29 Juli 2025 (12:00 WIB - 11:59 WIB hari berikutnya)*
+*Detail rekap SEMUA apartemen tanggal 29 Juli 2025*
 
 ```
 !detailrekap sky 29072025
@@ -303,11 +384,76 @@ Bot mendukung pencarian apartemen berdasarkan nama parsial:
 | **Input** | **Hasil** |
 |-----------|-----------|
 | `emerald` | EMERALD BINTARO |
-| `sky` | SKY HOUSE |
-| `tree` | TREEPARK BSD |
-| `spring` | SPRINGWOOD RESIDENCES |
+| `sky` atau `skyhouse` | SKY HOUSE BSD |
+| `tree` atau `treepark` | TREEPARK BSD |
+| `springwood` | SPRINGWOOD |
 | `tokyo` | TOKYO RIVERSIDE PIK2 |
 | `serpong` | SERPONG GARDEN |
+
+### Command Administratif
+
+#### !rekapulang
+**Format**: `!rekapulang` (hanya dari private message)
+
+Memproses ulang semua pesan di semua grup yang aktif. Berguna untuk:
+- Recovery data setelah bot offline lama
+- Memproses pesan yang terlewat
+- Sinkronisasi data setelah perubahan konfigurasi
+
+```
+!rekapulang
+```
+
+**Output:**
+```
+✅ Proses rekap ulang selesai!
+
+📊 Ringkasan:
+- Grup diproses: 6
+- Total pesan diperiksa: 1247
+- Pesan booking ditemukan: 89
+- Data baru ditambahkan: 12
+- Data sudah ada (dilewati): 77
+- Error: 0
+
+⏱️ Waktu proses: 2.5 menit
+```
+
+#### !reload
+**Format**: `!reload` (hanya dari private message)
+
+Memuat ulang konfigurasi grup tanpa restart bot:
+
+```
+!reload
+```
+
+#### !mapping
+**Format**: `!mapping` (hanya dari private message)
+
+Menampilkan konfigurasi grup yang aktif:
+
+```
+!mapping
+```
+
+#### !env
+**Format**: `!env` (hanya dari private message)
+
+Debug environment variables:
+
+```
+!env
+```
+
+#### !debug
+**Format**: `!debug` (hanya dari private message)
+
+Menampilkan informasi database untuk troubleshooting:
+
+```
+!debug
+```
 
 ## Laporan
 
@@ -445,6 +591,24 @@ Cash/TF: Rp250.000 (TF)
 CS: Dreamy, Komisi: Rp50.000
 ```
 
+#### 4. **Edit Message** ✨ *NEW*
+```
+✅ Transaksi berhasil diupdate
+📝 Unit: L3/30N
+👤 CS: dreamy
+💰 Amount: 300,000
+```
+
+#### 5. **Edit Message Error**
+```
+⚠️ Edit pesan tidak valid. Transaksi lama tetap tersimpan.
+
+Salah anjing. yang bener gini:
+🟢SKY HOUSE CHEKIN
+Unit      : L3/30N
+...
+```
+
 ### Status Code Sistem
 
 Bot menggunakan status code untuk tracking:
@@ -563,8 +727,34 @@ LOG_ENABLE_FILE=true
 LOG_MAX_FILES=10
 LOG_MAX_SIZE=50m
 
-# Security Configuration
-ALLOWED_GROUPS=group1@g.us,group2@g.us
+# WhatsApp Group Configuration (NEW)
+GROUP_SKYHOUSE_ID=120363317169602122@g.us
+GROUP_SKYHOUSE_NAME=SKY HOUSE BSD
+GROUP_SKYHOUSE_ENABLED=true
+
+GROUP_TREEPARK_ID=120363297431494475@g.us
+GROUP_TREEPARK_NAME=TREEPARK BSD
+GROUP_TREEPARK_ENABLED=true
+
+GROUP_EMERALD_ID=120363316413016298@g.us
+GROUP_EMERALD_NAME=EMERALD BINTARO
+GROUP_EMERALD_ENABLED=true
+
+GROUP_SPRINGWOOD_ID=120363317562284069@g.us
+GROUP_SPRINGWOOD_NAME=SPRINGWOOD
+GROUP_SPRINGWOOD_ENABLED=true
+
+GROUP_SERPONG_ID=120363417253343745@g.us
+GROUP_SERPONG_NAME=SERPONG GARDEN
+GROUP_SERPONG_ENABLED=true
+
+GROUP_TOKYO_ID=120363418040325725@g.us
+GROUP_TOKYO_NAME=TOKYO RIVERSIDE PIK2
+GROUP_TOKYO_ENABLED=true
+
+GROUP_TESTER_ID=
+GROUP_TESTER_NAME=TESTING BOT
+GROUP_TESTER_ENABLED=true
 
 # Timezone Configuration
 TIMEZONE=Asia/Jakarta
@@ -659,6 +849,33 @@ bot-kr/
 - Restart berkala: pm2 restart whatsapp-bot
 ```
 
+#### 8. **Environment variables tidak terbaca**
+```bash
+# Debugging:
+- Pastikan file .env ada: ls -la .env
+- Test dotenv: node test-env.js
+- Periksa format: tidak ada spasi di sekitar =
+- Reload config: !reload (via private message)
+```
+
+#### 9. **Group mapping tidak bekerja**
+```bash
+# Debugging:
+- Cek mapping aktif: !mapping (via private message)
+- Verifikasi group ID: !debug (via private message)
+- Reload konfigurasi: !reload (via private message)
+- Periksa GROUP_[NAMA]_ENABLED=true
+```
+
+#### 10. **Edit message tidak ter-update**
+```bash
+# Debugging:
+- Pastikan message ID sama saat edit
+- Cek log: grep "edit" logs/app.log
+- Verifikasi format pesan edit masih valid
+- Manual reprocess: !rekapulang (via private message)
+```
+
 ### Logs
 
 Log disimpan di:
@@ -736,26 +953,41 @@ npm test -- --grep "messageParser"
 - Bot dapat beroperasi di multiple grup apartemen
 - Setiap grup memiliki mapping apartemen sendiri
 - Data terpisah per apartemen untuk laporan
+- Konfigurasi grup via environment variables
 
-### 2. **Offline Message Processing**
+### 2. **Edit Message Support** ✨ *NEW*
+- Otomatis update database saat pesan booking diedit
+- Deteksi perubahan pesan dan sinkronisasi data
+- Konfirmasi update ke grup
+- Recalculate daily summary otomatis
+
+### 3. **Offline Message Processing**
 - Bot memproses pesan yang tertinggal saat disconnect
 - Checkpoint system mencegah data loss
 - Recovery otomatis saat bot restart
+- Command !rekapulang untuk reprocess manual
 
-### 3. **Smart Number Formatting**
+### 4. **Smart Number Formatting**
 - Input: 250 → Output: Rp250.000
 - Otomatis konversi ribuan yang disingkat
 - Konsisten di semua laporan
 
-### 4. **Advanced Reporting**
+### 5. **Advanced Reporting**
 - Laporan per apartemen dengan filter
 - Detail transaksi dengan timestamp
 - Export Excel multi-sheet otomatis
+- Keamanan akses berdasarkan grup
 
-### 5. **CS Performance Tracking**
+### 6. **CS Performance Tracking**
 - Mapping CS untuk breakdown keuangan
 - Komisi marketing terpisah dari CS operasional
 - Performance metrics per CS
+
+### 7. **Dynamic Configuration** ✨ *NEW*
+- Environment variables untuk grup mapping
+- Hot reload konfigurasi tanpa restart
+- Debug tools untuk troubleshooting
+- Flexible group enable/disable
 
 ## Monitoring & Maintenance
 

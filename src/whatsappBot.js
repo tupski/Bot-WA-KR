@@ -96,16 +96,25 @@ class WhatsAppBot {
             }
         });
 
-        // Message revoke event
+        // Message revoke event - Handle message deletion
         this.client.on('message_revoke_everyone', async (_, before) => {
             try {
                 if (before) {
                     logger.info(`Pesan dihapus untuk semua: ${before.id.id}`);
-                    // Tandai pesan sebagai dihapus di database jika diperlukan
-                    // Untuk saat ini, kita tidak melakukan apa-apa karena pesan sudah dihapus
+                    await this.handleDeletedMessage(before);
                 }
             } catch (error) {
                 logger.error('Error memproses pesan yang dihapus:', error);
+            }
+        });
+
+        // Message revoke for me event - Handle message deletion for sender only
+        this.client.on('message_revoke_me', async (message) => {
+            try {
+                logger.info(`Pesan dihapus untuk pengirim: ${message.id.id}`);
+                // Tidak perlu hapus dari database karena hanya dihapus untuk pengirim
+            } catch (error) {
+                logger.error('Error memproses pesan yang dihapus untuk pengirim:', error);
             }
         });
 
@@ -205,6 +214,48 @@ class WhatsAppBot {
     }
 
     /**
+     * Handle deleted message - remove from database if it was a booking message
+     */
+    async handleDeletedMessage(deletedMessage) {
+        try {
+            const database = require('./database');
+
+            logger.info(`Menangani pesan yang dihapus: ${deletedMessage.id.id}`);
+
+            // Cek apakah ada transaksi dengan message ID ini
+            const existingTransaction = await database.getTransactionByMessageId(deletedMessage.id.id);
+
+            if (existingTransaction) {
+                logger.info(`Transaksi ditemukan untuk pesan yang dihapus: Unit ${existingTransaction.unit}, CS ${existingTransaction.cs_name}`);
+
+                // Hapus transaksi dari database
+                await database.deleteTransactionByMessageId(deletedMessage.id.id);
+
+                // Hapus dari processed messages
+                await database.removeProcessedMessage(deletedMessage.id.id);
+
+                logger.info(`Transaksi berhasil dihapus dari database: ${deletedMessage.id.id}`);
+
+                // Kirim notifikasi ke grup bahwa transaksi dihapus
+                if (deletedMessage.from && deletedMessage.from.includes('@g.us')) {
+                    const notificationMsg = `🗑️ *Transaksi dihapus*\n` +
+                        `📝 Unit: ${existingTransaction.unit}\n` +
+                        `👤 CS: ${existingTransaction.cs_name}\n` +
+                        `💰 Amount: ${existingTransaction.amount.toLocaleString('id-ID')}\n` +
+                        `⚠️ Data telah dihapus dari sistem`;
+
+                    await this.sendMessage(deletedMessage.from, notificationMsg);
+                }
+            } else {
+                logger.info(`Tidak ada transaksi untuk pesan yang dihapus: ${deletedMessage.id.id}`);
+            }
+
+        } catch (error) {
+            logger.error('Error handling deleted message:', error);
+        }
+    }
+
+    /**
      * Check if message was potentially edited by comparing with processed messages
      */
     async checkIfMessageWasEdited(message) {
@@ -219,12 +270,31 @@ class WhatsAppBot {
                 const existingTransaction = await database.getTransactionByMessageId(message.id.id);
 
                 if (existingTransaction) {
-                    // Bandingkan konten pesan dengan data yang tersimpan
-                    // Jika berbeda, kemungkinan pesan diedit
+                    // Parse pesan saat ini untuk membandingkan dengan data yang tersimpan
                     const lines = message.body.split('\n').map(line => line.trim()).filter(line => line);
                     if (lines.length >= 2 && lines[1].toLowerCase().includes('unit')) {
-                        logger.info(`Kemungkinan pesan diedit terdeteksi: ${message.id.id}`);
-                        return true;
+                        // Bandingkan data untuk mendeteksi perubahan
+                        const messageParser = require('./messageParser');
+                        const apartmentName = this.getApartmentName(message.from);
+                        const parseResult = messageParser.parseBookingMessage(message.body, message.id.id, apartmentName);
+
+                        if (parseResult.status === 'VALID') {
+                            const newData = parseResult.data;
+
+                            // Bandingkan data kunci untuk mendeteksi perubahan
+                            const hasChanges = (
+                                existingTransaction.unit !== newData.unit ||
+                                existingTransaction.checkout_time !== newData.checkoutTime ||
+                                existingTransaction.amount !== newData.amount ||
+                                existingTransaction.cs_name !== newData.csName ||
+                                existingTransaction.payment_method !== newData.paymentMethod
+                            );
+
+                            if (hasChanges) {
+                                logger.info(`Perubahan terdeteksi pada pesan: ${message.id.id}`);
+                                return true;
+                            }
+                        }
                     }
                 }
             }

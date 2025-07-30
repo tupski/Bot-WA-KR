@@ -1,6 +1,9 @@
 // Bot WhatsApp untuk Manajemen Booking Kamar SKY HOUSE
 // Entry point utama
 
+// Load environment variables FIRST
+require('dotenv').config();
+
 const config = require('./config/config.js');
 const database = require('./src/database');
 const WhatsAppBot = require('./src/whatsappBot');
@@ -169,29 +172,67 @@ async function handleEditedBookingMessage(message, apartmentName) {
         const parseResult = messageParser.parseBookingMessage(message.body, message.id.id, apartmentName);
 
         if (parseResult.status === 'VALID') {
-            // Update transaksi yang sudah ada
-            const updateData = {
-                location: parseResult.data.location,
-                unit: parseResult.data.unit,
-                checkout_time: parseResult.data.checkoutTime,
-                duration: parseResult.data.duration,
-                payment_method: parseResult.data.paymentMethod,
-                cs_name: parseResult.data.csName,
-                amount: parseResult.data.amount,
-                commission: parseResult.data.commission,
-                net_amount: parseResult.data.netAmount
+            // Bandingkan data lama dengan data baru
+            const oldData = {
+                unit: existingTransaction.unit,
+                checkout_time: existingTransaction.checkout_time,
+                amount: existingTransaction.amount,
+                cs_name: existingTransaction.cs_name,
+                payment_method: existingTransaction.payment_method,
+                commission: existingTransaction.commission
             };
 
-            await database.updateTransactionByMessageId(message.id.id, updateData);
-            logger.info(`Transaksi berhasil diupdate untuk message ID ${message.id.id}`);
-            logger.info(`Update: Unit ${parseResult.data.unit}, CS ${parseResult.data.csName}, Amount ${parseResult.data.amount}`);
+            const newData = {
+                unit: parseResult.data.unit,
+                checkout_time: parseResult.data.checkoutTime,
+                amount: parseResult.data.amount,
+                cs_name: parseResult.data.csName,
+                payment_method: parseResult.data.paymentMethod,
+                commission: parseResult.data.commission
+            };
 
-            // Kirim konfirmasi update ke grup
-            const confirmationMsg = `✅ *Transaksi berhasil diupdate*\n` +
-                `📝 Unit: ${parseResult.data.unit}\n` +
-                `👤 CS: ${parseResult.data.csName}\n` +
-                `💰 Amount: ${parseResult.data.amount.toLocaleString('id-ID')}`;
-            await bot.sendMessage(message.from, confirmationMsg);
+            // Cek apakah ada perubahan
+            const hasChanges = Object.keys(oldData).some(key => {
+                const oldValue = oldData[key];
+                const newValue = newData[key.replace('checkout_time', 'checkoutTime').replace('cs_name', 'csName').replace('payment_method', 'paymentMethod')];
+                return oldValue !== newValue;
+            });
+
+            if (hasChanges) {
+                // Update transaksi yang sudah ada
+                const updateData = {
+                    location: parseResult.data.location,
+                    unit: parseResult.data.unit,
+                    checkout_time: parseResult.data.checkoutTime,
+                    duration: parseResult.data.duration,
+                    payment_method: parseResult.data.paymentMethod,
+                    cs_name: parseResult.data.csName,
+                    amount: parseResult.data.amount,
+                    commission: parseResult.data.commission,
+                    net_amount: parseResult.data.netAmount
+                };
+
+                await database.updateTransactionByMessageId(message.id.id, updateData);
+                logger.info(`Transaksi berhasil diupdate untuk message ID ${message.id.id}`);
+
+                // Log perubahan detail
+                Object.keys(oldData).forEach(key => {
+                    const newKey = key.replace('checkout_time', 'checkoutTime').replace('cs_name', 'csName').replace('payment_method', 'paymentMethod');
+                    if (oldData[key] !== newData[newKey]) {
+                        logger.info(`  ${key}: ${oldData[key]} → ${newData[newKey]}`);
+                    }
+                });
+
+                // Kirim konfirmasi update ke grup
+                const confirmationMsg = `✅ *Transaksi berhasil diupdate*\n` +
+                    `📝 Unit: ${parseResult.data.unit}\n` +
+                    `👤 CS: ${parseResult.data.csName}\n` +
+                    `💰 Amount: ${parseResult.data.amount.toLocaleString('id-ID')}\n` +
+                    `🔄 Data telah disinkronkan`;
+                await bot.sendMessage(message.from, confirmationMsg);
+            } else {
+                logger.info(`Tidak ada perubahan pada transaksi ${message.id.id}, skip update`);
+            }
 
         } else {
             // Jika format edit tidak valid, kirim pesan error tapi jangan hapus transaksi
@@ -436,6 +477,47 @@ async function handleCommand(message, apartmentName) {
                 await bot.sendMessage(message.from, `❌ Terjadi error dalam proses rekap ulang: ${error.message}`);
             }
 
+        } else if (message.body.startsWith('!env')) {
+            logger.info(`Memproses command env dari ${message.from}: ${message.body}`);
+
+            // Hanya bisa dipanggil dari private message untuk keamanan
+            const isFromGroup = message.from.includes('@g.us');
+            if (isFromGroup) {
+                await bot.sendMessage(message.from, '❌ Command !env hanya bisa digunakan melalui pesan pribadi untuk keamanan.');
+                return;
+            }
+
+            try {
+                let envMsg = `🔧 *Environment Variables Test*\n\n`;
+
+                // Test semua group environment variables
+                const groups = ['SKYHOUSE', 'TREEPARK', 'EMERALD', 'SPRINGWOOD', 'SERPONG', 'TOKYO', 'TESTER'];
+
+                groups.forEach(group => {
+                    const id = process.env[`GROUP_${group}_ID`];
+                    const name = process.env[`GROUP_${group}_NAME`];
+                    const enabled = process.env[`GROUP_${group}_ENABLED`];
+
+                    envMsg += `📋 *${group}:*\n`;
+                    envMsg += `- ID: ${id || '❌ undefined'}\n`;
+                    envMsg += `- NAME: ${name || '❌ undefined'}\n`;
+                    envMsg += `- ENABLED: ${enabled || '❌ undefined'}\n\n`;
+                });
+
+                // Test dotenv loading
+                envMsg += `🔍 *Dotenv Test:*\n`;
+                envMsg += `- NODE_ENV: ${process.env.NODE_ENV || 'undefined'}\n`;
+                envMsg += `- Current working directory: ${process.cwd()}\n`;
+                envMsg += `- .env file exists: ${require('fs').existsSync('.env') ? '✅ Yes' : '❌ No'}\n`;
+
+                await bot.sendMessage(message.from, envMsg);
+                logger.info('Environment variables info berhasil dikirim');
+
+            } catch (error) {
+                logger.error('Error dalam env command:', error);
+                await bot.sendMessage(message.from, `❌ Terjadi error: ${error.message}`);
+            }
+
         } else if (message.body.startsWith('!mapping')) {
             logger.info(`Memproses command mapping dari ${message.from}: ${message.body}`);
 
@@ -522,6 +604,53 @@ async function handleCommand(message, apartmentName) {
 
             } catch (error) {
                 logger.error('Error dalam reload command:', error);
+                await bot.sendMessage(message.from, `❌ Terjadi error: ${error.message}`);
+            }
+
+        } else if (message.body.startsWith('!testsync')) {
+            logger.info(`Memproses command testsync dari ${message.from}: ${message.body}`);
+
+            // Hanya bisa dipanggil dari private message untuk keamanan
+            const isFromGroup = message.from.includes('@g.us');
+            if (isFromGroup) {
+                await bot.sendMessage(message.from, '❌ Command !testsync hanya bisa digunakan melalui pesan pribadi untuk keamanan.');
+                return;
+            }
+
+            try {
+                // Ambil transaksi terbaru untuk testing
+                const recentTransactions = await database.getLastTransactions(5);
+
+                if (recentTransactions.length === 0) {
+                    await bot.sendMessage(message.from, '❌ Tidak ada transaksi untuk testing.');
+                    return;
+                }
+
+                let testMsg = `🔄 *Test Sinkronisasi Edit/Delete*\n\n`;
+                testMsg += `📊 *5 Transaksi Terbaru:*\n`;
+
+                recentTransactions.forEach((transaction, index) => {
+                    testMsg += `${index + 1}. Message ID: ${transaction.message_id}\n`;
+                    testMsg += `   Unit: ${transaction.unit}, CS: ${transaction.cs_name}\n`;
+                    testMsg += `   Amount: ${transaction.amount.toLocaleString('id-ID')}\n`;
+                    testMsg += `   Date: ${transaction.date_only}\n\n`;
+                });
+
+                testMsg += `🧪 *Cara test sinkronisasi:*\n`;
+                testMsg += `1. **Edit Message**: Edit pesan booking di grup\n`;
+                testMsg += `   → Bot akan update database otomatis\n`;
+                testMsg += `   → Kirim konfirmasi perubahan\n\n`;
+                testMsg += `2. **Delete Message**: Hapus pesan booking di grup\n`;
+                testMsg += `   → Bot akan hapus data dari database\n`;
+                testMsg += `   → Kirim notifikasi penghapusan\n\n`;
+                testMsg += `3. **Cek Log**: Monitor log untuk detail proses\n`;
+                testMsg += `4. **Verifikasi**: Gunakan !rekap untuk cek data`;
+
+                await bot.sendMessage(message.from, testMsg);
+                logger.info('Test sync info berhasil dikirim');
+
+            } catch (error) {
+                logger.error('Error dalam testsync command:', error);
                 await bot.sendMessage(message.from, `❌ Terjadi error: ${error.message}`);
             }
 

@@ -384,6 +384,50 @@ class Database {
     }
 
     /**
+     * Delete transaksi berdasarkan message ID
+     */
+    async deleteTransactionByMessageId(messageId) {
+        // Ambil transaksi yang akan dihapus untuk recalculate summary
+        const existingTransaction = await this.getTransactionByMessageId(messageId);
+        if (!existingTransaction) {
+            throw new Error(`Transaksi dengan message ID ${messageId} tidak ditemukan`);
+        }
+
+        // Hapus transaksi
+        const query = 'DELETE FROM transactions WHERE message_id = ?';
+        const result = await this.executeQuery(query, [messageId]);
+
+        // Recalculate daily summary setelah penghapusan
+        if (result.changes > 0 || result.affectedRows > 0) {
+            await this.recalculateDailySummary(existingTransaction.date_only);
+        }
+
+        return result;
+    }
+
+    /**
+     * Delete transaksi berdasarkan ID
+     */
+    async deleteTransaction(transactionId) {
+        // Ambil transaksi yang akan dihapus untuk recalculate summary
+        const existingTransaction = await this.getTransactionById(transactionId);
+        if (!existingTransaction) {
+            throw new Error(`Transaksi dengan ID ${transactionId} tidak ditemukan`);
+        }
+
+        // Hapus transaksi
+        const query = 'DELETE FROM transactions WHERE id = ?';
+        const result = await this.executeQuery(query, [transactionId]);
+
+        // Recalculate daily summary setelah penghapusan
+        if (result.changes > 0 || result.affectedRows > 0) {
+            await this.recalculateDailySummary(existingTransaction.date_only);
+        }
+
+        return result;
+    }
+
+    /**
      * Recalculate daily summary untuk tanggal tertentu
      */
     async recalculateDailySummary(date) {
@@ -480,6 +524,16 @@ class Database {
         const query = 'SELECT id FROM processed_messages WHERE message_id = ?';
         const result = await this.executeQuery(query, [messageId]);
         return result.length > 0;
+    }
+
+    /**
+     * Remove processed message record
+     */
+    async removeProcessedMessage(messageId) {
+        const query = 'DELETE FROM processed_messages WHERE message_id = ?';
+        const result = await this.executeQuery(query, [messageId]);
+        logger.info(`Removed processed message record: ${messageId}`);
+        return result;
     }
 
     /**

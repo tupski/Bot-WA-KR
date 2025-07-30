@@ -1,33 +1,45 @@
-# 📝 Fitur Edit Message - Bot WhatsApp
+# 🔄 Fitur Sinkronisasi Edit/Delete Message - Bot WhatsApp
 
 ## 🎯 **Overview**
 
-Bot sekarang mendukung pengeditan pesan booking. Ketika user mengedit pesan booking di WhatsApp, bot akan otomatis memperbarui data transaksi di database.
+Bot sekarang mendukung sinkronisasi penuh dengan WhatsApp messages:
+- **Edit Message**: Ketika user mengedit pesan booking, bot otomatis update database
+- **Delete Message**: Ketika user menghapus pesan booking, bot otomatis hapus data dari database
 
 ## 🔧 **Cara Kerja**
 
 ### 1. **Deteksi Edit Message**
-- Bot mendeteksi pesan yang mungkin diedit dengan membandingkan message ID yang sudah diproses
-- Jika message ID sudah ada di database tapi pesan masuk lagi, kemungkinan pesan diedit
+- Bot mendeteksi pesan yang diedit dengan membandingkan data lama vs baru
+- Membandingkan field kunci: unit, checkout_time, amount, cs_name, payment_method
+- Hanya update jika ada perubahan nyata
 
-### 2. **Proses Update**
+### 2. **Deteksi Delete Message**
+- Bot menangkap event `message_revoke_everyone` dari WhatsApp
+- Mencari transaksi berdasarkan message ID yang dihapus
+- Otomatis hapus data dari database
+
+### 3. **Proses Sinkronisasi**
 ```javascript
-// Jika pesan diedit
-if (isEdit) {
-    await handleEditedBookingMessage(message, apartmentName);
-} else {
-    await handleNewBookingMessage(message, apartmentName);
+// Edit Message
+if (isEdit && hasChanges) {
+    await database.updateTransactionByMessageId(messageId, newData);
+    await bot.sendMessage(chatId, confirmationMsg);
 }
+
+// Delete Message
+this.client.on('message_revoke_everyone', async (_, before) => {
+    await this.handleDeletedMessage(before);
+});
 ```
 
-### 3. **Update Database**
-- Sistem akan mengupdate transaksi yang sudah ada berdasarkan message ID
-- Daily summary akan dikalkulasi ulang otomatis
-- CS summary juga akan diperbarui
+### 4. **Update Database**
+- **Edit**: Update transaksi berdasarkan message ID
+- **Delete**: Hapus transaksi dan processed message record
+- Daily summary dan CS summary dikalkulasi ulang otomatis
 
 ## 📋 **Fitur yang Didukung**
 
-### ✅ **Yang Bisa Diedit:**
+### ✅ **Edit Message:**
 - Unit number
 - Checkout time
 - Duration
@@ -35,11 +47,20 @@ if (isEdit) {
 - CS name
 - Amount
 - Commission
+- Otomatis deteksi perubahan
+- Konfirmasi update ke grup
 
-### ❌ **Limitasi:**
-- WhatsApp Web API tidak memiliki event `message_edit` langsung
-- Deteksi edit menggunakan workaround dengan message ID
-- Mungkin ada false positive dalam deteksi edit
+### ✅ **Delete Message:**
+- Hapus transaksi dari database
+- Hapus processed message record
+- Recalculate daily summary
+- Notifikasi penghapusan ke grup
+
+### ⚡ **Keunggulan:**
+- **Real-time sync**: Perubahan langsung tersinkronisasi
+- **Smart detection**: Hanya update jika ada perubahan nyata
+- **Data integrity**: Daily summary otomatis recalculate
+- **User feedback**: Konfirmasi setiap perubahan
 
 ## 🚀 **Penggunaan**
 
@@ -64,9 +85,28 @@ Cs    : dreamy
 Komisi: 60  ← Changed
 ```
 
-**Result:** Bot akan update transaksi dengan data baru dan kirim konfirmasi.
+**Result:**
+```
+✅ Transaksi berhasil diupdate
+📝 Unit: L3/30N
+👤 CS: dreamy
+💰 Amount: 300,000
+🔄 Data telah disinkronkan
+```
 
-### **Scenario 2: Edit dengan Format Salah**
+### **Scenario 2: Delete Pesan Booking**
+User menghapus pesan booking dari grup.
+
+**Result:**
+```
+🗑️ Transaksi dihapus
+📝 Unit: L3/30N
+👤 CS: dreamy
+💰 Amount: 250,000
+⚠️ Data telah dihapus dari sistem
+```
+
+### **Scenario 3: Edit dengan Format Salah**
 Jika edit pesan tidak sesuai format, bot akan:
 - Kirim pesan error
 - Tetap mempertahankan data transaksi lama
@@ -74,33 +114,46 @@ Jika edit pesan tidak sesuai format, bot akan:
 
 ## 🔍 **Commands untuk Testing**
 
-### `!testedit`
-Menampilkan informasi transaksi terbaru untuk testing edit:
+### `!testsync`
+Menampilkan informasi transaksi terbaru untuk testing sinkronisasi:
 ```
-🧪 Test Edit Message
+🔄 Test Sinkronisasi Edit/Delete
 
 📊 5 Transaksi Terbaru:
 1. Message ID: ABC123
    Unit: L3/30N, CS: dreamy
    Amount: 250,000
+   Date: 2025-07-30
 
-💡 Cara test edit:
-1. Edit pesan booking di grup
-2. Bot akan otomatis update database
-3. Cek log untuk konfirmasi update
+🧪 Cara test sinkronisasi:
+1. Edit Message: Edit pesan booking di grup
+   → Bot akan update database otomatis
+   → Kirim konfirmasi perubahan
+
+2. Delete Message: Hapus pesan booking di grup
+   → Bot akan hapus data dari database
+   → Kirim notifikasi penghapusan
+
+3. Cek Log: Monitor log untuk detail proses
+4. Verifikasi: Gunakan !rekap untuk cek data
 ```
 
 ## 📊 **Database Changes**
 
 ### **New Functions:**
 - `updateTransactionByMessageId(messageId, data)`
+- `deleteTransactionByMessageId(messageId)` ✨ *NEW*
+- `deleteTransaction(transactionId)` ✨ *NEW*
+- `removeProcessedMessage(messageId)` ✨ *NEW*
 - `getTransactionByMessageId(messageId)`
 - `getTransactionById(transactionId)`
 - `recalculateDailySummary(date)`
 
 ### **Updated Functions:**
 - `updateTransaction()` - Now recalculates daily summaries
+- `deleteTransaction()` - Now recalculates daily summaries ✨ *NEW*
 - `handleMessage()` - Now accepts `isEdit` parameter
+- `checkIfMessageWasEdited()` - Enhanced with data comparison ✨ *IMPROVED*
 
 ## 🔔 **Notifications**
 
@@ -110,6 +163,16 @@ Menampilkan informasi transaksi terbaru untuk testing edit:
 📝 Unit: L3/30N
 👤 CS: dreamy
 💰 Amount: 300,000
+🔄 Data telah disinkronkan
+```
+
+### **Successful Delete:**
+```
+🗑️ Transaksi dihapus
+📝 Unit: L3/30N
+👤 CS: dreamy
+💰 Amount: 250,000
+⚠️ Data telah dihapus dari sistem
 ```
 
 ### **Failed Edit:**
