@@ -53,6 +53,9 @@ class WhatsAppBot {
 
             // Tampilkan daftar grup
             await this.displayGroupList();
+
+            // Proses pesan yang tertinggal dari jam 12:00 WIB hari ini
+            await this.processBacklogMessages();
         });
 
         // Authentication success
@@ -342,6 +345,75 @@ class WhatsAppBot {
         } catch (error) {
             logger.error('Error sending message:', error);
             return false;
+        }
+    }
+
+    /**
+     * Proses pesan yang tertinggal dari jam 12:00 WIB hari ini
+     */
+    async processBacklogMessages() {
+        try {
+            logger.info('Memulai pemrosesan pesan yang tertinggal...');
+
+            const moment = require('moment-timezone');
+            const now = moment().tz('Asia/Jakarta');
+            const todayStart = now.clone().hour(12).minute(0).second(0);
+
+            // Jika sekarang masih sebelum jam 12:00, skip
+            if (now.isBefore(todayStart)) {
+                logger.info('Belum jam 12:00 WIB, skip pemrosesan backlog');
+                return;
+            }
+
+            logger.info(`Mencari pesan dari ${todayStart.format('YYYY-MM-DD HH:mm:ss')} hingga sekarang`);
+
+            // Ambil semua chat yang diizinkan
+            const chats = await this.client.getChats();
+            let processedCount = 0;
+
+            for (const chat of chats) {
+                // Skip jika bukan grup yang diizinkan
+                if (!chat.isGroup || !config.allowedGroups.includes(chat.id._serialized)) {
+                    continue;
+                }
+
+                try {
+                    // Ambil pesan dari jam 12:00 WIB hari ini
+                    const messages = await chat.fetchMessages({
+                        limit: 100,
+                        fromMe: false
+                    });
+
+                    for (const message of messages) {
+                        const messageTime = moment.unix(message.timestamp).tz('Asia/Jakarta');
+
+                        // Skip jika pesan sebelum jam 12:00 WIB hari ini
+                        if (messageTime.isBefore(todayStart)) {
+                            continue;
+                        }
+
+                        // Cek apakah pesan sudah diproses
+                        const isProcessed = await database.isMessageProcessed(message.id._serialized);
+                        if (isProcessed) {
+                            continue;
+                        }
+
+                        // Proses pesan jika belum diproses
+                        if (this.isBookingMessage(message.body)) {
+                            logger.info(`Memproses pesan tertinggal: ${message.id._serialized}`);
+                            await this.handleBookingMessage(message);
+                            processedCount++;
+                        }
+                    }
+                } catch (error) {
+                    logger.error(`Error memproses chat ${chat.name}:`, error);
+                }
+            }
+
+            logger.info(`Selesai memproses ${processedCount} pesan yang tertinggal`);
+
+        } catch (error) {
+            logger.error('Error memproses pesan yang tertinggal:', error);
         }
     }
 

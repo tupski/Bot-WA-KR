@@ -443,9 +443,9 @@ ${commissionSection}`;
     formatRangeReport(stats, displayDate) {
         const now = moment().tz(this.timezone);
 
-        let report = `📊 *REKAP LAPORAN ${displayDate.toUpperCase()}*\n`;
+        let report = `📊 *REKAP LAPORAN ${now.format('DD/MM/YYYY')}*\n`;
         report += `🏢 ${this.companyName}\n`;
-        report += `📅 ${now.format('DD/MM/YYYY')} - ${now.format('HH:mm')} WIB\n\n`;
+        report += `📅 ${now.format('DD/MM/YYYY')} 12:00 - ${now.format('HH:mm')} WIB\n\n`;
 
         // Total CS
         report += `👥 *TOTAL CS*\n`;
