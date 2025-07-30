@@ -137,6 +137,7 @@ class MessageParser {
                 commission: commission,
                 netAmount: netAmount,
                 date: currentDate,
+                dateOnly: currentDate, // Tambahkan dateOnly untuk backlog checking
                 createdAt: currentDateTime,
                 skipFinancial: data.csName.toLowerCase() === 'apk', // Skip APK dari perhitungan keuangan
                 originalMessage: messageBody

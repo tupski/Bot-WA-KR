@@ -413,6 +413,18 @@ class Database {
         return result.length > 0;
     }
 
+    /**
+     * Cek apakah transaksi sudah ada berdasarkan unit, tanggal, dan CS
+     */
+    async isTransactionExists(unit, date, csName, checkoutTime) {
+        const query = `
+            SELECT id FROM transactions
+            WHERE unit = ? AND date_only = ? AND cs_name = ? AND checkout_time = ?
+        `;
+        const result = await this.executeQuery(query, [unit, date, csName, checkoutTime]);
+        return result.length > 0;
+    }
+
     async getUnprocessedMessages(chatId, limit = 100) {
         // Ini akan digunakan untuk recovery - implementasi tergantung WhatsApp API
         const query = `

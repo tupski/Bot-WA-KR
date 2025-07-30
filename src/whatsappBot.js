@@ -3,6 +3,7 @@ const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const config = require('../config/config.js');
 const logger = require('./logger');
+const database = require('./database');
 
 class WhatsAppBot {
     constructor() {
@@ -392,17 +393,35 @@ class WhatsAppBot {
                             continue;
                         }
 
-                        // Cek apakah pesan sudah diproses
-                        const isProcessed = await database.isMessageProcessed(message.id._serialized);
-                        if (isProcessed) {
-                            continue;
-                        }
-
-                        // Proses pesan jika belum diproses
+                        // Proses pesan jika ini adalah booking message
                         if (this.isBookingMessage(message.body)) {
-                            logger.info(`Memproses pesan tertinggal: ${message.id._serialized}`);
-                            await this.handleBookingMessage(message);
-                            processedCount++;
+                            try {
+                                // Parse pesan untuk mendapatkan data transaksi
+                                const MessageParser = require('./messageParser');
+                                const parseResult = MessageParser.parseBookingMessage(message.body, message.id._serialized);
+
+                                if (parseResult.status === 'VALID') {
+                                    const data = parseResult.data;
+
+                                    // Cek apakah transaksi sudah ada di database
+                                    const exists = await database.isTransactionExists(
+                                        data.unit,
+                                        data.dateOnly,
+                                        data.csName,
+                                        data.checkoutTime
+                                    );
+
+                                    if (!exists) {
+                                        logger.info(`Memproses pesan tertinggal: ${message.id._serialized} - Unit: ${data.unit}, CS: ${data.csName}`);
+                                        await this.handleBookingMessage(message);
+                                        processedCount++;
+                                    } else {
+                                        logger.info(`Transaksi sudah ada, skip: Unit ${data.unit}, CS ${data.csName}`);
+                                    }
+                                }
+                            } catch (parseError) {
+                                logger.error(`Error parsing pesan tertinggal ${message.id._serialized}:`, parseError);
+                            }
                         }
                     }
                 } catch (error) {
