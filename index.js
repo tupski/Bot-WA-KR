@@ -145,7 +145,7 @@ async function handleCommand(message, apartmentName) {
 
             // Parse command: !rekap [apartemen] [tanggal]
             const parts = message.body.trim().split(' ');
-            let targetApartment = null;
+            let targetApartment = apartmentName; // Default: hanya tampilkan data grup ini
             let dateStr = null;
 
             // Cek apakah ada parameter apartemen dan/atau tanggal
@@ -155,7 +155,15 @@ async function handleCommand(message, apartmentName) {
                     dateStr = parts[1];
                 } else {
                     // Parameter pertama adalah nama apartemen
-                    targetApartment = findApartmentByPartialName(parts[1]);
+                    const requestedApartment = findApartmentByPartialName(parts[1]);
+
+                    // Validasi: hanya izinkan jika apartemen yang diminta sama dengan grup ini
+                    if (requestedApartment && requestedApartment === apartmentName) {
+                        targetApartment = requestedApartment;
+                    } else if (requestedApartment && requestedApartment !== apartmentName) {
+                        await bot.sendMessage(message.from, `❌ Anda hanya dapat melihat rekap untuk apartemen ${apartmentName}. Tidak dapat mengakses data apartemen lain.`);
+                        return;
+                    }
 
                     // Cek apakah ada parameter tanggal setelah nama apartemen
                     if (parts.length > 2 && parts[2].length === 8 && /^\d{8}$/.test(parts[2])) {
@@ -183,23 +191,23 @@ async function handleCommand(message, apartmentName) {
             }
 
             if (rekapData) {
-                // Generate laporan berdasarkan parameter
+                // Generate laporan berdasarkan parameter - hanya untuk apartemen grup ini
                 const report = await reportGenerator.generateReportByDateRange(
                     rekapData.startDate,
                     rekapData.endDate,
                     rekapData.displayDate,
-                    targetApartment
+                    targetApartment // Selalu filter berdasarkan apartemen grup
                 );
 
                 if (report) {
                     // Kirim laporan ke chat yang sama
                     await bot.sendMessage(message.from, report);
-                    logger.info('Laporan rekap berhasil dikirim');
+                    logger.info(`Laporan rekap berhasil dikirim untuk apartemen: ${targetApartment}`);
                 } else {
-                    await bot.sendMessage(message.from, 'Tidak ada data untuk periode yang diminta.');
+                    await bot.sendMessage(message.from, `Tidak ada data untuk apartemen ${targetApartment} pada periode yang diminta.`);
                 }
             } else {
-                await bot.sendMessage(message.from, 'Format command tidak valid. Gunakan: !rekap, !rekap emerald, !rekap 28062025, atau !rekap emerald 28062025');
+                await bot.sendMessage(message.from, 'Format command tidak valid. Gunakan: !rekap, !rekap 28062025');
             }
 
         } else if (message.body.startsWith('!detailrekap')) {
@@ -207,7 +215,7 @@ async function handleCommand(message, apartmentName) {
 
             // Parse command: !detailrekap [apartemen] [tanggal]
             const parts = message.body.trim().split(' ');
-            let targetApartment = apartmentName; // Default dari grup
+            let targetApartment = apartmentName; // Default: hanya tampilkan data grup ini
             let dateRange = null;
 
             // Cek apakah ada parameter apartemen dan/atau tanggal
@@ -226,7 +234,15 @@ async function handleCommand(message, apartmentName) {
                     };
                 } else {
                     // Parameter pertama adalah nama apartemen
-                    targetApartment = findApartmentByPartialName(parts[1]);
+                    const requestedApartment = findApartmentByPartialName(parts[1]);
+
+                    // Validasi: hanya izinkan jika apartemen yang diminta sama dengan grup ini
+                    if (requestedApartment && requestedApartment === apartmentName) {
+                        targetApartment = requestedApartment;
+                    } else if (requestedApartment && requestedApartment !== apartmentName) {
+                        await bot.sendMessage(message.from, `❌ Anda hanya dapat melihat detail rekap untuk apartemen ${apartmentName}. Tidak dapat mengakses data apartemen lain.`);
+                        return;
+                    }
 
                     // Cek apakah ada parameter tanggal setelah nama apartemen
                     if (parts.length > 2 && parts[2].length === 8 && /^\d{8}$/.test(parts[2])) {
@@ -243,15 +259,15 @@ async function handleCommand(message, apartmentName) {
                 }
             }
 
-            // Generate detailed report
+            // Generate detailed report - hanya untuk apartemen grup ini
             const report = await reportGenerator.generateDetailedReport(dateRange, targetApartment);
 
             if (report) {
                 // Kirim laporan ke chat yang sama
                 await bot.sendMessage(message.from, report);
-                logger.info('Laporan detail berhasil dikirim');
+                logger.info(`Laporan detail berhasil dikirim untuk apartemen: ${targetApartment}`);
             } else {
-                await bot.sendMessage(message.from, 'Tidak ada data untuk periode yang diminta.');
+                await bot.sendMessage(message.from, `Tidak ada data untuk apartemen ${targetApartment} pada periode yang diminta.`);
             }
 
         } else if (message.body.startsWith('!apartemen')) {
