@@ -582,6 +582,95 @@ ${commissionSection}`;
             throw error;
         }
     }
+
+    /**
+     * Generate detailed report showing all transactions
+     */
+    async generateDetailedReport(dateRange = null, apartmentName = null) {
+        try {
+            let startDate, endDate, displayDate;
+
+            if (dateRange) {
+                startDate = dateRange.startDate;
+                endDate = dateRange.endDate;
+                displayDate = moment(startDate).tz(this.timezone).format('DD/MM/YYYY');
+            } else {
+                // Default: dari jam 12:00 WIB hari ini sampai sekarang
+                const now = moment().tz(this.timezone);
+                const todayStart = now.clone().hour(12).minute(0).second(0);
+
+                startDate = todayStart.format('YYYY-MM-DD HH:mm:ss');
+                endDate = now.format('YYYY-MM-DD HH:mm:ss');
+                displayDate = now.format('DD/MM/YYYY');
+            }
+
+            logger.info(`Membuat laporan detail untuk ${displayDate}`);
+
+            // Get all transactions from database
+            const transactions = await database.getDetailedTransactions(startDate, endDate, apartmentName);
+
+            if (!transactions || transactions.length === 0) {
+                return null;
+            }
+
+            // Format header
+            let report = `📋 DETAIL REKAP CHECKIN\n`;
+            report += `🏢 ${this.companyName}\n`;
+            report += `📅 ${displayDate}\n`;
+            if (apartmentName) {
+                report += `🏠 ${apartmentName}\n`;
+            }
+            report += `\n`;
+
+            // Format each transaction
+            transactions.forEach((transaction, index) => {
+                const inputDate = moment(transaction.created_at).tz(this.timezone).format('DD/MM/YYYY HH:mm');
+
+                // Format payment method sesuai format asli
+                let cashTfDisplay = transaction.payment_method.toLowerCase();
+
+                // Jika ada amount, tampilkan dengan format yang benar
+                if (transaction.amount > 0) {
+                    // Konversi kembali ke format ribuan (dibagi 1000)
+                    const displayAmount = transaction.amount / 1000;
+                    cashTfDisplay += ` ${displayAmount}`;
+                } else {
+                    // Untuk kasus khusus seperti "tf amel" atau "cash apk"
+                    cashTfDisplay += ` ${transaction.cs_name}`;
+                }
+
+                // Format commission
+                let komisiDisplay;
+                if (transaction.commission > 0) {
+                    // Konversi kembali ke format ribuan (dibagi 1000)
+                    const displayCommission = transaction.commission / 1000;
+                    komisiDisplay = displayCommission.toString();
+                } else {
+                    // Untuk kasus khusus seperti komisi amel/apk
+                    komisiDisplay = transaction.cs_name;
+                }
+
+                report += `Tanggal & Jam input: ${inputDate}\n`;
+                report += `Unit      : ${transaction.unit}\n`;
+                report += `Cek out: ${transaction.checkout_time}\n`;
+                report += `Untuk   : ${transaction.duration}\n`;
+                report += `Cash/tf: ${cashTfDisplay}\n`;
+                report += `Cs         : ${transaction.cs_name}\n`;
+                report += `komisi : ${komisiDisplay}\n`;
+
+                if (index < transactions.length - 1) {
+                    report += `---------------\n`;
+                }
+            });
+
+            logger.info(`Laporan detail berhasil dibuat dengan ${transactions.length} transaksi`);
+            return report;
+
+        } catch (error) {
+            logger.error('Error membuat laporan detail:', error);
+            throw error;
+        }
+    }
 }
 
 module.exports = new ReportGenerator();

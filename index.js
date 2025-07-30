@@ -133,6 +133,39 @@ async function handleCommand(message, apartmentName) {
                 await bot.sendMessage(message.from, 'Format command tidak valid. Gunakan: !rekap atau !rekap 28062025');
             }
 
+        } else if (message.body.startsWith('!detailrekap')) {
+            logger.info(`Memproses command detailrekap dari ${message.from}: ${message.body}`);
+
+            // Parse tanggal jika ada (format: !detailrekap DDMMYYYY)
+            const parts = message.body.trim().split(' ');
+            let dateRange = null;
+
+            if (parts.length > 1) {
+                const dateStr = parts[1];
+                if (dateStr.length === 8) {
+                    const day = dateStr.substring(0, 2);
+                    const month = dateStr.substring(2, 4);
+                    const year = dateStr.substring(4, 8);
+                    const targetDate = `${year}-${month}-${day}`;
+
+                    dateRange = {
+                        startDate: targetDate,
+                        endDate: targetDate
+                    };
+                }
+            }
+
+            // Generate detailed report
+            const report = await reportGenerator.generateDetailedReport(dateRange, apartmentName);
+
+            if (report) {
+                // Kirim laporan ke chat yang sama
+                await bot.sendMessage(message.from, report);
+                logger.info('Laporan detail berhasil dikirim');
+            } else {
+                await bot.sendMessage(message.from, 'Tidak ada data untuk periode yang diminta.');
+            }
+
         } else if (message.body.startsWith('!apartemen')) {
             logger.info(`Memproses command apartemen dari ${message.from}: ${message.body}`);
 

@@ -475,6 +475,58 @@ class Database {
         return await this.executeQuery(query, [date]);
     }
 
+    /**
+     * Get detailed transactions for detailed report
+     */
+    async getDetailedTransactions(startDate, endDate, apartmentName = null) {
+        let query, params;
+
+        if (typeof startDate === 'string' && startDate.includes(':')) {
+            // DateTime range query (untuk default dari jam 12:00)
+            query = `
+                SELECT
+                    unit,
+                    checkout_time,
+                    duration,
+                    payment_method,
+                    cs_name,
+                    amount,
+                    commission,
+                    created_at,
+                    location
+                FROM transactions
+                WHERE created_at >= ? AND created_at <= ?
+            `;
+            params = [startDate, endDate];
+        } else {
+            // Date only query (untuk specific date)
+            query = `
+                SELECT
+                    unit,
+                    checkout_time,
+                    duration,
+                    payment_method,
+                    cs_name,
+                    amount,
+                    commission,
+                    created_at,
+                    location
+                FROM transactions
+                WHERE date_only = ?
+            `;
+            params = [startDate];
+        }
+
+        if (apartmentName) {
+            query += ` AND location = ?`;
+            params.push(apartmentName);
+        }
+
+        query += ` ORDER BY created_at ASC`;
+
+        return await this.executeQuery(query, params);
+    }
+
     async close() {
         if (this.db) {
             if (this.dbType === 'sqlite') {
