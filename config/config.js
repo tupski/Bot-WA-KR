@@ -24,6 +24,34 @@ class Configuration {
                 maxRetries: parseInt(process.env.MAX_RETRIES) || 3
             },
 
+            // Grup Apartemen Configuration
+            apartments: {
+                // Mapping nama grup WhatsApp ke nama apartemen
+                groupMapping: {
+                    'SKY HOUSE': 'SKY HOUSE',
+                    'BLUE TOWER': 'BLUE TOWER',
+                    'GREEN RESIDENCE': 'GREEN RESIDENCE',
+                    'GOLD APARTMENT': 'GOLD APARTMENT',
+                    'SILVER SUITES': 'SILVER SUITES',
+                    'DIAMOND TOWER': 'DIAMOND TOWER',
+                    'Code Tester' : 'Skyhouse BSD KR'
+                },
+
+                // Grup yang diizinkan (opsional - untuk keamanan)
+                allowedGroups: [
+                    'Code Tester',
+                    'SKY HOUSE',
+                    'BLUE TOWER',
+                    'GREEN RESIDENCE',
+                    'GOLD APARTMENT',
+                    'SILVER SUITES',
+                    'DIAMOND TOWER'
+                ],
+
+                // Default apartemen jika grup tidak dikenali
+                defaultApartment: 'UNKNOWN APARTMENT'
+            },
+
             // Database Configuration
             database: {
                 type: process.env.DB_TYPE || 'sqlite', // 'sqlite' or 'mysql'

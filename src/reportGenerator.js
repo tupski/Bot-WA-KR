@@ -456,6 +456,75 @@ ${commissionSection}`;
 
         return report;
     }
+
+    /**
+     * Generate laporan untuk apartemen tertentu
+     */
+    async generateApartmentReport(apartmentName, dateRange = null) {
+        try {
+            let startDate, endDate;
+
+            if (dateRange) {
+                startDate = dateRange.startDate;
+                endDate = dateRange.endDate;
+            } else {
+                // Default: hari ini
+                const today = moment().tz(this.timezone);
+                startDate = today.format('YYYY-MM-DD');
+                endDate = startDate;
+            }
+
+            logger.info(`Generating apartment report for ${apartmentName} from ${startDate} to ${endDate}`);
+
+            // Get transactions untuk apartemen tertentu
+            const transactions = await database.getTransactionsByLocation(apartmentName, startDate, endDate);
+
+            if (!transactions || transactions.length === 0) {
+                return `📊 *LAPORAN ${apartmentName.toUpperCase()}*\n${startDate === endDate ? startDate : `${startDate} - ${endDate}`}\n\n❌ Tidak ada data transaksi.`;
+            }
+
+            // Calculate stats
+            const stats = this.calculateRangeStats(transactions);
+
+            // Format report
+            let report = `📊 *LAPORAN ${apartmentName.toUpperCase()}*\n`;
+            report += `📅 ${startDate === endDate ? startDate : `${startDate} - ${endDate}`}\n\n`;
+
+            report += `📈 *RINGKASAN*\n`;
+            report += `Total Transaksi: ${stats.totalTransactions}\n`;
+            report += `Total Pendapatan: ${this.formatCurrency(stats.totalAmount)}\n`;
+            report += `Total Komisi: ${this.formatCurrency(stats.totalCommission)}\n`;
+            report += `Pendapatan Bersih: ${this.formatCurrency(stats.totalNet)}\n\n`;
+
+            // Payment methods
+            if (stats.paymentMethods.Cash > 0 || stats.paymentMethods.Transfer > 0) {
+                report += `💰 *METODE PEMBAYARAN*\n`;
+                if (stats.paymentMethods.Cash > 0) {
+                    report += `Cash: ${this.formatCurrency(stats.paymentMethods.Cash)}\n`;
+                }
+                if (stats.paymentMethods.Transfer > 0) {
+                    report += `Transfer: ${this.formatCurrency(stats.paymentMethods.Transfer)}\n`;
+                }
+                report += `\n`;
+            }
+
+            // CS Summary
+            if (Object.keys(stats.csSummary).length > 0) {
+                report += `👥 *RINGKASAN CS*\n`;
+                Object.entries(stats.csSummary).forEach(([csName, data]) => {
+                    if (data.count > 0) {
+                        report += `${csName}: ${data.count} transaksi - ${this.formatCurrency(data.net)}\n`;
+                    }
+                });
+            }
+
+            return report;
+
+        } catch (error) {
+            logger.error('Error generating apartment report:', error);
+            throw error;
+        }
+    }
 }
 
 module.exports = new ReportGenerator();

@@ -436,6 +436,32 @@ class Database {
         return deleted;
     }
 
+    async getTransactionsByLocation(location, startDate, endDate) {
+        const query = `
+            SELECT * FROM transactions
+            WHERE location = ?
+            AND date BETWEEN ? AND ?
+            ORDER BY created_at DESC
+        `;
+        return await this.executeQuery(query, [location, startDate, endDate]);
+    }
+
+    async getLocationStats(date) {
+        const query = `
+            SELECT
+                location,
+                COUNT(*) as total_transactions,
+                SUM(amount) as total_amount,
+                SUM(commission) as total_commission,
+                SUM(net_amount) as total_net
+            FROM transactions
+            WHERE date = ?
+            GROUP BY location
+            ORDER BY total_amount DESC
+        `;
+        return await this.executeQuery(query, [date]);
+    }
+
     async close() {
         if (this.db) {
             if (this.dbType === 'sqlite') {

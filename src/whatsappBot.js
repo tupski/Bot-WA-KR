@@ -144,6 +144,36 @@ class WhatsAppBot {
         }
     }
 
+    /**
+     * Dapatkan nama apartemen berdasarkan nama grup
+     */
+    getApartmentName(groupName) {
+        if (!groupName) return config.apartments.defaultApartment;
+
+        // Cek mapping grup ke apartemen
+        const apartmentName = config.apartments.groupMapping[groupName];
+        if (apartmentName) {
+            return apartmentName;
+        }
+
+        // Jika tidak ada mapping, gunakan nama grup langsung
+        return groupName;
+    }
+
+    /**
+     * Cek apakah grup diizinkan untuk menggunakan bot
+     */
+    isGroupAllowed(groupName) {
+        if (!groupName) return false;
+
+        // Jika tidak ada konfigurasi allowedGroups, izinkan semua
+        if (!config.apartments.allowedGroups || config.apartments.allowedGroups.length === 0) {
+            return true;
+        }
+
+        return config.apartments.allowedGroups.includes(groupName);
+    }
+
     // Register message handler
     addMessageHandler(handler) {
         if (typeof handler === 'function') {

@@ -24,24 +24,33 @@ async function handleMessage(message) {
             return;
         }
 
-        // Dapatkan nama grup jika pesan dari grup
+        // Dapatkan nama grup dan apartemen jika pesan dari grup
         let groupName = '';
+        let apartmentName = '';
         if (message.from.includes('@g.us')) {
             groupName = await bot.getGroupName(message.from);
             if (!groupName) {
                 groupName = 'Unknown Group';
             }
+
+            // Cek apakah grup diizinkan
+            if (!bot.isGroupAllowed(groupName)) {
+                logger.info(`Grup ${groupName} tidak diizinkan menggunakan bot`);
+                return;
+            }
+
+            apartmentName = bot.getApartmentName(groupName);
         }
 
         // Cek apakah pesan adalah command
         if (messageParser.isCommand(message.body)) {
-            await handleCommand(message, groupName);
+            await handleCommand(message, apartmentName || groupName);
             return;
         }
 
         // Cek apakah pesan dimulai dengan Unit (format booking)
         if (message.body.toLowerCase().startsWith('unit')) {
-            logger.info(`Memproses pesan booking dari ${groupName || 'private'}: ${message.body.substring(0, 50)}...`);
+            logger.info(`Memproses pesan booking dari ${apartmentName || groupName || 'private'}: ${message.body.substring(0, 50)}...`);
 
             // Cek apakah pesan sudah diproses sebelumnya
             const isProcessed = await database.isMessageProcessed(message.id.id);
@@ -50,8 +59,8 @@ async function handleMessage(message) {
                 return;
             }
 
-            // Parse pesan dengan nama grup
-            const parseResult = messageParser.parseBookingMessage(message.body, message.id.id, groupName);
+            // Parse pesan dengan nama apartemen
+            const parseResult = messageParser.parseBookingMessage(message.body, message.id.id, apartmentName || groupName);
 
             if (parseResult.status === 'VALID') {
                 // Simpan ke database
@@ -96,8 +105,8 @@ async function handleMessage(message) {
     }
 }
 
-// Handler untuk command !rekap
-async function handleCommand(message, groupName) {
+// Handler untuk command !rekap dan !apartemen
+async function handleCommand(message, apartmentName) {
     try {
         if (message.body.startsWith('!rekap')) {
             logger.info(`Memproses command rekap dari ${message.from}: ${message.body}`);
@@ -122,6 +131,40 @@ async function handleCommand(message, groupName) {
             } else {
                 await bot.sendMessage(message.from, 'Format command tidak valid. Gunakan: !rekap atau !rekap 28062025');
             }
+
+        } else if (message.body.startsWith('!apartemen')) {
+            logger.info(`Memproses command apartemen dari ${message.from}: ${message.body}`);
+
+            if (!apartmentName) {
+                await bot.sendMessage(message.from, '❌ Command ini hanya bisa digunakan di grup apartemen.');
+                return;
+            }
+
+            // Parse tanggal jika ada (format: !apartemen DDMMYYYY)
+            const parts = message.body.trim().split(' ');
+            let dateRange = null;
+
+            if (parts.length > 1) {
+                const dateStr = parts[1];
+                if (dateStr.length === 8) {
+                    const day = dateStr.substring(0, 2);
+                    const month = dateStr.substring(2, 4);
+                    const year = dateStr.substring(4, 8);
+                    const targetDate = `${year}-${month}-${day}`;
+
+                    dateRange = {
+                        startDate: targetDate,
+                        endDate: targetDate
+                    };
+                }
+            }
+
+            // Generate apartment report
+            const report = await reportGenerator.generateApartmentReport(apartmentName, dateRange);
+
+            // Kirim report ke pengirim
+            await bot.sendMessage(message.from, report);
+            logger.info(`Apartment report untuk ${apartmentName} berhasil dikirim`);
         }
     } catch (error) {
         logger.error('Error handling command:', error);
