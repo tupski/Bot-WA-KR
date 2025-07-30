@@ -126,7 +126,7 @@ async function handleNewBookingMessage(message, apartmentName) {
         // Simpan ke database
         await database.saveTransaction(parseResult.data);
         await database.markMessageProcessed(message.id.id, message.from);
-        logger.info('Transaksi berhasil disimpan');
+        logger.info(`Transaksi berhasil disimpan dengan Message ID: ${message.id.id}`);
 
     } else if (parseResult.status === 'WRONG_FORMAT') {
         // Format salah - hapus pesan dan maki-maki
@@ -860,6 +860,137 @@ async function handleCommand(message, apartmentName) {
 
             } catch (error) {
                 logger.error('Error dalam testbusiness command:', error);
+                await bot.sendMessage(message.from, `❌ Terjadi error: ${error.message}`);
+            }
+
+        } else if (message.body.startsWith('!debugmsg')) {
+            logger.info(`Memproses command debugmsg dari ${message.from}: ${message.body}`);
+
+            // Hanya bisa dipanggil dari private message untuk keamanan
+            const isFromGroup = message.from.includes('@g.us');
+            if (isFromGroup) {
+                await bot.sendMessage(message.from, '❌ Command !debugmsg hanya bisa digunakan melalui pesan pribadi untuk keamanan.');
+                return;
+            }
+
+            try {
+                // Ambil parameter apartemen jika ada
+                const parts = message.body.split(' ');
+                let targetApartment = null;
+
+                if (parts.length > 1) {
+                    targetApartment = findApartmentByPartialName(parts[1]);
+                }
+
+                // Ambil transaksi terbaru untuk apartemen tertentu atau semua
+                const recentTransactions = await database.getLastTransactions(5);
+                const filteredTransactions = targetApartment ?
+                    recentTransactions.filter(t => t.location === targetApartment) :
+                    recentTransactions;
+
+                let debugMsg = `🔍 *Debug Message ID & Transaksi*\n\n`;
+
+                if (filteredTransactions.length === 0) {
+                    debugMsg += `❌ Tidak ada transaksi${targetApartment ? ` untuk ${targetApartment}` : ''}`;
+                } else {
+                    debugMsg += `📊 *${filteredTransactions.length} Transaksi Terbaru${targetApartment ? ` - ${targetApartment}` : ''}:*\n\n`;
+
+                    filteredTransactions.forEach((transaction, index) => {
+                        debugMsg += `${index + 1}. **${transaction.location}**\n`;
+                        debugMsg += `   Unit: ${transaction.unit}\n`;
+                        debugMsg += `   CS: ${transaction.cs_name}\n`;
+                        debugMsg += `   Amount: ${transaction.amount.toLocaleString('id-ID')}\n`;
+                        debugMsg += `   Date: ${transaction.date_only}\n`;
+                        debugMsg += `   Created: ${transaction.created_at}\n`;
+                        debugMsg += `   Message ID: \`${transaction.message_id}\`\n`;
+                        debugMsg += `   ID Length: ${transaction.message_id ? transaction.message_id.length : 'null'}\n\n`;
+                    });
+
+                    debugMsg += `💡 *Tips untuk Debug:*\n`;
+                    debugMsg += `- Edit/hapus pesan booking di grup\n`;
+                    debugMsg += `- Cek log untuk melihat message ID format\n`;
+                    debugMsg += `- Bandingkan dengan message ID di database\n`;
+                    debugMsg += `- Gunakan !rawdata untuk lihat semua data`;
+                }
+
+                await bot.sendMessage(message.from, debugMsg);
+                logger.info('Debug message ID info berhasil dikirim');
+
+            } catch (error) {
+                logger.error('Error dalam debugmsg command:', error);
+                await bot.sendMessage(message.from, `❌ Terjadi error: ${error.message}`);
+            }
+
+        } else if (message.body.startsWith('!forcedelete')) {
+            logger.info(`Memproses command forcedelete dari ${message.from}: ${message.body}`);
+
+            // Hanya bisa dipanggil dari private message untuk keamanan
+            const isFromGroup = message.from.includes('@g.us');
+            if (isFromGroup) {
+                await bot.sendMessage(message.from, '❌ Command !forcedelete hanya bisa digunakan melalui pesan pribadi untuk keamanan.');
+                return;
+            }
+
+            try {
+                // Format: !forcedelete unit cs_name
+                // Contoh: !forcedelete L3/30N dreamy
+                const parts = message.body.split(' ');
+
+                if (parts.length < 3) {
+                    await bot.sendMessage(message.from, `❌ Format salah. Gunakan: !forcedelete unit cs_name\nContoh: !forcedelete L3/30N dreamy`);
+                    return;
+                }
+
+                const unit = parts[1];
+                const csName = parts[2];
+
+                // Cari transaksi berdasarkan unit dan CS name
+                const moment = require('moment-timezone');
+                const today = moment().tz('Asia/Jakarta');
+
+                // Business day logic
+                let businessDay;
+                if (today.hour() < 12) {
+                    businessDay = today.clone().subtract(1, 'day');
+                } else {
+                    businessDay = today.clone();
+                }
+
+                const startDate = businessDay.format('YYYY-MM-DD') + ' 12:00:00';
+                const endDate = businessDay.clone().add(1, 'day').format('YYYY-MM-DD') + ' 11:59:59';
+
+                // Cari transaksi
+                const transactions = await database.getTransactionsByDateRange(startDate, endDate);
+                const targetTransaction = transactions.find(t =>
+                    t.unit.toLowerCase() === unit.toLowerCase() &&
+                    t.cs_name.toLowerCase() === csName.toLowerCase()
+                );
+
+                if (targetTransaction) {
+                    // Hapus transaksi
+                    await database.deleteTransaction(targetTransaction.id);
+
+                    // Hapus dari processed messages jika ada
+                    if (targetTransaction.message_id) {
+                        await database.removeProcessedMessage(targetTransaction.message_id);
+                    }
+
+                    const confirmMsg = `✅ *Transaksi berhasil dihapus paksa*\n` +
+                        `📝 Unit: ${targetTransaction.unit}\n` +
+                        `👤 CS: ${targetTransaction.cs_name}\n` +
+                        `💰 Amount: ${targetTransaction.amount.toLocaleString('id-ID')}\n` +
+                        `📅 Date: ${targetTransaction.date_only}\n` +
+                        `🔑 Message ID: ${targetTransaction.message_id || 'N/A'}\n` +
+                        `⚠️ Data telah dihapus dari sistem`;
+
+                    await bot.sendMessage(message.from, confirmMsg);
+                    logger.info(`Force delete berhasil: Unit ${unit}, CS ${csName}`);
+                } else {
+                    await bot.sendMessage(message.from, `❌ Tidak ditemukan transaksi dengan Unit: ${unit}, CS: ${csName} pada business day ${businessDay.format('DD/MM/YYYY')}`);
+                }
+
+            } catch (error) {
+                logger.error('Error dalam forcedelete command:', error);
                 await bot.sendMessage(message.from, `❌ Terjadi error: ${error.message}`);
             }
 

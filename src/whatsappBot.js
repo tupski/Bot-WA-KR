@@ -221,6 +221,7 @@ class WhatsAppBot {
             const database = require('./database');
 
             logger.info(`Menangani pesan yang dihapus: ${deletedMessage.id.id}`);
+            logger.info(`Message ID format: ${JSON.stringify(deletedMessage.id)}`);
 
             // Cek apakah ada transaksi dengan message ID ini
             const existingTransaction = await database.getTransactionByMessageId(deletedMessage.id.id);
@@ -248,6 +249,49 @@ class WhatsAppBot {
                 }
             } else {
                 logger.info(`Tidak ada transaksi untuk pesan yang dihapus: ${deletedMessage.id.id}`);
+
+                // Debug: Cari transaksi dengan message ID yang mirip
+                const recentTransactions = await database.getLastTransactions(10);
+                logger.info(`Debug: 10 transaksi terbaru dengan message ID:`);
+                recentTransactions.forEach(t => {
+                    logger.info(`  - Unit: ${t.unit}, CS: ${t.cs_name}, Message ID: ${t.message_id}`);
+                });
+
+                // Cek apakah ada transaksi dengan format message ID yang berbeda
+                const alternativeFormats = [
+                    deletedMessage.id._serialized,
+                    deletedMessage.id.id,
+                    `${deletedMessage.id.remote}_${deletedMessage.id.id}`,
+                    deletedMessage.id.remote + '_' + deletedMessage.id.id
+                ];
+
+                logger.info(`Debug: Mencoba format message ID alternatif:`);
+                for (const altId of alternativeFormats) {
+                    if (altId) {
+                        logger.info(`  - Trying: ${altId}`);
+                        const altTransaction = await database.getTransactionByMessageId(altId);
+                        if (altTransaction) {
+                            logger.info(`  - FOUND with alternative ID: ${altId}`);
+                            // Hapus dengan ID alternatif
+                            await database.deleteTransactionByMessageId(altId);
+                            await database.removeProcessedMessage(altId);
+
+                            // Kirim notifikasi
+                            if (deletedMessage.from && deletedMessage.from.includes('@g.us')) {
+                                const notificationMsg = `🗑️ *Transaksi dihapus*\n` +
+                                    `📝 Unit: ${altTransaction.unit}\n` +
+                                    `👤 CS: ${altTransaction.cs_name}\n` +
+                                    `💰 Amount: ${altTransaction.amount.toLocaleString('id-ID')}\n` +
+                                    `⚠️ Data telah dihapus dari sistem`;
+
+                                await this.sendMessage(deletedMessage.from, notificationMsg);
+                            }
+                            return;
+                        }
+                    }
+                }
+
+                logger.warn(`Tidak dapat menemukan transaksi untuk pesan yang dihapus dengan format ID apapun`);
             }
 
         } catch (error) {
