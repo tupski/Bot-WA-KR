@@ -40,7 +40,7 @@ class MessageParser {
                     status: 'WRONG_FORMAT',
                     data: null,
                     missingField: null,
-                    message: 'Salah anjing. yang bener gini:\n\n🟢SKY HOUSE\nUnit      :L3/30N\nCek out: 05:00\nUntuk   : 6 jam\nCash/Tf: tf kr 250\nCs    : dreamy\nKomisi: 50'
+                    message: 'Salah anjing. yang bener gini:\n\n🟢SKY HOUSE\nUnit      :\nCek out: \nUntuk   : \nCash/Tf: \nCs    : \nKomisi: '
                 };
             }
 

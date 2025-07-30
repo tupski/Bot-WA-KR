@@ -55,6 +55,11 @@ fi
 print_info "Install dependencies..."
 sudo apt install -y git sqlite3 ufw
 
+# Create directories first
+print_info "Create directories..."
+mkdir -p "$INSTALL_DIR"/{logs,data,exports,session}
+mkdir -p "$HOME/backup"
+
 # Install MySQL if requested
 if [[ "$INSTALL_MYSQL" =~ ^[Yy]$ ]]; then
     print_info "Install MySQL Server..."
@@ -96,11 +101,6 @@ else
     DB_CONFIG="DB_TYPE=sqlite
 SQLITE_PATH=./data/bot-kr.db"
 fi
-
-# Create directories
-print_info "Create directories..."
-mkdir -p "$INSTALL_DIR"/{logs,data,exports,session}
-mkdir -p "$HOME/backup"
 
 cd "$INSTALL_DIR"
 
