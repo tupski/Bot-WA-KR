@@ -3,7 +3,7 @@
 
 const messageParser = require('../src/messageParser');
 
-// Test data dengan format baru
+// Test data dengan format baru - berbagai warna lingkaran
 const testMessages = [
     {
         input: `🟢SKY HOUSE
@@ -27,7 +27,7 @@ Komisi: 50`,
         }
     },
     {
-        input: `🟢TREEPARK BSD
+        input: `🔴TREEPARK BSD
 Unit      :A1/20N
 Cek out: 14:30
 Untuk   : 3 jam
@@ -48,17 +48,17 @@ Komisi: 75`,
         }
     },
     {
-        input: `🟢SKY HOUSE
+        input: `🟡GOLDEN TOWER
 Unit      :B2/15N
 Cek out: 16:00
 Untuk   : 4 jam
 Cash/Tf: tf amel
 Cs    : apk
 Komisi: 0`,
-        groupName: 'SKY HOUSE',
+        groupName: 'GOLDEN TOWER',
         expected: {
-            location: 'SKY HOUSE',
-            groupPrefix: 'SKY HOUSE',
+            location: 'GOLDEN TOWER',
+            groupPrefix: 'GOLDEN TOWER',
             unit: 'B2/15N',
             checkoutTime: '16:00',
             duration: '4 jam',
@@ -118,15 +118,15 @@ function runTests() {
     console.log('Testing pesan tidak valid...');
     const invalidMessages = [
         'Pesan biasa tanpa emoji',
-        'Cek out: 05:00', // Tidak dimulai dengan 🟢
-        `Unit: A1`, // Tidak dimulai dengan 🟢
-        'Checkout: 05:00\nUnit: A1\nCs: test' // Tidak dimulai dengan 🟢
+        'Cek out: 05:00', // Tidak ada Unit di baris kedua
+        `Unit: A1`, // Tidak ada prefix di baris pertama
+        'Checkout: 05:00\nCek out: A1\nCs: test' // Tidak ada Unit di baris kedua
     ];
 
     // Test missing field
     const missingFieldMessages = [
         {
-            input: `🟢SKY HOUSE
+            input: `🔵BLUE TOWER
 Unit      :L3/30N
 Cek out: 05:00
 Untuk   : 6 jam
@@ -135,7 +135,7 @@ Cs    : dreamy`,
             expectedMissing: 'Komisi'
         },
         {
-            input: `🟢SKY HOUSE
+            input: `🟠ORANGE PARK
 Unit      :L3/30N
 Cek out: 05:00
 Untuk   : 6 jam

@@ -11,7 +11,7 @@ class MessageParser {
     /**
      * Parse pesan booking dengan format baru
      * Format yang diharapkan:
-     * 🟢SKY HOUSE
+     * 🟢SKY HOUSE (atau 🔴, 🟡, 🔵, dll. untuk apartemen lain)
      * Unit      :L3/30N
      * Cek out: 05:00
      * Untuk   : 6 jam
@@ -24,8 +24,8 @@ class MessageParser {
             // Pisahkan baris-baris pesan
             const lines = messageBody.split('\n').map(line => line.trim()).filter(line => line);
 
-            // Cek apakah pesan dimulai dengan 🟢 dan nama grup
-            if (lines.length === 0 || !lines[0].startsWith('🟢')) {
+            // Cek apakah ada minimal 2 baris dan baris kedua mengandung "Unit"
+            if (lines.length < 2 || !lines[1].toLowerCase().includes('unit')) {
                 return {
                     status: 'WRONG_PREFIX',
                     data: null,
@@ -44,8 +44,9 @@ class MessageParser {
                 };
             }
 
-            // Ekstrak nama grup dari baris pertama
-            const groupPrefix = lines[0].replace('🟢', '').trim(); // Hapus 🟢 dan ambil nama grup
+            // Ekstrak nama grup dari baris pertama (hapus emoji lingkaran berwarna)
+            // Hapus 2 karakter pertama (emoji biasanya 2 karakter) dan trim
+            const groupPrefix = lines[0].substring(2).trim();
 
             // Parse setiap baris mulai dari baris kedua
             const data = {};

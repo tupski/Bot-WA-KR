@@ -48,8 +48,9 @@ async function handleMessage(message) {
             return;
         }
 
-        // Cek apakah pesan dimulai dengan 🟢 (format booking)
-        if (message.body.startsWith('🟢')) {
+        // Cek apakah pesan memiliki format booking (baris kedua mengandung "Unit")
+        const lines = message.body.split('\n').map(line => line.trim()).filter(line => line);
+        if (lines.length >= 2 && lines[1].toLowerCase().includes('unit')) {
             logger.info(`Memproses pesan booking dari ${apartmentName || groupName || 'private'}: ${message.body.substring(0, 50)}...`);
 
             // Cek apakah pesan sudah diproses sebelumnya

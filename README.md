@@ -110,7 +110,7 @@ ALLOWED_GROUPS=group1@g.us,group2@g.us
 
 ## Format Pesan
 
-Bot memproses pesan yang dimulai dengan 🟢 dan nama grup. Contoh format:
+Bot memproses pesan yang memiliki indikator lingkaran berwarna di baris pertama dan "Unit" di baris kedua. Contoh format:
 
 ```
 🟢SKY HOUSE
@@ -124,7 +124,12 @@ Komisi    : 50
 
 ### Komponen Pesan
 
-- **🟢[NAMA GRUP]**: Prefix wajib dengan nama grup (🟢SKY HOUSE, 🟢TREEPARK BSD, dll.)
+- **[LINGKARAN BERWARNA][NAMA GRUP]**: Prefix dengan indikator warna per apartemen
+  - 🟢 SKY HOUSE (hijau untuk Sky House)
+  - 🔴 TREEPARK BSD (merah untuk Treepark)
+  - 🟡 GOLDEN TOWER (kuning untuk Golden Tower)
+  - 🔵 BLUE RESIDENCE (biru untuk Blue Residence)
+  - Dan warna lainnya sesuai apartemen
 - **Unit**: Identifier unit/kamar (L3/30N, A1, B2, dll.)
 - **Cek out**: Waktu checkout dalam format HH:MM
 - **Untuk**: Durasi dalam jam (contoh: "6 jam", "2.5 jam")
@@ -139,7 +144,8 @@ Komisi    : 50
 - **CS APK**: Tidak dihitung dalam perhitungan keuangan
 - **Tf Amel**: Tanpa jumlah, hanya mencatat transaksi
 - **Spasi Fleksibel**: Bot dapat menangani variasi spasi di sekitar tanda titik dua
-- **Multi-Grup**: Setiap grup memiliki prefix sendiri (🟢SKY HOUSE, 🟢TREEPARK BSD, dll.)
+- **Multi-Apartemen**: Setiap apartemen memiliki warna indikator sendiri
+- **Deteksi Otomatis**: Bot mendeteksi format berdasarkan kata "Unit" di baris kedua
 
 ## Command System
 
