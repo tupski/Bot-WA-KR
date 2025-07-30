@@ -166,7 +166,7 @@ class ReportGenerator {
      * Format the complete report
      */
     formatReport(displayDate, displayTime, csSection, financeSection, commissionSection) {
-        return `*Laporan ${this.companyName}*
+        return `*Laporan KAKARAMA ROOM*
 *Tanggal: ${displayDate}, Jam ${displayTime} WIB*
 
 ${csSection}
@@ -200,7 +200,7 @@ ${commissionSection}`;
                 database.getCSPerformance(actualStartDate, endDate)
             ]);
 
-            let report = `*Laporan Mingguan ${this.companyName}*\n`;
+            let report = `*Laporan Mingguan KAKARAMA ROOM*\n`;
             report += `*Periode: ${moment(actualStartDate).format('DD MMM')} - ${moment(endDate).format('DD MMM YYYY')}*\n\n`;
 
             // Weekly summary
@@ -248,7 +248,7 @@ ${commissionSection}`;
                 database.getCSPerformance(startDate, endDate)
             ]);
 
-            let report = `*Laporan Bulanan ${this.companyName}*\n`;
+            let report = `*Laporan Bulanan KAKARAMA ROOM*\n`;
             report += `*Bulan: ${targetDate.format('MMMM YYYY')}*\n\n`;
 
             // Monthly summary
@@ -447,10 +447,10 @@ ${commissionSection}`;
         const reportDate = displayDate || now.format('DD/MM/YYYY');
 
         let report = `📊 *REKAP LAPORAN ${reportDate}*\n`;
-        report += `🏢 ${this.companyName}\n`;
+        report += `🏢 KAKARAMA ROOM\n`;
         if (apartmentName) {
-            // Ganti nama apartemen ke KAKARAMA ROOM untuk konsistensi
-            report += `🏠 KAKARAMA ROOM\n`;
+            // Tampilkan nama apartemen spesifik
+            report += `🏠 ${apartmentName}\n`;
         }
         report += `📅 ${reportDate} 12:00 - ${now.format('HH:mm')} WIB\n\n`;
 
@@ -632,11 +632,11 @@ ${commissionSection}`;
 
             // Format header
             let report = `📋 DETAIL REKAP CHECKIN\n`;
-            report += `🏢 ${this.companyName}\n`;
+            report += `🏢 KAKARAMA ROOM\n`;
             report += `📅 ${displayDate}\n`;
             if (apartmentName) {
-                // Ganti nama apartemen ke KAKARAMA ROOM untuk konsistensi
-                report += `🏠 KAKARAMA ROOM\n`;
+                // Tampilkan nama apartemen spesifik
+                report += `🏠 ${apartmentName}\n`;
             }
             report += `\n`;
 

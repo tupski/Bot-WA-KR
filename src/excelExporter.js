@@ -38,7 +38,7 @@ class ExcelExporter {
 
             // Create workbook
             const workbook = new ExcelJS.Workbook();
-            workbook.creator = this.companyName;
+            workbook.creator = 'KAKARAMA ROOM';
             workbook.lastModifiedBy = 'WhatsApp Bot';
             workbook.created = new Date();
             workbook.modified = new Date();
@@ -49,7 +49,7 @@ class ExcelExporter {
             await this.createCommissionSheet(workbook, marketingCommission, displayDate);
 
             // Save file
-            const filename = `Laporan_${this.companyName.replace(/\s+/g, '_')}_${displayDate}.xlsx`;
+            const filename = `Laporan_KAKARAMA_ROOM_${displayDate}.xlsx`;
             const filepath = path.join(this.exportDir, filename);
             
             await workbook.xlsx.writeFile(filepath);
@@ -94,7 +94,7 @@ class ExcelExporter {
         headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
 
         // Add title
-        worksheet.insertRow(1, [`Laporan Transaksi ${this.companyName} - ${date}`]);
+        worksheet.insertRow(1, [`Laporan Transaksi KAKARAMA ROOM - ${date}`]);
         worksheet.mergeCells('A1:J1');
         const titleRow = worksheet.getRow(1);
         titleRow.font = { bold: true, size: 14 };
@@ -180,7 +180,7 @@ class ExcelExporter {
         ];
 
         // Add title
-        worksheet.insertRow(1, [`Ringkasan CS ${this.companyName} - ${date}`]);
+        worksheet.insertRow(1, [`Ringkasan CS KAKARAMA ROOM - ${date}`]);
         worksheet.mergeCells('A1:F1');
         const titleRow = worksheet.getRow(1);
         titleRow.font = { bold: true, size: 14 };
@@ -269,7 +269,7 @@ class ExcelExporter {
         ];
 
         // Add title
-        worksheet.insertRow(1, [`Komisi Marketing ${this.companyName} - ${date}`]);
+        worksheet.insertRow(1, [`Komisi Marketing KAKARAMA ROOM - ${date}`]);
         worksheet.mergeCells('A1:E1');
         const titleRow = worksheet.getRow(1);
         titleRow.font = { bold: true, size: 14 };
@@ -381,14 +381,14 @@ class ExcelExporter {
 
             // Create workbook
             const workbook = new ExcelJS.Workbook();
-            workbook.creator = this.companyName;
+            workbook.creator = 'KAKARAMA ROOM';
             workbook.created = new Date();
 
             // Create monthly summary sheet
             await this.createMonthlySummarySheet(workbook, transactions, csPerformance, monthName);
 
             // Save file
-            const filename = `Laporan_Bulanan_${this.companyName.replace(/\s+/g, '_')}_${monthName}.xlsx`;
+            const filename = `Laporan_Bulanan_KAKARAMA_ROOM_${monthName}.xlsx`;
             const filepath = path.join(this.exportDir, filename);
             
             await workbook.xlsx.writeFile(filepath);
@@ -409,7 +409,7 @@ class ExcelExporter {
         const worksheet = workbook.addWorksheet('Ringkasan Bulanan');
 
         // Add title
-        worksheet.addRow([`Laporan Bulanan ${this.companyName} - ${monthName.replace('_', ' ')}`]);
+        worksheet.addRow([`Laporan Bulanan KAKARAMA ROOM - ${monthName.replace('_', ' ')}`]);
         worksheet.mergeCells('A1:F1');
         const titleRow = worksheet.getRow(1);
         titleRow.font = { bold: true, size: 16 };
