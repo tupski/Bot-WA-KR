@@ -68,7 +68,13 @@ class MessageParser {
                 } else if (line.toLowerCase().includes('cs')) {
                     data.csName = this.extractValue(line);
                 } else if (line.toLowerCase().includes('komisi')) {
-                    data.komisi = parseFloat(this.extractValue(line)) || 0;
+                    const komisiValue = this.extractValue(line).toLowerCase();
+                    // Khusus untuk komisi apk/amel
+                    if (komisiValue === 'apk' || komisiValue === 'amel') {
+                        data.komisi = 0;
+                    } else {
+                        data.komisi = parseFloat(komisiValue) || 0;
+                    }
                 }
             }
 
@@ -181,6 +187,13 @@ class MessageParser {
                 method: 'Cash',
                 amount: amount,
                 cs: null
+            };
+        } else if (value === 'apk') {
+            // Khusus untuk APK tanpa nominal
+            return {
+                method: 'Cash',
+                amount: 0,
+                cs: 'APK'
             };
         } else if (value.startsWith('tf')) {
             // Parse TF dengan CS dan nominal

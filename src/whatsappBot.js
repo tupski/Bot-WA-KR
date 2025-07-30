@@ -373,7 +373,7 @@ class WhatsAppBot {
 
             for (const chat of chats) {
                 // Skip jika bukan grup yang diizinkan
-                if (!chat.isGroup || !config.allowedGroups.includes(chat.id._serialized)) {
+                if (!chat.isGroup || (config.allowedGroups && !config.allowedGroups.includes(chat.id._serialized))) {
                     continue;
                 }
 

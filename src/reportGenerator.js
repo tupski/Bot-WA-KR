@@ -447,11 +447,24 @@ ${commissionSection}`;
         report += `🏢 ${this.companyName}\n`;
         report += `📅 ${now.format('DD/MM/YYYY')} 12:00 - ${now.format('HH:mm')} WIB\n\n`;
 
-        // Total CS
+        // Total CS berdasarkan mapping
         report += `👥 *TOTAL CS*\n`;
+
+        // Kelompokkan CS berdasarkan mapping
+        const csMappedSummary = { amel: 0, apk: 0, kr: 0 };
         Object.entries(stats.csSummary).forEach(([csName, data]) => {
-            report += `- total cs ${csName.toLowerCase()}: ${data.count}\n`;
+            if (csName.toLowerCase() === 'amel') {
+                csMappedSummary.amel += data.count;
+            } else if (csName.toLowerCase() === 'apk') {
+                csMappedSummary.apk += data.count;
+            } else {
+                csMappedSummary.kr += data.count;
+            }
         });
+
+        report += `- total cs amel: ${csMappedSummary.amel}\n`;
+        report += `- total cs apk: ${csMappedSummary.apk}\n`;
+        report += `- total cs kr: ${csMappedSummary.kr}\n`;
 
         const totalCS = Object.values(stats.csSummary).reduce((sum, data) => sum + data.count, 0);
         report += `\n- Jumlah CS: ${totalCS}\n`;
