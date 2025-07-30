@@ -513,6 +513,67 @@ async function handleCommand(message, apartmentName) {
                 await bot.sendMessage(message.from, `❌ Terjadi error dalam proses rekap ulang: ${error.message}`);
             }
 
+        } else if (message.body.startsWith('!envdetail')) {
+            logger.info(`Memproses command envdetail dari ${message.from}: ${message.body}`);
+
+            // Hanya bisa dipanggil dari private message untuk keamanan
+            const isFromGroup = message.from.includes('@g.us');
+            if (isFromGroup) {
+                await bot.sendMessage(message.from, '❌ Command !envdetail hanya bisa digunakan melalui pesan pribadi untuk keamanan.');
+                return;
+            }
+
+            try {
+                let envMsg = `🔍 *Environment Variables Detail*\n\n`;
+
+                // Test semua group environment variables dengan detail
+                const groups = ['SKYHOUSE', 'TREEPARK', 'EMERALD', 'SPRINGWOOD', 'SERPONG', 'TOKYO', 'TESTER'];
+
+                groups.forEach(group => {
+                    const id = process.env[`GROUP_${group}_ID`];
+                    const name = process.env[`GROUP_${group}_NAME`];
+                    const enabled = process.env[`GROUP_${group}_ENABLED`];
+
+                    envMsg += `📋 *${group}:*\n`;
+                    envMsg += `- ID: ${id || '❌ undefined'}\n`;
+                    envMsg += `- NAME: ${name || '❌ undefined'}\n`;
+                    envMsg += `- ENABLED: ${enabled || '❌ undefined'}\n`;
+
+                    // Debug: Cek apakah value benar-benar ada
+                    if (id) {
+                        envMsg += `- ID Length: ${id.length}\n`;
+                        envMsg += `- ID Type: ${typeof id}\n`;
+                    }
+                    if (name) {
+                        envMsg += `- NAME Length: ${name.length}\n`;
+                    }
+                    envMsg += `\n`;
+                });
+
+                // Test dotenv
+                envMsg += `🔍 *Dotenv Test:*\n`;
+                envMsg += `- NODE_ENV: ${process.env.NODE_ENV || 'undefined'}\n`;
+                envMsg += `- Current working directory: ${process.cwd()}\n`;
+                envMsg += `- .env file exists: ${require('fs').existsSync('.env') ? '✅ Yes' : '❌ No'}\n`;
+
+                // Test config loading
+                try {
+                    delete require.cache[require.resolve('./config/config.js')];
+                    const testConfig = require('./config/config.js');
+                    envMsg += `- Config loaded: ✅ Yes\n`;
+                    envMsg += `- Group mappings found: ${Object.keys(testConfig.apartments.groupMapping).length}\n`;
+                } catch (configError) {
+                    envMsg += `- Config loaded: ❌ Error: ${configError.message}\n`;
+                }
+
+                await bot.sendMessage(message.from, envMsg);
+                logger.info('Environment variables detail berhasil dikirim');
+
+            } catch (error) {
+                logger.error('Error dalam envdetail command:', error);
+                await bot.sendMessage(message.from, `❌ Terjadi error: ${error.message}`);
+            }
+
         } else if (message.body.startsWith('!env')) {
             logger.info(`Memproses command env dari ${message.from}: ${message.body}`);
 
@@ -598,6 +659,79 @@ async function handleCommand(message, apartmentName) {
 
             } catch (error) {
                 logger.error('Error dalam mapping command:', error);
+                await bot.sendMessage(message.from, `❌ Terjadi error: ${error.message}`);
+            }
+
+        } else if (message.body.startsWith('!forcereload')) {
+            logger.info(`Memproses command forcereload dari ${message.from}: ${message.body}`);
+
+            // Hanya bisa dipanggil dari private message untuk keamanan
+            const isFromGroup = message.from.includes('@g.us');
+            if (isFromGroup) {
+                await bot.sendMessage(message.from, '❌ Command !forcereload hanya bisa digunakan melalui pesan pribadi untuk keamanan.');
+                return;
+            }
+
+            try {
+                // Force reload dotenv
+                require('dotenv').config({ override: true });
+
+                // Clear all config cache
+                Object.keys(require.cache).forEach(key => {
+                    if (key.includes('config')) {
+                        delete require.cache[key];
+                    }
+                });
+
+                // Reload config fresh
+                require('./config/config.js');
+
+                // Manual rebuild mapping dari environment variables
+                const manualMapping = {};
+                const groups = ['SKYHOUSE', 'TREEPARK', 'EMERALD', 'SPRINGWOOD', 'SERPONG', 'TOKYO', 'TESTER'];
+
+                groups.forEach(group => {
+                    const id = process.env[`GROUP_${group}_ID`];
+                    const name = process.env[`GROUP_${group}_NAME`];
+                    const enabled = process.env[`GROUP_${group}_ENABLED`];
+
+                    if (id && name && enabled === 'true') {
+                        manualMapping[id] = name;
+                        logger.info(`Force reload: Added mapping ${id} -> ${name}`);
+                    }
+                });
+
+                // Update global config
+                config.apartments.groupMapping = manualMapping;
+                config.apartments.allowedGroups = Object.keys(manualMapping);
+
+                let reloadMsg = `🔄 *Force Reload Berhasil!*\n\n`;
+                reloadMsg += `📋 *Environment Variables Status:*\n`;
+
+                groups.forEach(group => {
+                    const id = process.env[`GROUP_${group}_ID`];
+                    const name = process.env[`GROUP_${group}_NAME`];
+                    const enabled = process.env[`GROUP_${group}_ENABLED`];
+
+                    reloadMsg += `${group}: ${id ? '✅' : '❌'} ${name ? '✅' : '❌'} ${enabled === 'true' ? '✅' : '❌'}\n`;
+                });
+
+                reloadMsg += `\n🔧 *Manual Group Mapping (${Object.keys(manualMapping).length} entries):*\n`;
+                Object.entries(manualMapping).forEach(([groupId, apartmentName]) => {
+                    reloadMsg += `- ${groupId.substring(0, 20)}...: "${apartmentName}"\n`;
+                });
+
+                reloadMsg += `\n💡 *Next Steps:*\n`;
+                reloadMsg += `- Test dengan !rekap dari grup\n`;
+                reloadMsg += `- Cek !mapping untuk verifikasi\n`;
+                reloadMsg += `- Monitor log untuk debug`;
+
+                await bot.sendMessage(message.from, reloadMsg);
+                logger.info('Force reload berhasil');
+                logger.info(`Manual mapping: ${JSON.stringify(manualMapping, null, 2)}`);
+
+            } catch (error) {
+                logger.error('Error dalam forcereload command:', error);
                 await bot.sendMessage(message.from, `❌ Terjadi error: ${error.message}`);
             }
 

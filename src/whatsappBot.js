@@ -186,6 +186,33 @@ class WhatsAppBot {
         // Debug logging
         logger.info(`getApartmentName: Looking for groupId "${groupId}"`);
         logger.info(`getApartmentName: Available mappings: ${JSON.stringify(Object.keys(config.apartments.groupMapping))}`);
+        logger.info(`getApartmentName: Full mapping object: ${JSON.stringify(config.apartments.groupMapping)}`);
+
+        // Debug: Cek apakah config sudah di-load dengan benar
+        if (!config.apartments.groupMapping || Object.keys(config.apartments.groupMapping).length === 0) {
+            logger.error('getApartmentName: Group mapping is empty! Trying to reload config...');
+
+            // Force reload config
+            try {
+                delete require.cache[require.resolve('../config/config.js')];
+                const freshConfig = require('../config/config.js');
+
+                logger.info(`getApartmentName: Fresh config loaded. New mappings: ${JSON.stringify(Object.keys(freshConfig.apartments.groupMapping))}`);
+
+                // Update global config
+                config.apartments.groupMapping = freshConfig.apartments.groupMapping;
+                config.apartments.allowedGroups = freshConfig.apartments.allowedGroups;
+
+                // Try again with fresh config
+                const apartmentName = config.apartments.groupMapping[groupId];
+                if (apartmentName) {
+                    logger.info(`getApartmentName: Found mapping after reload "${groupId}" -> "${apartmentName}"`);
+                    return apartmentName;
+                }
+            } catch (error) {
+                logger.error('getApartmentName: Error reloading config:', error);
+            }
+        }
 
         // Cek mapping grup ID ke apartemen
         const apartmentName = config.apartments.groupMapping[groupId];
