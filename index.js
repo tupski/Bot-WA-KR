@@ -64,9 +64,9 @@ async function handleMessage(message) {
                 groupName = 'Unknown Group';
             }
 
-            // Cek apakah grup diizinkan
-            if (!bot.isGroupAllowed(groupName)) {
-                logger.info(`Grup ${groupName} tidak diizinkan menggunakan bot`);
+            // Cek apakah grup diizinkan berdasarkan ID grup
+            if (!bot.isGroupAllowed(message.from)) {
+                logger.info(`Grup ${groupName} (ID: ${message.from}) tidak diizinkan menggunakan bot`);
                 return;
             }
 
@@ -430,13 +430,28 @@ async function reprocessAllGroupMessages() {
         const chats = await bot.client.getChats();
         const groups = chats.filter(chat => chat.isGroup);
 
-        // Filter hanya grup yang ada di environment variables
-        const allowedGroupIds = config.apartments.allowedGroups || [];
+        // Untuk rekapulang, proses SEMUA grup yang ada (tidak hanya yang enabled)
+        // Ambil semua group IDs dari environment variables
+        const allGroupIds = [
+            process.env.GROUP_SKYHOUSE_ID,
+            process.env.GROUP_TREEPARK_ID,
+            process.env.GROUP_EMERALD_ID,
+            process.env.GROUP_SPRINGWOOD_ID,
+            process.env.GROUP_SERPONG_ID,
+            process.env.GROUP_TOKYO_ID,
+            process.env.GROUP_TESTER_ID
+        ].filter(id => id && id.trim() !== ''); // Filter yang tidak kosong
+
         const allowedGroups = groups.filter(group =>
-            allowedGroupIds.includes(group.id._serialized)
+            allGroupIds.includes(group.id._serialized)
         );
 
-        logger.info(`Ditemukan ${allowedGroups.length} grup yang diizinkan untuk diproses`);
+        logger.info(`Ditemukan ${allowedGroups.length} grup untuk diproses (dari ${groups.length} total grup)`);
+
+        // Log semua grup yang akan diproses
+        allowedGroups.forEach((group, index) => {
+            logger.info(`${index + 1}. ${group.name} (ID: ${group.id._serialized})`);
+        });
 
         for (const group of allowedGroups) {
             try {
@@ -444,7 +459,12 @@ async function reprocessAllGroupMessages() {
                 const groupName = group.name;
                 const apartmentName = bot.getApartmentName(groupName);
 
-                logger.info(`Memproses grup: ${groupName} (${apartmentName})`);
+                // Counter per grup
+                let groupBookingMessages = 0;
+                let groupNewData = 0;
+                let groupDuplicates = 0;
+
+                logger.info(`[${result.groupsProcessed}/${allowedGroups.length}] Memproses grup: ${groupName} (${apartmentName})`);
 
                 // Ambil pesan dari grup (limit 500 untuk menghindari timeout)
                 const messages = await group.fetchMessages({
@@ -461,11 +481,13 @@ async function reprocessAllGroupMessages() {
                         const lines = message.body.split('\n').map(line => line.trim()).filter(line => line);
                         if (lines.length >= 2 && lines[1].toLowerCase().includes('unit')) {
                             result.bookingMessagesFound++;
+                            groupBookingMessages++;
 
                             // Cek apakah pesan sudah diproses sebelumnya
                             const isProcessed = await database.isMessageProcessed(message.id.id);
                             if (isProcessed) {
                                 result.duplicatesSkipped++;
+                                groupDuplicates++;
                                 continue;
                             }
 
@@ -491,12 +513,14 @@ async function reprocessAllGroupMessages() {
                                     await database.saveTransaction(data);
                                     await database.markMessageProcessed(message.id.id, message.from);
                                     result.newDataAdded++;
+                                    groupNewData++;
 
                                     logger.info(`Data baru ditambahkan: Unit ${data.unit}, CS ${data.csName}, Apartemen ${apartmentName}`);
                                 } else {
                                     // Mark sebagai processed meskipun sudah ada
                                     await database.markMessageProcessed(message.id.id, message.from);
                                     result.duplicatesSkipped++;
+                                    groupDuplicates++;
                                 }
                             } else {
                                 // Mark sebagai processed meskipun format salah
@@ -509,7 +533,11 @@ async function reprocessAllGroupMessages() {
                     }
                 }
 
-                logger.info(`Selesai memproses grup ${groupName}: ${result.newDataAdded} data baru ditambahkan`);
+                logger.info(`Selesai memproses grup ${groupName}:`);
+                logger.info(`  - Pesan diperiksa: ${messages.length}`);
+                logger.info(`  - Pesan booking: ${groupBookingMessages}`);
+                logger.info(`  - Data baru: ${groupNewData}`);
+                logger.info(`  - Duplikat dilewati: ${groupDuplicates}`);
 
             } catch (groupError) {
                 logger.error(`Error memproses grup ${group.name}:`, groupError);

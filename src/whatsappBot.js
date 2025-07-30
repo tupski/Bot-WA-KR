@@ -165,17 +165,17 @@ class WhatsAppBot {
     }
 
     /**
-     * Cek apakah grup diizinkan untuk menggunakan bot
+     * Cek apakah grup diizinkan untuk menggunakan bot berdasarkan ID grup
      */
-    isGroupAllowed(groupName) {
-        if (!groupName) return false;
+    isGroupAllowed(groupId) {
+        if (!groupId) return false;
 
         // Jika tidak ada konfigurasi allowedGroups, izinkan semua
         if (!config.apartments.allowedGroups || config.apartments.allowedGroups.length === 0) {
             return true;
         }
 
-        return config.apartments.allowedGroups.includes(groupName);
+        return config.apartments.allowedGroups.includes(groupId);
     }
 
     // Register message handler
