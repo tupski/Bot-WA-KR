@@ -26,27 +26,11 @@ class Configuration {
 
             // Grup Apartemen Configuration
             apartments: {
-                // Mapping nama grup WhatsApp ke nama apartemen
-                groupMapping: {
-                    'SKY HOUSE CHEKIN🟢': 'SKY HOUSE',
-                    'TREE PARK BSD CHEKIN🟡': 'TREEPARK BSD',
-                    'SPRINGWOOD CHEKIN⚪': 'SPRINGWOOD RESIDENCES',
-                    'EMERALD CHEKIN⚫': 'EMERALD BINTARO',
-                    'TOKYO PIK2 CHEKIN🤎': 'TOKYO RIVERSIDE PIK2',
-                    'SERPONG GARDEN CHEKIN🟠': 'SERPONG GARDEN',
-                    'Code Tester' : 'TESTING BOT'
-                },
+                // Mapping ID grup WhatsApp ke nama apartemen (dari environment variables)
+                groupMapping: this.buildGroupMapping(),
 
-                // Grup yang diizinkan (opsional - untuk keamanan)
-                allowedGroups: [
-                    'Code Tester',
-                    'SKY HOUSE CHEKIN🟢',
-                    'TREE PARK BSD CHEKIN🟡',
-                    'SPRINGWOOD CHEKIN⚪',
-                    'EMERALD CHEKIN⚫',
-                    'TOKYO PIK2 CHEKIN🤎',
-                    'SERPONG GARDEN CHEKIN🟠'
-                ],
+                // Grup yang diizinkan berdasarkan ID (hanya grup yang ada di env vars)
+                allowedGroups: this.buildAllowedGroups(),
 
                 // Default apartemen jika grup tidak dikenali
                 defaultApartment: 'APARTEMEN TIDAK DIKETAHUI'
@@ -143,6 +127,67 @@ class Configuration {
 
         // Load additional configuration from file if exists
         this.loadFromFile();
+    }
+
+    /**
+     * Build group mapping from environment variables
+     */
+    buildGroupMapping() {
+        const mapping = {};
+
+        // Define all possible groups
+        const groups = [
+            { id: 'GROUP_SKYHOUSE_ID', name: 'GROUP_SKYHOUSE_NAME', enabled: 'GROUP_SKYHOUSE_ENABLED' },
+            { id: 'GROUP_TREEPARK_ID', name: 'GROUP_TREEPARK_NAME', enabled: 'GROUP_TREEPARK_ENABLED' },
+            { id: 'GROUP_EMERALD_ID', name: 'GROUP_EMERALD_NAME', enabled: 'GROUP_EMERALD_ENABLED' },
+            { id: 'GROUP_SPRINGWOOD_ID', name: 'GROUP_SPRINGWOOD_NAME', enabled: 'GROUP_SPRINGWOOD_ENABLED' },
+            { id: 'GROUP_SERPONG_ID', name: 'GROUP_SERPONG_NAME', enabled: 'GROUP_SERPONG_ENABLED' },
+            { id: 'GROUP_TOKYO_ID', name: 'GROUP_TOKYO_NAME', enabled: 'GROUP_TOKYO_ENABLED' },
+            { id: 'GROUP_TESTER_ID', name: 'GROUP_TESTER_NAME', enabled: 'GROUP_TESTER_ENABLED' }
+        ];
+
+        // Add groups that are enabled
+        groups.forEach(group => {
+            const groupId = process.env[group.id];
+            const groupName = process.env[group.name];
+            const isEnabled = process.env[group.enabled] === 'true';
+
+            if (groupId && groupName && isEnabled) {
+                mapping[groupId] = groupName;
+            }
+        });
+
+        return mapping;
+    }
+
+    /**
+     * Build allowed groups list from environment variables
+     */
+    buildAllowedGroups() {
+        const allowedGroups = [];
+
+        // Define all possible groups
+        const groups = [
+            { id: 'GROUP_SKYHOUSE_ID', enabled: 'GROUP_SKYHOUSE_ENABLED' },
+            { id: 'GROUP_TREEPARK_ID', enabled: 'GROUP_TREEPARK_ENABLED' },
+            { id: 'GROUP_EMERALD_ID', enabled: 'GROUP_EMERALD_ENABLED' },
+            { id: 'GROUP_SPRINGWOOD_ID', enabled: 'GROUP_SPRINGWOOD_ENABLED' },
+            { id: 'GROUP_SERPONG_ID', enabled: 'GROUP_SERPONG_ENABLED' },
+            { id: 'GROUP_TOKYO_ID', enabled: 'GROUP_TOKYO_ENABLED' },
+            { id: 'GROUP_TESTER_ID', enabled: 'GROUP_TESTER_ENABLED' }
+        ];
+
+        // Add groups that are enabled
+        groups.forEach(group => {
+            const groupId = process.env[group.id];
+            const isEnabled = process.env[group.enabled] === 'true';
+
+            if (groupId && isEnabled) {
+                allowedGroups.push(groupId);
+            }
+        });
+
+        return allowedGroups;
     }
 
     /**
