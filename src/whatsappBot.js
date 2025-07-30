@@ -393,8 +393,9 @@ class WhatsAppBot {
                             continue;
                         }
 
-                        // Proses pesan jika ini adalah booking message
-                        if (this.isBookingMessage(message.body)) {
+                        // Cek apakah pesan memiliki format booking (baris kedua mengandung "Unit")
+                        const lines = message.body.split('\n').map(line => line.trim()).filter(line => line);
+                        if (lines.length >= 2 && lines[1].toLowerCase().includes('unit')) {
                             try {
                                 // Parse pesan untuk mendapatkan data transaksi
                                 const MessageParser = require('./messageParser');
@@ -413,7 +414,12 @@ class WhatsAppBot {
 
                                     if (!exists) {
                                         logger.info(`Memproses pesan tertinggal: ${message.id._serialized} - Unit: ${data.unit}, CS: ${data.csName}`);
-                                        await this.handleBookingMessage(message);
+
+                                        // Simpan transaksi ke database
+                                        await database.saveTransaction(data);
+                                        await database.markMessageProcessed(message.id._serialized, message.from);
+                                        logger.info('Transaksi tertinggal berhasil disimpan');
+
                                         processedCount++;
                                     } else {
                                         logger.info(`Transaksi sudah ada, skip: Unit ${data.unit}, CS ${data.csName}`);
