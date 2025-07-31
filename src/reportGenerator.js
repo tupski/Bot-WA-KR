@@ -501,10 +501,17 @@ ${commissionSection}`;
             if (csName.toLowerCase() !== 'apk' && csName.toLowerCase() !== 'amel') {
                 // Gunakan nama asli CS dengan capitalize first letter
                 const displayName = csName.charAt(0).toUpperCase() + csName.slice(1).toLowerCase();
-                marketingStats[displayName] = {
-                    totalCS: data.count,
-                    totalKomisi: data.commission
-                };
+
+                // Gabungkan data jika CS sudah ada (case-insensitive)
+                if (marketingStats[displayName]) {
+                    marketingStats[displayName].totalCS += data.count;
+                    marketingStats[displayName].totalKomisi += data.commission;
+                } else {
+                    marketingStats[displayName] = {
+                        totalCS: data.count,
+                        totalKomisi: data.commission
+                    };
+                }
             }
         });
 
