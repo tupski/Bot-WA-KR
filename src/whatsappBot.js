@@ -241,6 +241,19 @@ class WhatsAppBot {
     }
 
     /**
+     * Cek apakah nomor adalah owner yang diizinkan
+     */
+    isOwner(phoneNumber) {
+        if (!phoneNumber) return false;
+
+        // Bersihkan nomor dari format WhatsApp (hapus @c.us)
+        const cleanNumber = phoneNumber.replace('@c.us', '');
+
+        // Cek apakah nomor ada di daftar owner
+        return config.owner.allowedNumbers.includes(cleanNumber);
+    }
+
+    /**
      * Handle deleted message - remove from database if it was a booking message
      */
     async handleDeletedMessage(deletedMessage) {

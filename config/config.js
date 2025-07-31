@@ -24,6 +24,12 @@ class Configuration {
                 maxRetries: parseInt(process.env.MAX_RETRIES) || 3
             },
 
+            // Owner Configuration
+            owner: {
+                // Nomor owner yang diizinkan menjalankan perintah (dari environment variable)
+                allowedNumbers: this.buildOwnerNumbers()
+            },
+
             // Grup Apartemen Configuration
             apartments: {
                 // Mapping ID grup WhatsApp ke nama apartemen (dari environment variables)
@@ -188,6 +194,22 @@ class Configuration {
         });
 
         return allowedGroups;
+    }
+
+    /**
+     * Build owner numbers list from environment variable
+     */
+    buildOwnerNumbers() {
+        const ownerNumbers = [];
+        const ownerNumbersEnv = process.env.OWNER_NUMBER;
+
+        if (ownerNumbersEnv) {
+            // Split by comma and clean up each number
+            const numbers = ownerNumbersEnv.split(',').map(num => num.trim()).filter(num => num.length > 0);
+            ownerNumbers.push(...numbers);
+        }
+
+        return ownerNumbers;
     }
 
     /**

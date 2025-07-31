@@ -249,7 +249,12 @@ async function handleEditedBookingMessage(message, apartmentName) {
 // Handler untuk command !rekap dan !apartemen
 async function handleCommand(message, apartmentName) {
     try {
+        // Cek apakah user adalah owner (untuk command tertentu)
+        const isOwner = bot.isOwner(message.from);
+
         if (message.body.startsWith('!rekap')) {
+            // Untuk !rekap, izinkan semua user di grup yang diizinkan
+            // Tapi jika dari private message, hanya owner yang bisa
             logger.info(`Memproses command rekap dari ${message.from}: ${message.body}`);
 
             // Parse command: !rekap [apartemen] [tanggal]
@@ -275,8 +280,13 @@ async function handleCommand(message, apartmentName) {
                     }
                 }
             } else {
-                // Jika dari private message: bisa akses semua data
-                logger.info('Command dari private message, bisa akses semua data');
+                // Jika dari private message: hanya owner yang bisa akses
+                if (!isOwner) {
+                    await bot.sendMessage(message.from, '❌ Hanya owner yang dapat menggunakan command ini di private message.');
+                    return;
+                }
+
+                logger.info('Command dari private message oleh owner, bisa akses semua data');
 
                 if (parts.length > 1) {
                     // Cek apakah parameter pertama adalah tanggal (8 digit)
@@ -417,8 +427,13 @@ async function handleCommand(message, apartmentName) {
                     }
                 }
             } else {
-                // Jika dari private message: bisa akses semua data
-                logger.info('Command dari private message, bisa akses semua data');
+                // Jika dari private message: hanya owner yang bisa akses
+                if (!isOwner) {
+                    await bot.sendMessage(message.from, '❌ Hanya owner yang dapat menggunakan command ini di private message.');
+                    return;
+                }
+
+                logger.info('Command dari private message oleh owner, bisa akses semua data');
 
                 if (parts.length > 1) {
                     // Cek apakah parameter pertama adalah tanggal (8 digit)
@@ -490,6 +505,12 @@ async function handleCommand(message, apartmentName) {
                 return;
             }
 
+            // Hanya owner yang bisa menggunakan command ini
+            if (!isOwner) {
+                await bot.sendMessage(message.from, '❌ Hanya owner yang dapat menggunakan command !rekapulang.');
+                return;
+            }
+
             await bot.sendMessage(message.from, '🔄 Memulai proses rekap ulang semua pesan di semua grup...\nProses ini mungkin memakan waktu beberapa menit.');
 
             try {
@@ -513,8 +534,60 @@ async function handleCommand(message, apartmentName) {
                 await bot.sendMessage(message.from, `❌ Terjadi error dalam proses rekap ulang: ${error.message}`);
             }
 
+        } else if (message.body.startsWith('!status')) {
+            logger.info(`Memproses command status dari ${message.from}: ${message.body}`);
+
+            // Hanya owner yang bisa menggunakan command ini
+            if (!isOwner) {
+                await bot.sendMessage(message.from, '❌ Hanya owner yang dapat menggunakan command !status.');
+                return;
+            }
+
+            // Hanya bisa dipanggil dari private message untuk keamanan
+            const isFromGroup = message.from.includes('@g.us');
+            if (isFromGroup) {
+                await bot.sendMessage(message.from, '❌ Command !status hanya bisa digunakan melalui pesan pribadi untuk keamanan.');
+                return;
+            }
+
+            try {
+                const nextRuns = scheduler.getNextRunTimes();
+                const config = require('./config/config');
+
+                let statusMessage = `📊 *STATUS BOT KAKARAMA ROOM*\n\n`;
+                statusMessage += `🤖 *Bot Status:* ${bot.isClientReady() ? '✅ Online' : '❌ Offline'}\n\n`;
+
+                statusMessage += `📅 *Jadwal Laporan Berikutnya:*\n`;
+                if (nextRuns.dailyReport) {
+                    statusMessage += `• Harian: ${new Date(nextRuns.dailyReport).toLocaleString('id-ID', {timeZone: 'Asia/Jakarta'})}\n`;
+                }
+                if (nextRuns.weeklyReport) {
+                    statusMessage += `• Mingguan: ${new Date(nextRuns.weeklyReport).toLocaleString('id-ID', {timeZone: 'Asia/Jakarta'})}\n`;
+                }
+                if (nextRuns.monthlyReport) {
+                    statusMessage += `• Bulanan: ${new Date(nextRuns.monthlyReport).toLocaleString('id-ID', {timeZone: 'Asia/Jakarta'})}\n`;
+                }
+
+                statusMessage += `\n🏢 *Grup Aktif:* ${config.apartments.allowedGroups.length} grup\n`;
+                statusMessage += `👤 *Owner Numbers:* ${config.owner.allowedNumbers.length} nomor\n\n`;
+
+                statusMessage += `⏰ *Waktu Server:* ${new Date().toLocaleString('id-ID', {timeZone: 'Asia/Jakarta'})} WIB`;
+
+                await bot.sendMessage(message.from, statusMessage);
+                logger.info('Status bot berhasil dikirim');
+            } catch (error) {
+                logger.error('Error mengambil status bot:', error);
+                await bot.sendMessage(message.from, '❌ Terjadi error saat mengambil status bot.');
+            }
+
         } else if (message.body.startsWith('!fixenv')) {
             logger.info(`Memproses command fixenv dari ${message.from}: ${message.body}`);
+
+            // Hanya owner yang bisa menggunakan command ini
+            if (!isOwner) {
+                await bot.sendMessage(message.from, '❌ Hanya owner yang dapat menggunakan command !fixenv.');
+                return;
+            }
 
             // Hanya bisa dipanggil dari private message untuk keamanan
             const isFromGroup = message.from.includes('@g.us');
