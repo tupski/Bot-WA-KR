@@ -581,8 +581,7 @@ async function handleCommand(message, apartmentName) {
                 }
 
                 statusMessage += `\n🏢 *Grup Aktif:* ${config.apartments.allowedGroups.length} grup\n`;
-                statusMessage += `👤 *Owner Numbers:* ${config.owner.allowedNumbers.length} nomor\n`;
-                statusMessage += `📋 *Scheduler Tasks:* ${scheduler.scheduledTasks ? scheduler.scheduledTasks.size : 0} tasks\n\n`;
+                statusMessage += `👤 *Owner Numbers:* ${config.owner.allowedNumbers.length} nomor\n\n`;
 
                 statusMessage += `⏰ *Waktu Server:* ${new Date().toLocaleString('id-ID', {timeZone: 'Asia/Jakarta'})} WIB`;
 
@@ -1833,7 +1832,7 @@ function findApartmentByPartialName(partialName) {
         'emerald': 'EMERALD BINTARO',
         'springwood': 'SPRINGWOOD',
         'serpong': 'SERPONG GARDEN',
-        'tokyo': 'TOKYO RIVERSIDE PIK2',
+        'tokyo': 'TOKYO PIK 2',
         'testing': 'TESTING BOT',
         'test': 'TESTING BOT'
     };
