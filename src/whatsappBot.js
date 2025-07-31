@@ -401,13 +401,54 @@ class WhatsAppBot {
         }
     }
 
-    // Send message to configured group
+    // Send message to configured group (legacy - untuk backward compatibility)
     async sendToGroup(message) {
         if (!config.groupChatId) {
             logger.error('Group chat ID not configured');
             return false;
         }
         return await this.sendMessage(config.groupChatId, message);
+    }
+
+    // Send message to all enabled groups
+    async sendToAllEnabledGroups(message) {
+        try {
+            if (!config.apartments.allowedGroups || config.apartments.allowedGroups.length === 0) {
+                logger.error('No enabled groups configured');
+                return false;
+            }
+
+            let successCount = 0;
+            let totalGroups = config.apartments.allowedGroups.length;
+
+            logger.info(`Mengirim pesan ke ${totalGroups} grup yang enabled...`);
+
+            for (const groupId of config.apartments.allowedGroups) {
+                try {
+                    const success = await this.sendMessage(groupId, message);
+                    if (success) {
+                        successCount++;
+                        const groupName = config.apartments.groupMapping[groupId] || 'Unknown';
+                        logger.info(`✅ Pesan berhasil dikirim ke grup: ${groupName} (${groupId})`);
+                    } else {
+                        const groupName = config.apartments.groupMapping[groupId] || 'Unknown';
+                        logger.error(`❌ Gagal mengirim pesan ke grup: ${groupName} (${groupId})`);
+                    }
+
+                    // Delay antar pengiriman untuk menghindari rate limiting
+                    await new Promise(resolve => setTimeout(resolve, config.whatsapp.messageDelay || 1000));
+                } catch (error) {
+                    const groupName = config.apartments.groupMapping[groupId] || 'Unknown';
+                    logger.error(`Error mengirim pesan ke grup ${groupName} (${groupId}):`, error);
+                }
+            }
+
+            logger.info(`Pengiriman selesai: ${successCount}/${totalGroups} grup berhasil`);
+            return successCount > 0;
+        } catch (error) {
+            logger.error('Error dalam sendToAllEnabledGroups:', error);
+            return false;
+        }
     }
 
     // Get chat information

@@ -52,11 +52,11 @@ class Scheduler {
                 // Generate report
                 const report = await reportGenerator.generateDailyReport();
                 
-                // Send to WhatsApp group
-                const messageSent = await this.bot.sendToGroup(report);
-                
+                // Send to all enabled WhatsApp groups
+                const messageSent = await this.bot.sendToAllEnabledGroups(report);
+
                 if (messageSent) {
-                    logger.info('Laporan harian berhasil dikirim ke grup WhatsApp');
+                    logger.info('Laporan harian berhasil dikirim ke semua grup WhatsApp yang enabled');
                 } else {
                     logger.error('Gagal mengirim laporan harian ke grup WhatsApp');
                 }
@@ -80,9 +80,9 @@ class Scheduler {
             } catch (error) {
                 logger.error('Error dalam laporan harian terjadwal:', error);
                 
-                // Send error notification to group
+                // Send error notification to all groups
                 const errorMessage = `❌ *Error dalam laporan harian*\n\nTerjadi kesalahan saat membuat laporan harian. Silakan periksa log untuk detail lebih lanjut.\n\nWaktu: ${moment().tz(this.timezone).format('DD/MM/YYYY HH:mm')} WIB`;
-                await this.bot.sendToGroup(errorMessage);
+                await this.bot.sendToAllEnabledGroups(errorMessage);
             }
         }, {
             timezone: this.timezone
@@ -101,9 +101,13 @@ class Scheduler {
                 logger.info('Memulai pembuatan laporan mingguan terjadwal...');
 
                 const report = await reportGenerator.generateWeeklyReport();
-                await this.bot.sendToGroup(report);
+                const messageSent = await this.bot.sendToAllEnabledGroups(report);
 
-                logger.info('Laporan mingguan berhasil dikirim');
+                if (messageSent) {
+                    logger.info('Laporan mingguan berhasil dikirim ke semua grup yang enabled');
+                } else {
+                    logger.error('Gagal mengirim laporan mingguan ke grup WhatsApp');
+                }
             } catch (error) {
                 logger.error('Error dalam laporan mingguan terjadwal:', error);
             }
@@ -130,9 +134,13 @@ class Scheduler {
                     lastMonth.month() + 1
                 );
 
-                await this.bot.sendToGroup(report);
+                const messageSent = await this.bot.sendToAllEnabledGroups(report);
 
-                logger.info('Laporan bulanan berhasil dikirim');
+                if (messageSent) {
+                    logger.info('Laporan bulanan berhasil dikirim ke semua grup yang enabled');
+                } else {
+                    logger.error('Gagal mengirim laporan bulanan ke grup WhatsApp');
+                }
             } catch (error) {
                 logger.error('Error dalam laporan bulanan terjadwal:', error);
             }
@@ -308,10 +316,10 @@ class Scheduler {
             logger.info('Memicu laporan harian secara manual...');
 
             const report = await reportGenerator.generateDailyReport(date);
-            const messageSent = await this.bot.sendToGroup(report);
+            const messageSent = await this.bot.sendToAllEnabledGroups(report);
 
             if (messageSent) {
-                logger.info('Laporan harian manual berhasil dikirim');
+                logger.info('Laporan harian manual berhasil dikirim ke semua grup yang enabled');
                 return true;
             } else {
                 logger.error('Gagal mengirim laporan harian manual');
