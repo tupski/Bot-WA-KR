@@ -194,6 +194,9 @@ class WhatsAppBot {
 
             // Force reload config
             try {
+                // Reload dotenv first
+                require('dotenv').config();
+
                 delete require.cache[require.resolve('../config/config.js')];
                 const freshConfig = require('../config/config.js');
 
@@ -244,13 +247,43 @@ class WhatsAppBot {
      * Cek apakah nomor adalah owner yang diizinkan
      */
     isOwner(phoneNumber) {
-        if (!phoneNumber) return false;
+        if (!phoneNumber) {
+            logger.warn('isOwner: phoneNumber is null/undefined');
+            return false;
+        }
 
         // Bersihkan nomor dari format WhatsApp (hapus @c.us)
         const cleanNumber = phoneNumber.replace('@c.us', '');
 
+        // Debug logging
+        logger.info(`isOwner: Checking number "${cleanNumber}"`);
+        logger.info(`isOwner: Allowed numbers: ${JSON.stringify(config.owner.allowedNumbers)}`);
+
+        // Cek apakah config owner ada
+        if (!config.owner || !config.owner.allowedNumbers) {
+            logger.error('isOwner: Owner config is missing! Trying to reload...');
+
+            try {
+                // Reload dotenv and config
+                require('dotenv').config();
+                delete require.cache[require.resolve('../config/config.js')];
+                const freshConfig = require('../config/config.js');
+
+                // Update global config
+                config.owner = freshConfig.owner;
+
+                logger.info(`isOwner: Fresh config loaded. New owner numbers: ${JSON.stringify(freshConfig.owner.allowedNumbers)}`);
+            } catch (error) {
+                logger.error('isOwner: Error reloading config:', error);
+                return false;
+            }
+        }
+
         // Cek apakah nomor ada di daftar owner
-        return config.owner.allowedNumbers.includes(cleanNumber);
+        const isOwnerResult = config.owner.allowedNumbers.includes(cleanNumber);
+        logger.info(`isOwner: Result for "${cleanNumber}": ${isOwnerResult}`);
+
+        return isOwnerResult;
     }
 
     /**

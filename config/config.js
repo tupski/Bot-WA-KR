@@ -141,6 +141,8 @@ class Configuration {
     buildGroupMapping() {
         const mapping = {};
 
+
+
         // Define all possible groups
         const groups = [
             { id: 'GROUP_SKYHOUSE_ID', name: 'GROUP_SKYHOUSE_NAME', enabled: 'GROUP_SKYHOUSE_ENABLED' },
@@ -208,7 +210,6 @@ class Configuration {
             const numbers = ownerNumbersEnv.split(',').map(num => num.trim()).filter(num => num.length > 0);
             ownerNumbers.push(...numbers);
         }
-
         return ownerNumbers;
     }
 

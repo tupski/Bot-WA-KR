@@ -580,6 +580,53 @@ async function handleCommand(message, apartmentName) {
                 await bot.sendMessage(message.from, '❌ Terjadi error saat mengambil status bot.');
             }
 
+        } else if (message.body.startsWith('!debug')) {
+            logger.info(`Memproses command debug dari ${message.from}: ${message.body}`);
+
+            // Hanya owner yang bisa menggunakan command ini
+            if (!isOwner) {
+                await bot.sendMessage(message.from, '❌ Hanya owner yang dapat menggunakan command !debug.');
+                return;
+            }
+
+            try {
+                let debugMessage = `🔍 *DEBUG INFO*\n\n`;
+
+                // Environment variables check
+                debugMessage += `📋 *Environment Variables:*\n`;
+                debugMessage += `• OWNER_NUMBER: ${process.env.OWNER_NUMBER ? '✅ Set' : '❌ Missing'}\n`;
+                debugMessage += `• GROUP_SKYHOUSE_ID: ${process.env.GROUP_SKYHOUSE_ID ? '✅ Set' : '❌ Missing'}\n`;
+                debugMessage += `• GROUP_SKYHOUSE_NAME: ${process.env.GROUP_SKYHOUSE_NAME ? '✅ Set' : '❌ Missing'}\n`;
+                debugMessage += `• GROUP_SKYHOUSE_ENABLED: ${process.env.GROUP_SKYHOUSE_ENABLED}\n\n`;
+
+                // Config check
+                debugMessage += `⚙️ *Config Status:*\n`;
+                debugMessage += `• Group Mapping: ${Object.keys(config.apartments.groupMapping).length} entries\n`;
+                debugMessage += `• Allowed Groups: ${config.apartments.allowedGroups.length} groups\n`;
+                debugMessage += `• Owner Numbers: ${config.owner.allowedNumbers.length} numbers\n\n`;
+
+                // Specific group check
+                const testGroupId = '120363317169602122@g.us';
+                const apartmentName = bot.getApartmentName(testGroupId);
+                debugMessage += `🏠 *Group Test:*\n`;
+                debugMessage += `• Test Group ID: ${testGroupId}\n`;
+                debugMessage += `• Mapped Name: ${apartmentName}\n`;
+                debugMessage += `• Is Allowed: ${bot.isGroupAllowed(testGroupId) ? '✅ Yes' : '❌ No'}\n\n`;
+
+                // Owner check
+                const testNumber = message.from.replace('@c.us', '');
+                debugMessage += `👤 *Owner Test:*\n`;
+                debugMessage += `• Your Number: ${testNumber}\n`;
+                debugMessage += `• Is Owner: ${bot.isOwner(message.from) ? '✅ Yes' : '❌ No'}\n`;
+                debugMessage += `• Owner List: ${config.owner.allowedNumbers.join(', ')}\n`;
+
+                await bot.sendMessage(message.from, debugMessage);
+                logger.info('Debug info berhasil dikirim');
+            } catch (error) {
+                logger.error('Error mengambil debug info:', error);
+                await bot.sendMessage(message.from, '❌ Terjadi error saat mengambil debug info.');
+            }
+
         } else if (message.body.startsWith('!fixenv')) {
             logger.info(`Memproses command fixenv dari ${message.from}: ${message.body}`);
 
