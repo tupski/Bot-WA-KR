@@ -97,7 +97,7 @@ komisi : 50
 - `emerald` → EMERALD BINTARO
 - `springwood` → SPRINGWOOD
 - `serpong` → SERPONG GARDEN
-- `tokyo` → TOKYO RIVERSIDE PIK2
+- `tokyo` → TOKYO PIK 2
 
 ### **!detailrekap**
 **Fungsi:** Detail rekap dengan akses ke semua apartemen
@@ -256,7 +256,7 @@ pm2 restart Bot-KR
 3. **EMERALD BINTARO** - `120363316413016298@g.us`
 4. **SPRINGWOOD** - `120363317562284069@g.us`
 5. **SERPONG GARDEN** - `120363417253343745@g.us`
-6. **TOKYO RIVERSIDE PIK2** - `120363418040325725@g.us`
+6. **TOKYO PIK 2** - `120363418040325725@g.us`
 
 ---
 
