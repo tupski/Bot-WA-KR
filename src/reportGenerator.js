@@ -26,7 +26,7 @@ class ReportGenerator {
             const [csSummary, dailySummary, marketingCommission, locationStats] = await Promise.all([
                 database.getCSSummary(reportDate),
                 database.getDailySummary(reportDate),
-                database.getMarketingCommission(reportDate),
+                database.getMarketingCommission(reportDate, null), // null = semua apartemen
                 database.getLocationStats(reportDate)
             ]);
 
@@ -615,9 +615,12 @@ ${commissionSection}`;
                     businessDay = now.clone();
                 }
 
-                // Rentang waktu: business day jam 12:00 - sekarang
-                startDate = businessDay.format('YYYY-MM-DD') + ' 12:00:00';
-                endDate = now.format('YYYY-MM-DD HH:mm:ss');
+                // Rentang waktu: business day jam 12:00 - business day+1 jam 11:59 (sama dengan !rekap)
+                const startTime = businessDay.hour(12).minute(0).second(0);
+                const endTime = businessDay.clone().add(1, 'day').hour(11).minute(59).second(59);
+
+                startDate = startTime.format('YYYY-MM-DD HH:mm:ss');
+                endDate = endTime.format('YYYY-MM-DD HH:mm:ss');
                 displayDate = businessDay.format('DD/MM/YYYY');
             }
 

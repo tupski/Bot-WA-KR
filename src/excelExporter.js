@@ -33,7 +33,7 @@ class ExcelExporter {
             const [transactions, csSummary, marketingCommission] = await Promise.all([
                 database.getTransactions(reportDate),
                 database.getCSSummary(reportDate),
-                database.getMarketingCommission(reportDate)
+                database.getMarketingCommission(reportDate, null) // null = semua apartemen
             ]);
 
             // Create workbook

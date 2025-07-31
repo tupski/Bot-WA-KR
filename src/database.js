@@ -223,15 +223,25 @@ class Database {
         return await this.executeQuery(query, [date]);
     }
 
-    async getMarketingCommission(date) {
-        const query = `
+    async getMarketingCommission(date, apartmentName = null) {
+        let query = `
             SELECT cs_name, COUNT(*) as booking_count, SUM(commission) as total_commission
             FROM transactions
             WHERE date_only = ?
+        `;
+        let params = [date];
+
+        // Tambahkan filter apartemen jika ada
+        if (apartmentName) {
+            query += ` AND location = ?`;
+            params.push(apartmentName);
+        }
+
+        query += `
             GROUP BY cs_name
             ORDER BY total_commission DESC
         `;
-        return await this.executeQuery(query, [date]);
+        return await this.executeQuery(query, params);
     }
 
     // Additional utility functions
