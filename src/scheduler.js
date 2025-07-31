@@ -336,11 +336,35 @@ class Scheduler {
      */
     getNextRunTimes() {
         const nextRuns = {};
-        for (const [name, task] of this.scheduledTasks) {
-            if (task.nextDate) {
-                nextRuns[name] = task.nextDate().format();
+
+        try {
+            const now = moment().tz(this.timezone);
+
+            // Daily report: setiap hari jam 12:00
+            const dailyNext = now.clone().hour(12).minute(0).second(0);
+            if (dailyNext.isBefore(now)) {
+                dailyNext.add(1, 'day');
             }
+            nextRuns.dailyReport = dailyNext.toDate();
+
+            // Weekly report: setiap Senin jam 09:00
+            const weeklyNext = now.clone().day(1).hour(9).minute(0).second(0); // 1 = Monday
+            if (weeklyNext.isBefore(now)) {
+                weeklyNext.add(1, 'week');
+            }
+            nextRuns.weeklyReport = weeklyNext.toDate();
+
+            // Monthly report: tanggal 1 jam 10:00
+            const monthlyNext = now.clone().date(1).hour(10).minute(0).second(0);
+            if (monthlyNext.isBefore(now)) {
+                monthlyNext.add(1, 'month');
+            }
+            nextRuns.monthlyReport = monthlyNext.toDate();
+
+        } catch (error) {
+            logger.error('Error getting next run times:', error);
         }
+
         return nextRuns;
     }
 }

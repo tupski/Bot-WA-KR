@@ -558,18 +558,31 @@ async function handleCommand(message, apartmentName) {
                 statusMessage += `🤖 *Bot Status:* ${bot.isClientReady() ? '✅ Online' : '❌ Offline'}\n\n`;
 
                 statusMessage += `📅 *Jadwal Laporan Berikutnya:*\n`;
-                if (nextRuns.dailyReport) {
-                    statusMessage += `• Harian: ${new Date(nextRuns.dailyReport).toLocaleString('id-ID', {timeZone: 'Asia/Jakarta'})}\n`;
-                }
-                if (nextRuns.weeklyReport) {
-                    statusMessage += `• Mingguan: ${new Date(nextRuns.weeklyReport).toLocaleString('id-ID', {timeZone: 'Asia/Jakarta'})}\n`;
-                }
-                if (nextRuns.monthlyReport) {
-                    statusMessage += `• Bulanan: ${new Date(nextRuns.monthlyReport).toLocaleString('id-ID', {timeZone: 'Asia/Jakarta'})}\n`;
+
+                // Cek apakah ada jadwal yang tersedia
+                const hasSchedules = Object.keys(nextRuns).length > 0;
+
+                if (hasSchedules) {
+                    if (nextRuns.dailyReport) {
+                        statusMessage += `• Harian: ${new Date(nextRuns.dailyReport).toLocaleString('id-ID', {timeZone: 'Asia/Jakarta'})}\n`;
+                    }
+                    if (nextRuns.weeklyReport) {
+                        statusMessage += `• Mingguan: ${new Date(nextRuns.weeklyReport).toLocaleString('id-ID', {timeZone: 'Asia/Jakarta'})}\n`;
+                    }
+                    if (nextRuns.monthlyReport) {
+                        statusMessage += `• Bulanan: ${new Date(nextRuns.monthlyReport).toLocaleString('id-ID', {timeZone: 'Asia/Jakarta'})}\n`;
+                    }
+                } else {
+                    statusMessage += `⚠️ Jadwal tidak tersedia - Scheduler mungkin belum diinisialisasi\n`;
+                    statusMessage += `📋 Jadwal yang dikonfigurasi:\n`;
+                    statusMessage += `• Harian: Setiap hari jam 12:00 WIB\n`;
+                    statusMessage += `• Mingguan: Setiap Senin jam 09:00 WIB\n`;
+                    statusMessage += `• Bulanan: Tanggal 1 jam 10:00 WIB\n`;
                 }
 
                 statusMessage += `\n🏢 *Grup Aktif:* ${config.apartments.allowedGroups.length} grup\n`;
-                statusMessage += `👤 *Owner Numbers:* ${config.owner.allowedNumbers.length} nomor\n\n`;
+                statusMessage += `👤 *Owner Numbers:* ${config.owner.allowedNumbers.length} nomor\n`;
+                statusMessage += `📋 *Scheduler Tasks:* ${scheduler.scheduledTasks ? scheduler.scheduledTasks.size : 0} tasks\n\n`;
 
                 statusMessage += `⏰ *Waktu Server:* ${new Date().toLocaleString('id-ID', {timeZone: 'Asia/Jakarta'})} WIB`;
 
