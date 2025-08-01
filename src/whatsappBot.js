@@ -497,6 +497,84 @@ class WhatsAppBot {
         }
     }
 
+    // Send apartment-specific daily reports to each group
+    async sendDailyReportsToGroups() {
+        try {
+            if (!config.apartments.allowedGroups || config.apartments.allowedGroups.length === 0) {
+                logger.error('No enabled groups configured');
+                return false;
+            }
+
+            let successCount = 0;
+            let totalGroups = config.apartments.allowedGroups.length;
+
+            logger.info(`Mengirim laporan harian per apartemen ke ${totalGroups} grup...`);
+
+            const reportGenerator = require('./reportGenerator');
+
+            for (const groupId of config.apartments.allowedGroups) {
+                try {
+                    const apartmentName = config.apartments.groupMapping[groupId];
+                    if (!apartmentName) {
+                        logger.warn(`No apartment mapping found for group ${groupId}`);
+                        continue;
+                    }
+
+                    logger.info(`Generating daily report for ${apartmentName}...`);
+
+                    // Generate report specific to this apartment using business day logic
+                    const moment = require('moment-timezone');
+                    const now = moment().tz('Asia/Jakarta');
+
+                    // Tentukan business day kemarin (karena laporan jam 12:00 untuk hari sebelumnya)
+                    const businessDay = now.clone().subtract(1, 'day');
+
+                    // Rentang waktu: business day kemarin jam 12:00 - hari ini jam 11:59
+                    const startDate = businessDay.format('YYYY-MM-DD') + ' 12:00:00';
+                    const endDate = now.format('YYYY-MM-DD') + ' 11:59:59';
+                    const displayDate = businessDay.format('DD/MM/YYYY');
+
+                    const report = await reportGenerator.generateReportByDateRange(
+                        startDate,
+                        endDate,
+                        displayDate,
+                        apartmentName
+                    );
+
+                    if (report) {
+                        const success = await this.sendMessage(groupId, report);
+                        if (success) {
+                            successCount++;
+                            logger.info(`✅ Laporan harian berhasil dikirim ke grup: ${apartmentName} (${groupId})`);
+                        } else {
+                            logger.error(`❌ Gagal mengirim laporan harian ke grup: ${apartmentName} (${groupId})`);
+                        }
+                    } else {
+                        // Send no data message
+                        const noDataMessage = `📊 *REKAP LAPORAN ${displayDate}*\n🏢 KAKARAMA ROOM\n🏠 ${apartmentName}\n\n❌ Tidak ada transaksi pada periode ini.`;
+                        const success = await this.sendMessage(groupId, noDataMessage);
+                        if (success) {
+                            successCount++;
+                            logger.info(`✅ Pesan "tidak ada data" berhasil dikirim ke grup: ${apartmentName} (${groupId})`);
+                        }
+                    }
+
+                    // Delay antar pengiriman untuk menghindari rate limiting
+                    await new Promise(resolve => setTimeout(resolve, config.whatsapp.messageDelay || 1000));
+                } catch (error) {
+                    const apartmentName = config.apartments.groupMapping[groupId] || 'Unknown';
+                    logger.error(`Error mengirim laporan harian ke grup ${apartmentName} (${groupId}):`, error);
+                }
+            }
+
+            logger.info(`Pengiriman laporan harian selesai: ${successCount}/${totalGroups} grup berhasil`);
+            return successCount > 0;
+        } catch (error) {
+            logger.error('Error dalam sendDailyReportsToGroups:', error);
+            return false;
+        }
+    }
+
     // Get chat information
     async getChatInfo(chatId) {
         try {

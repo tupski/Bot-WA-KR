@@ -49,11 +49,8 @@ class Scheduler {
             try {
                 logger.info('Memulai pembuatan laporan harian terjadwal...');
                 
-                // Generate report
-                const report = await reportGenerator.generateDailyReport();
-                
-                // Send to all enabled WhatsApp groups
-                const messageSent = await this.bot.sendToAllEnabledGroups(report);
+                // Send apartment-specific reports to each group
+                const messageSent = await this.bot.sendDailyReportsToGroups();
 
                 if (messageSent) {
                     logger.info('Laporan harian berhasil dikirim ke semua grup WhatsApp yang enabled');

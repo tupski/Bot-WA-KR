@@ -24,43 +24,140 @@ class ExcelExporter {
      */
     async generateDailyExcel(date = null) {
         try {
-            const reportDate = date || moment().tz(this.timezone).format('YYYY-MM-DD');
-            const displayDate = moment(reportDate).format('YYYY-MM-DD');
-            
-            logger.info(`Membuat laporan Excel untuk ${reportDate}`);
+            let startDate, endDate, displayDate, reportDate;
 
-            // Get data from database
-            const [transactions, csSummary, marketingCommission] = await Promise.all([
-                database.getTransactions(reportDate),
-                database.getCSSummary(reportDate),
-                database.getMarketingCommission(reportDate, null) // null = semua apartemen
-            ]);
+            if (date) {
+                // Jika tanggal spesifik diberikan, gunakan tanggal tersebut
+                reportDate = date;
+                displayDate = moment(reportDate).format('YYYY-MM-DD');
 
-            // Create workbook
-            const workbook = new ExcelJS.Workbook();
-            workbook.creator = 'KAKARAMA ROOM';
-            workbook.lastModifiedBy = 'WhatsApp Bot';
-            workbook.created = new Date();
-            workbook.modified = new Date();
+                // Get data from database untuk tanggal spesifik
+                const [transactions, csSummary, marketingCommission] = await Promise.all([
+                    database.getTransactions(reportDate),
+                    database.getCSSummary(reportDate),
+                    database.getMarketingCommission(reportDate, null) // null = semua apartemen
+                ]);
 
-            // Create sheets
-            await this.createTransactionsSheet(workbook, transactions, displayDate);
-            await this.createCSSummarySheet(workbook, csSummary, displayDate);
-            await this.createCommissionSheet(workbook, marketingCommission, displayDate);
+                logger.info(`Membuat laporan Excel untuk tanggal spesifik: ${reportDate}`);
 
-            // Save file
-            const filename = `Laporan_KAKARAMA_ROOM_${displayDate}.xlsx`;
-            const filepath = path.join(this.exportDir, filename);
-            
-            await workbook.xlsx.writeFile(filepath);
-            
-            logger.info(`Laporan Excel disimpan: ${filepath}`);
-            return filepath;
+                // Create workbook dengan data tanggal spesifik
+                const workbook = new ExcelJS.Workbook();
+                workbook.creator = 'KAKARAMA ROOM';
+                workbook.lastModifiedBy = 'WhatsApp Bot';
+                workbook.created = new Date();
+                workbook.modified = new Date();
+
+                // Create sheets
+                await this.createTransactionsSheet(workbook, transactions, displayDate);
+                await this.createCSSummarySheet(workbook, csSummary, displayDate);
+                await this.createCommissionSheet(workbook, marketingCommission, displayDate);
+
+                // Save file
+                const filename = `Laporan_KAKARAMA_ROOM_${displayDate}.xlsx`;
+                const filepath = path.join(this.exportDir, filename);
+
+                await workbook.xlsx.writeFile(filepath);
+
+                logger.info(`Laporan Excel disimpan: ${filepath}`);
+                return filepath;
+            } else {
+                // Default: gunakan business day range (untuk laporan harian otomatis)
+                const now = moment().tz(this.timezone);
+
+                // Business day kemarin (karena laporan jam 12:00 untuk hari sebelumnya)
+                const businessDay = now.clone().subtract(1, 'day');
+
+                // Rentang waktu: business day kemarin jam 12:00 - hari ini jam 11:59
+                startDate = businessDay.format('YYYY-MM-DD') + ' 12:00:00';
+                endDate = now.format('YYYY-MM-DD') + ' 11:59:59';
+                displayDate = businessDay.format('YYYY-MM-DD');
+
+                logger.info(`Membuat laporan Excel untuk business day range: ${startDate} - ${endDate}`);
+
+                // Get data from database berdasarkan range waktu
+                const transactions = await database.getTransactionsByDateRange(startDate, endDate);
+
+                // Hitung summary dari transactions
+                const csSummary = this.calculateCSSummaryFromTransactions(transactions);
+                const marketingCommission = this.calculateMarketingCommissionFromTransactions(transactions);
+
+                // Create workbook dengan data range
+                const workbook = new ExcelJS.Workbook();
+                workbook.creator = 'KAKARAMA ROOM';
+                workbook.lastModifiedBy = 'WhatsApp Bot';
+                workbook.created = new Date();
+                workbook.modified = new Date();
+
+                // Create sheets dengan data yang sudah dihitung
+                await this.createTransactionsSheet(workbook, transactions, `${displayDate} (Business Day Range)`);
+                await this.createCSSummarySheet(workbook, csSummary, `${displayDate} (Business Day Range)`);
+                await this.createCommissionSheet(workbook, marketingCommission, `${displayDate} (Business Day Range)`);
+
+                // Save file
+                const filename = `Laporan_KAKARAMA_ROOM_${displayDate}_BusinessDay.xlsx`;
+                const filepath = path.join(this.exportDir, filename);
+
+                await workbook.xlsx.writeFile(filepath);
+
+                logger.info(`Laporan Excel business day disimpan: ${filepath}`);
+                return filepath;
+            }
 
         } catch (error) {
             logger.error('Error membuat laporan Excel:', error);
             throw error;
         }
+    }
+
+    /**
+     * Calculate CS summary from transactions array
+     */
+    calculateCSSummaryFromTransactions(transactions) {
+        const csSummary = {};
+
+        transactions.forEach(transaction => {
+            const csName = transaction.cs_name || 'Unknown';
+            if (!csSummary[csName]) {
+                csSummary[csName] = {
+                    cs_name: csName,
+                    total_bookings: 0,
+                    total_amount: 0,
+                    total_commission: 0
+                };
+            }
+
+            csSummary[csName].total_bookings += 1;
+            csSummary[csName].total_amount += parseFloat(transaction.amount || 0);
+            csSummary[csName].total_commission += parseFloat(transaction.commission || 0);
+        });
+
+        return Object.values(csSummary);
+    }
+
+    /**
+     * Calculate marketing commission from transactions array
+     */
+    calculateMarketingCommissionFromTransactions(transactions) {
+        const marketingCommission = {};
+
+        transactions.forEach(transaction => {
+            const csName = transaction.cs_name || 'Unknown';
+            // Skip APK dan AMEL (bukan marketing)
+            if (csName.toLowerCase() !== 'apk' && csName.toLowerCase() !== 'amel') {
+                if (!marketingCommission[csName]) {
+                    marketingCommission[csName] = {
+                        cs_name: csName,
+                        booking_count: 0,
+                        total_commission: 0
+                    };
+                }
+
+                marketingCommission[csName].booking_count += 1;
+                marketingCommission[csName].total_commission += parseFloat(transaction.commission || 0);
+            }
+        });
+
+        return Object.values(marketingCommission);
     }
 
     /**
