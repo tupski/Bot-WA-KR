@@ -185,13 +185,16 @@ komisi : 50
 ### **!export**
 **Fungsi:** Export laporan Excel dan kirim via email
 **Format:**
-- `!export` - Export laporan business day kemarin
-- `!export DDMMYYYY` - Export laporan tanggal tertentu
+- `!export` - Export laporan business day kemarin (semua apartemen)
+- `!export DDMMYYYY` - Export laporan tanggal tertentu (semua apartemen)
+- `!export apartemen DDMMYYYY` - Export laporan apartemen tertentu pada tanggal tertentu
 
 **Contoh:**
 ```
 !export
 !export 01082025
+!export sky 30072025
+!export tokyo 01082025
 ```
 
 **Output:**
@@ -199,17 +202,26 @@ komisi : 50
 ✅ Export laporan berhasil!
 
 📊 Ringkasan:
-- Periode: 01/08/2025
-- Total transaksi: 25
-- File: Laporan_Export_01082025_1722556800000.xlsx
+- Periode: 30/07/2025
+- Apartemen: SKY HOUSE BSD
+- Total transaksi: 12
+- File: Laporan_Export_SKY_HOUSE_BSD_30072025_1722556800000.xlsx
 
 📧 Laporan telah dikirim via email ke kakaramaroom@gmail.com
 ```
 
+**Nama apartemen yang bisa digunakan:**
+- `sky` → SKY HOUSE BSD
+- `treepark` → TREEPARK BSD
+- `emerald` → EMERALD BINTARO
+- `springwood` → SPRINGWOOD
+- `serpong` → SERPONG GARDEN
+- `tokyo` → TOKYO PIK 2
+
 **Catatan:**
 - Range waktu: Tanggal yang diminta jam 12:00 - tanggal berikutnya jam 11:59
-- Contoh: `!export 01082025` = 1 Agustus 12:00 - 2 Agustus 11:59
-- File Excel berisi semua transaksi dalam periode tersebut
+- Contoh: `!export sky 30072025` = 30 Juli 12:00 - 31 Juli 11:59 (hanya SKY HOUSE BSD)
+- File Excel berisi transaksi sesuai filter apartemen dan periode
 - Otomatis dikirim via email
 
 ### **!fixenv**

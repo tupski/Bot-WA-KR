@@ -659,18 +659,30 @@ async function handleCommand(message, apartmentName) {
                 const emailService = require('./src/emailService');
                 const moment = require('moment-timezone');
 
-                // Parse command: !export DDMMYYYY
+                // Parse command: !export [apartemen] [DDMMYYYY]
                 const parts = message.body.trim().split(' ');
                 let targetDate = null;
                 let startDate, endDate, displayDate;
+                let apartmentName = null;
 
-                if (parts.length > 1) {
-                    // Parse tanggal DDMMYYYY
-                    const dateStr = parts[1];
-                    if (dateStr.length === 8) {
-                        const day = dateStr.substring(0, 2);
-                        const month = dateStr.substring(2, 4);
-                        const year = dateStr.substring(4, 8);
+                if (parts.length === 1) {
+                    // !export - Default: business day kemarin (seperti laporan harian)
+                    const now = moment().tz('Asia/Jakarta');
+                    const businessDay = now.clone().subtract(1, 'day');
+
+                    startDate = businessDay.format('YYYY-MM-DD') + ' 12:00:00';
+                    endDate = now.format('YYYY-MM-DD') + ' 11:59:59';
+                    displayDate = businessDay.format('DD/MM/YYYY');
+                    targetDate = businessDay.format('YYYY-MM-DD');
+                } else if (parts.length === 2) {
+                    // !export DDMMYYYY atau !export apartemen
+                    const param = parts[1];
+
+                    if (param.length === 8 && /^\d{8}$/.test(param)) {
+                        // Format tanggal DDMMYYYY
+                        const day = param.substring(0, 2);
+                        const month = param.substring(2, 4);
+                        const year = param.substring(4, 8);
                         targetDate = `${year}-${month}-${day}`;
 
                         // Validasi tanggal
@@ -688,30 +700,75 @@ async function handleCommand(message, apartmentName) {
                         endDate = nextDay.format('YYYY-MM-DD') + ' 11:59:59';
                         displayDate = businessDay.format('DD/MM/YYYY');
                     } else {
+                        // Nama apartemen - gunakan business day kemarin
+                        apartmentName = findApartmentByPartialName(param);
+                        if (!apartmentName) {
+                            await bot.sendMessage(message.from, `❌ Apartemen "${param}" tidak ditemukan. Gunakan: sky, treepark, emerald, springwood, serpong, tokyo`);
+                            return;
+                        }
+
+                        const now = moment().tz('Asia/Jakarta');
+                        const businessDay = now.clone().subtract(1, 'day');
+
+                        startDate = businessDay.format('YYYY-MM-DD') + ' 12:00:00';
+                        endDate = now.format('YYYY-MM-DD') + ' 11:59:59';
+                        displayDate = businessDay.format('DD/MM/YYYY');
+                        targetDate = businessDay.format('YYYY-MM-DD');
+                    }
+                } else if (parts.length === 3) {
+                    // !export apartemen DDMMYYYY
+                    const apartmentParam = parts[1];
+                    const dateParam = parts[2];
+
+                    // Validasi apartemen
+                    apartmentName = findApartmentByPartialName(apartmentParam);
+                    if (!apartmentName) {
+                        await bot.sendMessage(message.from, `❌ Apartemen "${apartmentParam}" tidak ditemukan. Gunakan: sky, treepark, emerald, springwood, serpong, tokyo`);
+                        return;
+                    }
+
+                    // Validasi tanggal
+                    if (dateParam.length !== 8 || !/^\d{8}$/.test(dateParam)) {
                         await bot.sendMessage(message.from, '❌ Format tanggal tidak valid. Gunakan format DDMMYYYY (contoh: 01082025)');
                         return;
                     }
-                } else {
-                    // Default: business day kemarin (seperti laporan harian)
-                    const now = moment().tz('Asia/Jakarta');
-                    const businessDay = now.clone().subtract(1, 'day');
+
+                    const day = dateParam.substring(0, 2);
+                    const month = dateParam.substring(2, 4);
+                    const year = dateParam.substring(4, 8);
+                    targetDate = `${year}-${month}-${day}`;
+
+                    // Validasi tanggal
+                    const parsedDate = moment(targetDate, 'YYYY-MM-DD');
+                    if (!parsedDate.isValid()) {
+                        await bot.sendMessage(message.from, '❌ Format tanggal tidak valid. Gunakan format DDMMYYYY (contoh: 01082025)');
+                        return;
+                    }
+
+                    // Hitung business day range untuk tanggal yang diminta
+                    const businessDay = parsedDate.clone();
+                    const nextDay = businessDay.clone().add(1, 'day');
 
                     startDate = businessDay.format('YYYY-MM-DD') + ' 12:00:00';
-                    endDate = now.format('YYYY-MM-DD') + ' 11:59:59';
+                    endDate = nextDay.format('YYYY-MM-DD') + ' 11:59:59';
                     displayDate = businessDay.format('DD/MM/YYYY');
-                    targetDate = businessDay.format('YYYY-MM-DD');
+                } else {
+                    await bot.sendMessage(message.from, '❌ Format command tidak valid.\n\nGunakan:\n- `!export` (business day kemarin)\n- `!export DDMMYYYY` (tanggal tertentu)\n- `!export apartemen DDMMYYYY` (apartemen + tanggal)');
+                    return;
                 }
 
-                await bot.sendMessage(message.from, `📊 Memproses export laporan untuk ${displayDate}...\n⏳ Mohon tunggu, proses ini memakan waktu beberapa menit.`);
+                const apartmentText = apartmentName ? ` untuk ${apartmentName}` : '';
+                await bot.sendMessage(message.from, `📊 Memproses export laporan${apartmentText} untuk ${displayDate}...\n⏳ Mohon tunggu, proses ini memakan waktu beberapa menit.`);
 
-                logger.info(`Generating Excel export for date range: ${startDate} - ${endDate}`);
+                logger.info(`Generating Excel export for date range: ${startDate} - ${endDate}${apartmentText}`);
 
                 // Generate Excel dengan business day range
                 const database = require('./src/database');
-                const transactions = await database.getTransactionsByDateRange(startDate, endDate);
+                const transactions = await database.getTransactionsByDateRange(startDate, endDate, apartmentName);
 
                 if (transactions.length === 0) {
-                    await bot.sendMessage(message.from, `❌ Tidak ada transaksi ditemukan untuk periode ${displayDate}.`);
+                    const noDataText = apartmentName ? `${apartmentName} pada periode ${displayDate}` : `periode ${displayDate}`;
+                    await bot.sendMessage(message.from, `❌ Tidak ada transaksi ditemukan untuk ${noDataText}.`);
                     return;
                 }
 
@@ -769,7 +826,8 @@ async function handleCommand(message, apartmentName) {
                 });
 
                 // Save file
-                const filename = `Laporan_Export_${displayDate.replace(/\//g, '')}_${Date.now()}.xlsx`;
+                const apartmentPrefix = apartmentName ? `${apartmentName.replace(/\s+/g, '_')}_` : '';
+                const filename = `Laporan_Export_${apartmentPrefix}${displayDate.replace(/\//g, '')}_${Date.now()}.xlsx`;
                 const exportDir = './exports';
                 if (!fs.existsSync(exportDir)) {
                     fs.mkdirSync(exportDir, { recursive: true });
@@ -779,16 +837,14 @@ async function handleCommand(message, apartmentName) {
                 await workbook.xlsx.writeFile(filepath);
 
                 // Send via email
-                const emailSent = await emailService.sendDailyReport(filepath, `Laporan Export ${displayDate}`, {
-                    totalTransactions: transactions.length,
-                    dateRange: `${displayDate} (${startDate} - ${endDate})`,
-                    exportedAt: moment().tz('Asia/Jakarta').format('DD/MM/YYYY HH:mm:ss')
-                });
+                const emailSent = await emailService.sendDailyReport(filepath, targetDate);
+
+                const apartmentInfo = apartmentName ? `\n- Apartemen: ${apartmentName}` : '';
 
                 if (emailSent) {
-                    await bot.sendMessage(message.from, `✅ Export laporan berhasil!\n\n📊 **Ringkasan:**\n- Periode: ${displayDate}\n- Total transaksi: ${transactions.length}\n- File: ${filename}\n\n📧 Laporan telah dikirim via email ke ${config.email.to}`);
+                    await bot.sendMessage(message.from, `✅ Export laporan berhasil!\n\n📊 **Ringkasan:**\n- Periode: ${displayDate}${apartmentInfo}\n- Total transaksi: ${transactions.length}\n- File: ${filename}\n\n📧 Laporan telah dikirim via email ke ${config.email.to}`);
                 } else {
-                    await bot.sendMessage(message.from, `⚠️ Export laporan berhasil dibuat tapi gagal dikirim via email.\n\n📊 **Ringkasan:**\n- Periode: ${displayDate}\n- Total transaksi: ${transactions.length}\n- File: ${filename}\n\n💾 File tersimpan di server: ${filepath}`);
+                    await bot.sendMessage(message.from, `⚠️ Export laporan berhasil dibuat tapi gagal dikirim via email.\n\n📊 **Ringkasan:**\n- Periode: ${displayDate}${apartmentInfo}\n- Total transaksi: ${transactions.length}\n- File: ${filename}\n\n💾 File tersimpan di server: ${filepath}`);
                 }
 
                 logger.info(`Export completed: ${filename} with ${transactions.length} transactions`);
