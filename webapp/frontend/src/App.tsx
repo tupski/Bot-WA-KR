@@ -6,12 +6,10 @@ import { AuthProvider } from '@/contexts/AuthContext'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 import LoginPage from '@/pages/auth/LoginPage'
 import RegisterPage from '@/pages/auth/RegisterPage'
+import DashboardPage from '@/pages/DashboardPage'
 import './index.css'
 
 // Placeholder components - will be created in later tasks
-function DashboardPage() {
-  return <div className="p-8">Dashboard Page - To be implemented</div>
-}
 
 function TransactionsPage() {
   return <div className="p-8">Transactions Page - To be implemented</div>
