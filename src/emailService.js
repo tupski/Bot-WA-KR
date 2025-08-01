@@ -80,7 +80,7 @@ class EmailService {
     /**
      * Send daily report with Excel attachment
      */
-    async sendDailyReport(excelFilePath, date = null) {
+    async sendDailyReport(excelFilePath, date = null, apartmentName = null) {
         try {
             if (!this.transporter) {
                 throw new Error('Email transporter not initialized');
@@ -94,10 +94,20 @@ class EmailService {
             const displayDate = moment(reportDate).format('DD MMMM YYYY');
             const currentTime = moment().tz(this.timezone).format('HH:mm');
 
-            // Email content
-            const subject = `Laporan Harian ${this.companyName} - ${displayDate}`;
-            const htmlContent = this.generateDailyEmailHTML(displayDate, currentTime);
-            const textContent = this.generateDailyEmailText(displayDate, currentTime);
+            // Email content dengan format baru
+            let subject, htmlContent, textContent;
+
+            if (apartmentName) {
+                // Format: Laporan <Nama Apartemen> <Tanggal> - KR WA Bot
+                subject = `Laporan ${apartmentName} ${displayDate} - KR WA Bot`;
+                htmlContent = this.generateDailyEmailHTML(displayDate, currentTime, apartmentName);
+                textContent = this.generateDailyEmailText(displayDate, currentTime, apartmentName);
+            } else {
+                // Format lama untuk backward compatibility
+                subject = `Laporan Harian ${this.companyName} - ${displayDate}`;
+                htmlContent = this.generateDailyEmailHTML(displayDate, currentTime);
+                textContent = this.generateDailyEmailText(displayDate, currentTime);
+            }
 
             // Email options
             const mailOptions = {
@@ -135,7 +145,7 @@ class EmailService {
     /**
      * Generate HTML content for daily email
      */
-    generateDailyEmailHTML(displayDate, currentTime) {
+    generateDailyEmailHTML(displayDate, currentTime, apartmentName = null) {
         return `
         <!DOCTYPE html>
         <html>
@@ -180,14 +190,14 @@ class EmailService {
         </head>
         <body>
             <div class="header">
-                <h1>Laporan Harian ${this.companyName}</h1>
+                <h1>Laporan Harian ${apartmentName || this.companyName}</h1>
                 <p>${displayDate} - ${currentTime} WIB</p>
             </div>
-            
+
             <div class="content">
                 <h2>Selamat siang!</h2>
-                
-                <p>Berikut adalah laporan harian ${this.companyName} untuk tanggal <strong>${displayDate}</strong>.</p>
+
+                <p>Berikut adalah laporan harian ${apartmentName || this.companyName} untuk tanggal <strong>${displayDate}</strong>.</p>
                 
                 <div class="highlight">
                     <h3>📊 File Laporan Excel</h3>
@@ -212,7 +222,7 @@ class EmailService {
             <div class="footer">
                 <p>Email ini dikirim secara otomatis oleh sistem WhatsApp Bot ${this.companyName}</p>
                 <p>Waktu pengiriman: ${moment().tz(this.timezone).format('DD/MM/YYYY HH:mm:ss')} WIB</p>
-                <p>Copyright &copy; 2025 - Kakarama Room. <a href="https://kakaramaroom.com" target="_blank">kakaramaroom.com</a></p>
+                <p>Copyright &copy; 2025 - Kakarama Room.<a href="https://kakaramaroom.com" target="_blank">kakaramaroom.com</a></p>
             </div>
         </body>
         </html>
@@ -222,14 +232,15 @@ class EmailService {
     /**
      * Generate text content for daily email
      */
-    generateDailyEmailText(displayDate, currentTime) {
+    generateDailyEmailText(displayDate, currentTime, apartmentName = null) {
+        const reportName = apartmentName || this.companyName;
         return `
-LAPORAN HARIAN ${this.companyName.toUpperCase()}
+LAPORAN HARIAN ${reportName.toUpperCase()}
 ${displayDate} - ${currentTime} WIB
 
 Selamat siang!
 
-Berikut adalah laporan harian ${this.companyName} untuk tanggal ${displayDate}.
+Berikut adalah laporan harian ${reportName} untuk tanggal ${displayDate}.
 
 FILE LAPORAN EXCEL:
 File Excel dengan detail lengkap telah dilampirkan dalam email ini, berisi:

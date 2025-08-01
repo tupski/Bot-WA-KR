@@ -805,7 +805,7 @@ async function handleCommand(message, apartmentName) {
                 await workbook.xlsx.writeFile(filepath);
 
                 // Send via email
-                const emailSent = await emailService.sendDailyReport(filepath, targetDate);
+                const emailSent = await emailService.sendDailyReport(filepath, targetDate, apartmentName);
 
                 const apartmentInfo = apartmentName ? `\n- Apartemen: ${apartmentName}` : '';
 
