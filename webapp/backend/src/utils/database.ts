@@ -218,6 +218,32 @@ async function createWebTables(): Promise<void> {
       )
     `);
 
+    // Logs table for system logging
+    await dbConnection.query(`
+      CREATE TABLE IF NOT EXISTS logs (
+        id INTEGER PRIMARY KEY ${autoIncrement},
+        level VARCHAR(10) NOT NULL,
+        message TEXT NOT NULL,
+        source VARCHAR(100),
+        details TEXT,
+        user_id INTEGER,
+        ip_address VARCHAR(45),
+        user_agent TEXT,
+        timestamp ${timestamp},
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+      )
+    `);
+
+    // Config table for system configuration
+    await dbConnection.query(`
+      CREATE TABLE IF NOT EXISTS config (
+        id INTEGER PRIMARY KEY ${autoIncrement},
+        key_name VARCHAR(255) NOT NULL UNIQUE,
+        value TEXT,
+        updated_at ${timestamp}
+      )
+    `);
+
     logger.info('Web dashboard tables created successfully');
   } catch (error) {
     logger.error('Error creating web tables:', error);

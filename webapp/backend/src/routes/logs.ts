@@ -1,18 +1,76 @@
-import { Router } from 'express';
+import { Router } from 'express'
+import * as logController from '@/controllers/logController'
+import { authenticateToken, requireUserOrAdmin, requireAdmin } from '@/middleware/auth'
 
-const router = Router();
+const router = Router()
 
-// Placeholder routes - will be implemented in Logs & Monitoring API task
-router.get('/', (req, res) => {
-  res.json({ message: 'Get logs endpoint - to be implemented' });
-});
+// All log routes require authentication
+router.use(authenticateToken)
 
-router.get('/bot-status', (req, res) => {
-  res.json({ message: 'Get bot status endpoint - to be implemented' });
-});
+// Get logs with filtering and pagination (user or admin)
+router.get('/',
+  requireUserOrAdmin,
+  logController.getLogs
+)
 
-router.get('/system-health', (req, res) => {
-  res.json({ message: 'Get system health endpoint - to be implemented' });
-});
+// Get log statistics (user or admin)
+router.get('/stats',
+  requireUserOrAdmin,
+  logController.getLogStats
+)
 
-export default router;
+// Get system health status (user or admin)
+router.get('/system-health',
+  requireUserOrAdmin,
+  logController.getSystemHealth
+)
+
+// Get bot status (user or admin)
+router.get('/bot-status',
+  requireUserOrAdmin,
+  logController.getBotStatus
+)
+
+// Get real-time stats for dashboard (user or admin)
+router.get('/realtime-stats',
+  requireUserOrAdmin,
+  logController.getRealtimeStats
+)
+
+// Get system metrics (user or admin)
+router.get('/system-metrics',
+  requireUserOrAdmin,
+  logController.getSystemMetrics
+)
+
+// Get available log levels (user or admin)
+router.get('/levels',
+  requireUserOrAdmin,
+  logController.getLogLevels
+)
+
+// Get available log sources (user or admin)
+router.get('/sources',
+  requireUserOrAdmin,
+  logController.getLogSources
+)
+
+// Create new log entry (user or admin)
+router.post('/',
+  requireUserOrAdmin,
+  logController.createLog
+)
+
+// Export logs (admin only)
+router.get('/export',
+  requireAdmin,
+  logController.exportLogs
+)
+
+// Cleanup old logs (admin only)
+router.post('/cleanup',
+  requireAdmin,
+  logController.cleanupLogs
+)
+
+export default router
