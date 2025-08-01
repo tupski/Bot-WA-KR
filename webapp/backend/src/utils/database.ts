@@ -2,6 +2,7 @@ import sqlite3 from 'sqlite3';
 import mysql from 'mysql2/promise';
 import path from 'path';
 import { logger } from './logger';
+import { DatabaseSeeder } from './seeder';
 
 export interface DatabaseConnection {
   query: (sql: string, params?: any[]) => Promise<any>;
@@ -90,7 +91,10 @@ export async function connectDatabase(): Promise<DatabaseConnection> {
 
     // Create additional tables for web dashboard if they don't exist
     await createWebTables();
-    
+
+    // Run database seeders
+    await runSeeders();
+
     return dbConnection;
   } catch (error) {
     logger.error('Database connection failed:', error);
@@ -129,8 +133,12 @@ async function createWebTables(): Promise<void> {
         id INTEGER PRIMARY KEY ${autoIncrement},
         user_id INTEGER NOT NULL,
         refresh_token VARCHAR(500) NOT NULL,
-        expires_at ${timestamp},
+        expires_at ${dbType === 'mysql' ? 'TIMESTAMP' : 'DATETIME'} NOT NULL,
+        ip_address VARCHAR(45),
+        user_agent TEXT,
+        is_active BOOLEAN DEFAULT TRUE,
         created_at ${timestamp},
+        updated_at ${timestamp},
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )
     `);
@@ -145,6 +153,36 @@ async function createWebTables(): Promise<void> {
         permissions TEXT,
         is_active BOOLEAN DEFAULT TRUE,
         last_used ${timestamp},
+        created_at ${timestamp},
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+
+    // User permissions table for role-based access control
+    await dbConnection.query(`
+      CREATE TABLE IF NOT EXISTS user_permissions (
+        id INTEGER PRIMARY KEY ${autoIncrement},
+        user_id INTEGER NOT NULL,
+        permission VARCHAR(100) NOT NULL,
+        resource VARCHAR(100),
+        granted_by INTEGER,
+        granted_at ${timestamp},
+        expires_at ${dbType === 'mysql' ? 'TIMESTAMP' : 'DATETIME'},
+        is_active BOOLEAN DEFAULT TRUE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (granted_by) REFERENCES users(id) ON DELETE SET NULL,
+        UNIQUE(user_id, permission, resource)
+      )
+    `);
+
+    // Password reset tokens table
+    await dbConnection.query(`
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        id INTEGER PRIMARY KEY ${autoIncrement},
+        user_id INTEGER NOT NULL,
+        token VARCHAR(255) NOT NULL,
+        expires_at ${dbType === 'mysql' ? 'TIMESTAMP' : 'DATETIME'} NOT NULL,
+        used_at ${dbType === 'mysql' ? 'TIMESTAMP' : 'DATETIME'},
         created_at ${timestamp},
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )
@@ -167,6 +205,19 @@ async function createWebTables(): Promise<void> {
       )
     `);
 
+    // Login attempts table for security tracking
+    await dbConnection.query(`
+      CREATE TABLE IF NOT EXISTS login_attempts (
+        id INTEGER PRIMARY KEY ${autoIncrement},
+        email VARCHAR(100) NOT NULL,
+        ip_address VARCHAR(45) NOT NULL,
+        user_agent TEXT,
+        success BOOLEAN NOT NULL,
+        failure_reason VARCHAR(100),
+        attempted_at ${timestamp}
+      )
+    `);
+
     logger.info('Web dashboard tables created successfully');
   } catch (error) {
     logger.error('Error creating web tables:', error);
@@ -179,6 +230,15 @@ export async function getDatabase(): Promise<DatabaseConnection> {
     throw new Error('Database not connected. Call connectDatabase() first.');
   }
   return dbConnection;
+}
+
+async function runSeeders(): Promise<void> {
+  try {
+    await DatabaseSeeder.runAllSeeders();
+  } catch (error) {
+    logger.error('Error running database seeders:', error);
+    // Don't throw error to prevent app from crashing
+  }
 }
 
 export async function closeDatabase(): Promise<void> {
