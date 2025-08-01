@@ -1,11 +1,14 @@
+import React from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Toaster } from 'react-hot-toast'
+import { AuthProvider } from '@/contexts/AuthContext'
+import ProtectedRoute from '@/components/auth/ProtectedRoute'
+import LoginPage from '@/pages/auth/LoginPage'
+import RegisterPage from '@/pages/auth/RegisterPage'
+import './index.css'
 
 // Placeholder components - will be created in later tasks
-function LoginPage() {
-  return <div className="p-8">Login Page - To be implemented</div>
-}
-
 function DashboardPage() {
   return <div className="p-8">Dashboard Page - To be implemented</div>
 }
@@ -45,17 +48,89 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
-        <div className="min-h-screen bg-gray-50">
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/transactions" element={<TransactionsPage />} />
-            <Route path="/reports" element={<ReportsPage />} />
-            <Route path="/cs" element={<CSPage />} />
-            <Route path="/config" element={<ConfigPage />} />
-            <Route path="/logs" element={<LogsPage />} />
-          </Routes>
-        </div>
+        <AuthProvider>
+          <div className="min-h-screen bg-gray-50">
+            <Routes>
+              {/* Public routes */}
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+
+              {/* Protected routes */}
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <DashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/transactions"
+                element={
+                  <ProtectedRoute>
+                    <TransactionsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/reports"
+                element={
+                  <ProtectedRoute>
+                    <ReportsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/cs"
+                element={
+                  <ProtectedRoute>
+                    <CSPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/config"
+                element={
+                  <ProtectedRoute requiredRole="admin">
+                    <ConfigPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/logs"
+                element={
+                  <ProtectedRoute>
+                    <LogsPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Catch all route - redirect to login */}
+              <Route path="*" element={<LoginPage />} />
+            </Routes>
+
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                duration: 4000,
+                style: {
+                  background: '#363636',
+                  color: '#fff',
+                },
+                success: {
+                  style: {
+                    background: '#10b981',
+                  },
+                },
+                error: {
+                  style: {
+                    background: '#ef4444',
+                  },
+                },
+              }}
+            />
+          </div>
+        </AuthProvider>
       </Router>
     </QueryClientProvider>
   )
