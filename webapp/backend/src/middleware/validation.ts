@@ -160,3 +160,173 @@ export const validateRateLimit = (req: Request, res: Response, next: NextFunctio
   
   next()
 }
+
+// Transaction validation
+export const validateCreateTransaction = [
+  body('messageId')
+    .trim()
+    .notEmpty()
+    .withMessage('Message ID is required')
+    .isLength({ max: 255 })
+    .withMessage('Message ID must not exceed 255 characters'),
+
+  body('location')
+    .trim()
+    .notEmpty()
+    .withMessage('Location is required')
+    .isLength({ max: 100 })
+    .withMessage('Location must not exceed 100 characters'),
+
+  body('unit')
+    .trim()
+    .notEmpty()
+    .withMessage('Unit is required')
+    .isLength({ max: 50 })
+    .withMessage('Unit must not exceed 50 characters'),
+
+  body('checkoutTime')
+    .trim()
+    .notEmpty()
+    .withMessage('Checkout time is required')
+    .isLength({ max: 100 })
+    .withMessage('Checkout time must not exceed 100 characters'),
+
+  body('duration')
+    .trim()
+    .notEmpty()
+    .withMessage('Duration is required')
+    .isLength({ max: 50 })
+    .withMessage('Duration must not exceed 50 characters'),
+
+  body('paymentMethod')
+    .isIn(['Cash', 'Transfer'])
+    .withMessage('Payment method must be Cash or Transfer'),
+
+  body('csName')
+    .trim()
+    .notEmpty()
+    .withMessage('CS name is required')
+    .isLength({ max: 50 })
+    .withMessage('CS name must not exceed 50 characters'),
+
+  body('commission')
+    .isNumeric()
+    .withMessage('Commission must be a number')
+    .custom((value) => {
+      if (parseFloat(value) < 0) {
+        throw new Error('Commission must be non-negative')
+      }
+      return true
+    }),
+
+  body('amount')
+    .isNumeric()
+    .withMessage('Amount must be a number')
+    .custom((value) => {
+      if (parseFloat(value) <= 0) {
+        throw new Error('Amount must be greater than 0')
+      }
+      return true
+    }),
+
+  body('netAmount')
+    .optional()
+    .isNumeric()
+    .withMessage('Net amount must be a number'),
+
+  body('skipFinancial')
+    .optional()
+    .isBoolean()
+    .withMessage('Skip financial must be a boolean'),
+
+  body('dateOnly')
+    .isISO8601()
+    .withMessage('Date must be in valid ISO format (YYYY-MM-DD)'),
+
+  handleValidationErrors
+]
+
+export const validateUpdateTransaction = [
+  body('location')
+    .optional()
+    .trim()
+    .isLength({ max: 100 })
+    .withMessage('Location must not exceed 100 characters'),
+
+  body('unit')
+    .optional()
+    .trim()
+    .isLength({ max: 50 })
+    .withMessage('Unit must not exceed 50 characters'),
+
+  body('checkoutTime')
+    .optional()
+    .trim()
+    .isLength({ max: 100 })
+    .withMessage('Checkout time must not exceed 100 characters'),
+
+  body('duration')
+    .optional()
+    .trim()
+    .isLength({ max: 50 })
+    .withMessage('Duration must not exceed 50 characters'),
+
+  body('paymentMethod')
+    .optional()
+    .isIn(['Cash', 'Transfer'])
+    .withMessage('Payment method must be Cash or Transfer'),
+
+  body('csName')
+    .optional()
+    .trim()
+    .isLength({ max: 50 })
+    .withMessage('CS name must not exceed 50 characters'),
+
+  body('commission')
+    .optional()
+    .isNumeric()
+    .withMessage('Commission must be a number')
+    .custom((value) => {
+      if (value !== undefined && parseFloat(value) < 0) {
+        throw new Error('Commission must be non-negative')
+      }
+      return true
+    }),
+
+  body('amount')
+    .optional()
+    .isNumeric()
+    .withMessage('Amount must be a number')
+    .custom((value) => {
+      if (value !== undefined && parseFloat(value) <= 0) {
+        throw new Error('Amount must be greater than 0')
+      }
+      return true
+    }),
+
+  body('netAmount')
+    .optional()
+    .isNumeric()
+    .withMessage('Net amount must be a number'),
+
+  body('skipFinancial')
+    .optional()
+    .isBoolean()
+    .withMessage('Skip financial must be a boolean'),
+
+  handleValidationErrors
+]
+
+export const validateBulkDelete = [
+  body('ids')
+    .isArray({ min: 1, max: 100 })
+    .withMessage('IDs must be an array with 1-100 items')
+    .custom((ids) => {
+      if (!ids.every((id: any) => Number.isInteger(parseInt(id)))) {
+        throw new Error('All IDs must be valid integers')
+      }
+      return true
+    }),
+
+  handleValidationErrors
+]

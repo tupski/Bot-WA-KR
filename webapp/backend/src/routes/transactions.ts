@@ -1,26 +1,60 @@
-import { Router } from 'express';
+import { Router } from 'express'
+import * as transactionController from '@/controllers/transactionController'
+import { authenticateToken, requireUserOrAdmin, requireAdmin } from '@/middleware/auth'
+import {
+  validateCreateTransaction,
+  validateUpdateTransaction,
+  validateBulkDelete
+} from '@/middleware/validation'
 
-const router = Router();
+const router = Router()
 
-// Placeholder routes - will be implemented in Transactions API task
-router.get('/', (req, res) => {
-  res.json({ message: 'Get transactions endpoint - to be implemented' });
-});
+// All transaction routes require authentication
+router.use(authenticateToken)
 
-router.get('/:id', (req, res) => {
-  res.json({ message: 'Get transaction by ID endpoint - to be implemented' });
-});
+// Get transactions with filtering and pagination
+router.get('/',
+  requireUserOrAdmin,
+  transactionController.getTransactions
+)
 
-router.post('/', (req, res) => {
-  res.json({ message: 'Create transaction endpoint - to be implemented' });
-});
+// Get transaction statistics
+router.get('/stats',
+  requireUserOrAdmin,
+  transactionController.getTransactionStats
+)
 
-router.put('/:id', (req, res) => {
-  res.json({ message: 'Update transaction endpoint - to be implemented' });
-});
+// Get transaction by ID
+router.get('/:id',
+  requireUserOrAdmin,
+  transactionController.getTransactionById
+)
 
-router.delete('/:id', (req, res) => {
-  res.json({ message: 'Delete transaction endpoint - to be implemented' });
-});
+// Create new transaction (admin only)
+router.post('/',
+  requireAdmin,
+  validateCreateTransaction,
+  transactionController.createTransaction
+)
 
-export default router;
+// Update transaction (admin only)
+router.put('/:id',
+  requireAdmin,
+  validateUpdateTransaction,
+  transactionController.updateTransaction
+)
+
+// Delete transaction (admin only)
+router.delete('/:id',
+  requireAdmin,
+  transactionController.deleteTransaction
+)
+
+// Bulk delete transactions (admin only)
+router.post('/bulk-delete',
+  requireAdmin,
+  validateBulkDelete,
+  transactionController.bulkDeleteTransactions
+)
+
+export default router
