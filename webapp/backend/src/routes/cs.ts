@@ -1,22 +1,51 @@
-import { Router } from 'express';
+import { Router } from 'express'
+import * as csController from '@/controllers/csController'
+import { authenticateToken, requireUserOrAdmin } from '@/middleware/auth'
 
-const router = Router();
+const router = Router()
 
-// Placeholder routes - will be implemented in CS Management API task
-router.get('/', (req, res) => {
-  res.json({ message: 'Get CS list endpoint - to be implemented' });
-});
+// All CS routes require authentication
+router.use(authenticateToken)
+router.use(requireUserOrAdmin)
 
-router.get('/:id', (req, res) => {
-  res.json({ message: 'Get CS by ID endpoint - to be implemented' });
-});
+// Get all CS with optional date filtering
+router.get('/',
+  csController.getAllCS
+)
 
-router.get('/:id/performance', (req, res) => {
-  res.json({ message: 'Get CS performance endpoint - to be implemented' });
-});
+// Get CS ranking/leaderboard
+router.get('/ranking',
+  csController.getCSRanking
+)
 
-router.get('/:id/commission', (req, res) => {
-  res.json({ message: 'Get CS commission endpoint - to be implemented' });
-});
+// Get CS leaderboard with different metrics
+router.get('/leaderboard',
+  csController.getCSLeaderboard
+)
 
-export default router;
+// Get commission analysis for all or specific CS
+router.get('/commission-analysis',
+  csController.getCommissionAnalysis
+)
+
+// Compare multiple CS performance
+router.post('/compare',
+  csController.compareCS
+)
+
+// Get specific CS performance details
+router.get('/:csName/performance',
+  csController.getCSPerformance
+)
+
+// Get specific CS statistics
+router.get('/:csName/stats',
+  csController.getCSStats
+)
+
+// Get CS performance trends
+router.get('/:csName/trends',
+  csController.getCSTrends
+)
+
+export default router
