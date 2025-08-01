@@ -1,26 +1,50 @@
-import { Router } from 'express';
+import { Router } from 'express'
+import * as authController from '@/controllers/authController'
+import { authenticateToken, rateLimitByIP, checkAccountLockout } from '@/middleware/auth'
+import {
+  validateRegister,
+  validateLogin,
+  validateRefreshToken,
+  validateChangePassword
+} from '@/middleware/validation'
 
-const router = Router();
+const router = Router()
 
-// Placeholder routes - will be implemented in Authentication API task
-router.post('/register', (req, res) => {
-  res.json({ message: 'Register endpoint - to be implemented' });
-});
+// Public routes with rate limiting
+router.post('/register',
+  rateLimitByIP(5, 15), // 5 attempts per 15 minutes per IP
+  validateRegister,
+  authController.register
+)
 
-router.post('/login', (req, res) => {
-  res.json({ message: 'Login endpoint - to be implemented' });
-});
+router.post('/login',
+  rateLimitByIP(10, 15), // 10 attempts per 15 minutes per IP
+  checkAccountLockout,
+  validateLogin,
+  authController.login
+)
 
-router.post('/logout', (req, res) => {
-  res.json({ message: 'Logout endpoint - to be implemented' });
-});
+router.post('/refresh',
+  rateLimitByIP(20, 15), // 20 refresh attempts per 15 minutes per IP
+  validateRefreshToken,
+  authController.refreshToken
+)
 
-router.post('/refresh', (req, res) => {
-  res.json({ message: 'Refresh token endpoint - to be implemented' });
-});
+// Protected routes
+router.post('/logout',
+  authenticateToken,
+  authController.logout
+)
 
-router.get('/me', (req, res) => {
-  res.json({ message: 'Get current user endpoint - to be implemented' });
-});
+router.get('/me',
+  authenticateToken,
+  authController.me
+)
 
-export default router;
+router.post('/change-password',
+  authenticateToken,
+  validateChangePassword,
+  authController.changePassword
+)
+
+export default router

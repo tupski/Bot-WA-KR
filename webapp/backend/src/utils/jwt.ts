@@ -151,7 +151,7 @@ export class JWTService {
     return new Date(Date.now() + (expirySeconds * 1000))
   }
 
-  private static parseExpiryToSeconds(expiry: string): number {
+  static parseExpiryToSeconds(expiry: string): number {
     // Parse expiry string like "15m", "7d", "1h", etc.
     const match = expiry.match(/^(\d+)([smhd])$/)
     if (!match) {

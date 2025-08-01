@@ -4,6 +4,7 @@ import { logger } from '@/utils/logger';
 export interface ApiError extends Error {
   statusCode?: number;
   isOperational?: boolean;
+  details?: any;
 }
 
 export class AppError extends Error implements ApiError {
@@ -67,9 +68,10 @@ export const errorHandler = (
     error: {
       message,
       statusCode,
+      ...(error.details && { details: error.details }),
       ...(process.env.NODE_ENV === 'development' && {
         stack: error.stack,
-        details: error
+        fullError: error
       })
     },
     timestamp: new Date().toISOString(),
@@ -94,8 +96,11 @@ export class NotFoundError extends AppError {
 }
 
 export class BadRequestError extends AppError {
-  constructor(message: string = 'Bad request') {
+  public details?: any;
+
+  constructor(message: string = 'Bad request', details?: any) {
     super(message, 400);
+    this.details = details;
   }
 }
 
