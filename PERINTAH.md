@@ -182,6 +182,36 @@ komisi : 50
 ⏱️ Waktu proses: 2 menit 15 detik
 ```
 
+### **!export**
+**Fungsi:** Export laporan Excel dan kirim via email
+**Format:**
+- `!export` - Export laporan business day kemarin
+- `!export DDMMYYYY` - Export laporan tanggal tertentu
+
+**Contoh:**
+```
+!export
+!export 01082025
+```
+
+**Output:**
+```
+✅ Export laporan berhasil!
+
+📊 Ringkasan:
+- Periode: 01/08/2025
+- Total transaksi: 25
+- File: Laporan_Export_01082025_1722556800000.xlsx
+
+📧 Laporan telah dikirim via email ke kakaramaroom@gmail.com
+```
+
+**Catatan:**
+- Range waktu: Tanggal yang diminta jam 12:00 - tanggal berikutnya jam 11:59
+- Contoh: `!export 01082025` = 1 Agustus 12:00 - 2 Agustus 11:59
+- File Excel berisi semua transaksi dalam periode tersebut
+- Otomatis dikirim via email
+
 ### **!fixenv**
 **Fungsi:** Memperbaiki dan reload konfigurasi environment
 **Format:** `!fixenv`

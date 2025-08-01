@@ -639,6 +639,165 @@ async function handleCommand(message, apartmentName) {
                 await bot.sendMessage(message.from, '❌ Terjadi error saat mengambil debug info.');
             }
 
+        } else if (message.body.startsWith('!export')) {
+            logger.info(`Memproses command export dari ${message.from}: ${message.body}`);
+
+            // Hanya owner yang bisa menggunakan command ini
+            if (!isOwner) {
+                await bot.sendMessage(message.from, '❌ Hanya owner yang dapat menggunakan command !export.');
+                return;
+            }
+
+            // Hanya bisa dipanggil dari private message untuk keamanan
+            const isFromGroup = message.from.includes('@g.us');
+            if (isFromGroup) {
+                await bot.sendMessage(message.from, '❌ Command !export hanya bisa digunakan melalui pesan pribadi untuk keamanan.');
+                return;
+            }
+
+            try {
+                const emailService = require('./src/emailService');
+                const moment = require('moment-timezone');
+
+                // Parse command: !export DDMMYYYY
+                const parts = message.body.trim().split(' ');
+                let targetDate = null;
+                let startDate, endDate, displayDate;
+
+                if (parts.length > 1) {
+                    // Parse tanggal DDMMYYYY
+                    const dateStr = parts[1];
+                    if (dateStr.length === 8) {
+                        const day = dateStr.substring(0, 2);
+                        const month = dateStr.substring(2, 4);
+                        const year = dateStr.substring(4, 8);
+                        targetDate = `${year}-${month}-${day}`;
+
+                        // Validasi tanggal
+                        const parsedDate = moment(targetDate, 'YYYY-MM-DD');
+                        if (!parsedDate.isValid()) {
+                            await bot.sendMessage(message.from, '❌ Format tanggal tidak valid. Gunakan format DDMMYYYY (contoh: 01082025)');
+                            return;
+                        }
+
+                        // Hitung business day range untuk tanggal yang diminta
+                        const businessDay = parsedDate.clone();
+                        const nextDay = businessDay.clone().add(1, 'day');
+
+                        startDate = businessDay.format('YYYY-MM-DD') + ' 12:00:00';
+                        endDate = nextDay.format('YYYY-MM-DD') + ' 11:59:59';
+                        displayDate = businessDay.format('DD/MM/YYYY');
+                    } else {
+                        await bot.sendMessage(message.from, '❌ Format tanggal tidak valid. Gunakan format DDMMYYYY (contoh: 01082025)');
+                        return;
+                    }
+                } else {
+                    // Default: business day kemarin (seperti laporan harian)
+                    const now = moment().tz('Asia/Jakarta');
+                    const businessDay = now.clone().subtract(1, 'day');
+
+                    startDate = businessDay.format('YYYY-MM-DD') + ' 12:00:00';
+                    endDate = now.format('YYYY-MM-DD') + ' 11:59:59';
+                    displayDate = businessDay.format('DD/MM/YYYY');
+                    targetDate = businessDay.format('YYYY-MM-DD');
+                }
+
+                await bot.sendMessage(message.from, `📊 Memproses export laporan untuk ${displayDate}...\n⏳ Mohon tunggu, proses ini memakan waktu beberapa menit.`);
+
+                logger.info(`Generating Excel export for date range: ${startDate} - ${endDate}`);
+
+                // Generate Excel dengan business day range
+                const database = require('./src/database');
+                const transactions = await database.getTransactionsByDateRange(startDate, endDate);
+
+                if (transactions.length === 0) {
+                    await bot.sendMessage(message.from, `❌ Tidak ada transaksi ditemukan untuk periode ${displayDate}.`);
+                    return;
+                }
+
+                // Create Excel file
+                const ExcelJS = require('exceljs');
+                const path = require('path');
+                const fs = require('fs');
+
+                const workbook = new ExcelJS.Workbook();
+                workbook.creator = 'KAKARAMA ROOM';
+                workbook.lastModifiedBy = 'WhatsApp Bot';
+                workbook.created = new Date();
+                workbook.modified = new Date();
+
+                // Create transactions sheet
+                const transactionSheet = workbook.addWorksheet('Transaksi');
+
+                // Headers
+                transactionSheet.columns = [
+                    { header: 'Tanggal', key: 'date', width: 12 },
+                    { header: 'Waktu', key: 'time', width: 10 },
+                    { header: 'Apartemen', key: 'location', width: 20 },
+                    { header: 'Unit', key: 'unit', width: 12 },
+                    { header: 'Check Out', key: 'checkout', width: 12 },
+                    { header: 'Durasi', key: 'duration', width: 12 },
+                    { header: 'Payment', key: 'payment', width: 15 },
+                    { header: 'Amount', key: 'amount', width: 15 },
+                    { header: 'CS', key: 'cs', width: 15 },
+                    { header: 'Komisi', key: 'commission', width: 15 }
+                ];
+
+                // Style header
+                transactionSheet.getRow(1).font = { bold: true };
+                transactionSheet.getRow(1).fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'FFE6E6FA' }
+                };
+
+                // Add data
+                transactions.forEach(transaction => {
+                    const createdAt = moment(transaction.created_at).tz('Asia/Jakarta');
+                    transactionSheet.addRow({
+                        date: createdAt.format('DD/MM/YYYY'),
+                        time: createdAt.format('HH:mm'),
+                        location: transaction.location,
+                        unit: transaction.unit,
+                        checkout: transaction.checkout_time,
+                        duration: transaction.duration,
+                        payment: transaction.payment_method,
+                        amount: transaction.amount,
+                        cs: transaction.cs_name,
+                        commission: transaction.commission
+                    });
+                });
+
+                // Save file
+                const filename = `Laporan_Export_${displayDate.replace(/\//g, '')}_${Date.now()}.xlsx`;
+                const exportDir = './exports';
+                if (!fs.existsSync(exportDir)) {
+                    fs.mkdirSync(exportDir, { recursive: true });
+                }
+                const filepath = path.join(exportDir, filename);
+
+                await workbook.xlsx.writeFile(filepath);
+
+                // Send via email
+                const emailSent = await emailService.sendDailyReport(filepath, `Laporan Export ${displayDate}`, {
+                    totalTransactions: transactions.length,
+                    dateRange: `${displayDate} (${startDate} - ${endDate})`,
+                    exportedAt: moment().tz('Asia/Jakarta').format('DD/MM/YYYY HH:mm:ss')
+                });
+
+                if (emailSent) {
+                    await bot.sendMessage(message.from, `✅ Export laporan berhasil!\n\n📊 **Ringkasan:**\n- Periode: ${displayDate}\n- Total transaksi: ${transactions.length}\n- File: ${filename}\n\n📧 Laporan telah dikirim via email ke ${config.email.to}`);
+                } else {
+                    await bot.sendMessage(message.from, `⚠️ Export laporan berhasil dibuat tapi gagal dikirim via email.\n\n📊 **Ringkasan:**\n- Periode: ${displayDate}\n- Total transaksi: ${transactions.length}\n- File: ${filename}\n\n💾 File tersimpan di server: ${filepath}`);
+                }
+
+                logger.info(`Export completed: ${filename} with ${transactions.length} transactions`);
+
+            } catch (error) {
+                logger.error('Error dalam export laporan:', error);
+                await bot.sendMessage(message.from, '❌ Terjadi error saat export laporan. Silakan coba lagi atau hubungi administrator.');
+            }
+
         } else if (message.body.startsWith('!fixenv')) {
             logger.info(`Memproses command fixenv dari ${message.from}: ${message.body}`);
 

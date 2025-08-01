@@ -63,9 +63,12 @@ class Configuration {
             // Email Configuration
             email: {
                 service: process.env.EMAIL_SERVICE || 'gmail',
+                host: process.env.EMAIL_HOST || null,
+                port: parseInt(process.env.EMAIL_PORT) || 587,
+                secure: process.env.EMAIL_SECURE === 'true',
                 auth: {
                     user: process.env.EMAIL_USER || '',
-                    pass: process.env.EMAIL_PASS || '' // App password for Gmail
+                    pass: process.env.EMAIL_PASS || '' // App password for Gmail or custom SMTP
                 },
                 to: process.env.EMAIL_TO || 'kakaramaroom@gmail.com',
                 from: process.env.EMAIL_FROM || process.env.EMAIL_USER || '',

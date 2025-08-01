@@ -19,16 +19,39 @@ class EmailService {
      */
     initializeTransporter() {
         try {
-            this.transporter = nodemailer.createTransport({
-                service: config.email.service,
-                auth: {
-                    user: config.email.auth.user,
-                    pass: config.email.auth.pass
-                },
-                tls: {
-                    rejectUnauthorized: false
-                }
-            });
+            let transportConfig;
+
+            if (config.email.service === 'custom' && config.email.host) {
+                // Custom SMTP configuration
+                transportConfig = {
+                    host: config.email.host,
+                    port: config.email.port,
+                    secure: config.email.secure, // true for 465, false for other ports
+                    auth: {
+                        user: config.email.auth.user,
+                        pass: config.email.auth.pass
+                    },
+                    tls: {
+                        rejectUnauthorized: false
+                    }
+                };
+                logger.info(`Initializing custom SMTP: ${config.email.host}:${config.email.port} (secure: ${config.email.secure})`);
+            } else {
+                // Service-based configuration (Gmail, etc.)
+                transportConfig = {
+                    service: config.email.service,
+                    auth: {
+                        user: config.email.auth.user,
+                        pass: config.email.auth.pass
+                    },
+                    tls: {
+                        rejectUnauthorized: false
+                    }
+                };
+                logger.info(`Initializing email service: ${config.email.service}`);
+            }
+
+            this.transporter = nodemailer.createTransport(transportConfig);
 
             logger.info('Transporter email berhasil diinisialisasi');
         } catch (error) {
