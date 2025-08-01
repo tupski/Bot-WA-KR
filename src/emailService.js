@@ -102,7 +102,7 @@ class EmailService {
             // Email options
             const mailOptions = {
                 from: {
-                    name: `${this.companyName} Bot`,
+                    name: 'Kakarama Bot',
                     address: config.email.from
                 },
                 to: config.email.to,
@@ -204,7 +204,7 @@ class EmailService {
                     <p>Ringkasan laporan juga telah dikirim ke grup WhatsApp pada pukul 12:00 WIB.</p>
                 </div>
                 
-                <p>Jika ada pertanyaan atau memerlukan informasi tambahan, silakan hubungi administrator sistem.</p>
+                <p>Jika ada pertanyaan atau memerlukan informasi tambahan, silakan hubungi Om Tupas ekekekke.</p>
                 
                 <p>Terima kasih!</p>
             </div>
@@ -212,6 +212,7 @@ class EmailService {
             <div class="footer">
                 <p>Email ini dikirim secara otomatis oleh sistem WhatsApp Bot ${this.companyName}</p>
                 <p>Waktu pengiriman: ${moment().tz(this.timezone).format('DD/MM/YYYY HH:mm:ss')} WIB</p>
+                <p>Copyright &copy; 2025 - Kakarama Room. <a href="https://kakaramaroom.com" target="_blank">kakaramaroom.com</a></p>
             </div>
         </body>
         </html>
@@ -270,7 +271,7 @@ Waktu pengiriman: ${moment().tz(this.timezone).format('DD/MM/YYYY HH:mm:ss')} WI
 
             const mailOptions = {
                 from: {
-                    name: `${this.companyName} Bot`,
+                    name: 'Kakarama Bot',
                     address: config.email.from
                 },
                 to: config.email.to,
@@ -348,7 +349,7 @@ Waktu pengiriman: ${moment().tz(this.timezone).format('DD/MM/YYYY HH:mm:ss')} WI
 
             const mailOptions = {
                 from: {
-                    name: `${this.companyName} Bot`,
+                    name: 'Kakarama Bot',
                     address: config.email.from
                 },
                 to: config.email.to,
@@ -465,7 +466,7 @@ Waktu pengiriman: ${moment().tz(this.timezone).format('DD/MM/YYYY HH:mm:ss')} WI
 
             const mailOptions = {
                 from: {
-                    name: `${this.companyName} Bot`,
+                    name: 'Kakarama Bot',
                     address: config.email.from
                 },
                 to: config.email.to,

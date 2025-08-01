@@ -772,58 +772,26 @@ async function handleCommand(message, apartmentName) {
                     return;
                 }
 
-                // Create Excel file
-                const ExcelJS = require('exceljs');
+                // Create Excel file dengan 3 sheets
                 const path = require('path');
                 const fs = require('fs');
 
+                // Hitung summary data dari transactions
+                const csSummary = calculateCSSummaryFromTransactions(transactions);
+                const marketingCommission = calculateMarketingCommissionFromTransactions(transactions);
+
+                // Create workbook dengan 3 sheets
+                const ExcelJS = require('exceljs');
                 const workbook = new ExcelJS.Workbook();
                 workbook.creator = 'KAKARAMA ROOM';
                 workbook.lastModifiedBy = 'WhatsApp Bot';
                 workbook.created = new Date();
                 workbook.modified = new Date();
 
-                // Create transactions sheet
-                const transactionSheet = workbook.addWorksheet('Transaksi');
-
-                // Headers
-                transactionSheet.columns = [
-                    { header: 'Tanggal', key: 'date', width: 12 },
-                    { header: 'Waktu', key: 'time', width: 10 },
-                    { header: 'Apartemen', key: 'location', width: 20 },
-                    { header: 'Unit', key: 'unit', width: 12 },
-                    { header: 'Check Out', key: 'checkout', width: 12 },
-                    { header: 'Durasi', key: 'duration', width: 12 },
-                    { header: 'Payment', key: 'payment', width: 15 },
-                    { header: 'Amount', key: 'amount', width: 15 },
-                    { header: 'CS', key: 'cs', width: 15 },
-                    { header: 'Komisi', key: 'commission', width: 15 }
-                ];
-
-                // Style header
-                transactionSheet.getRow(1).font = { bold: true };
-                transactionSheet.getRow(1).fill = {
-                    type: 'pattern',
-                    pattern: 'solid',
-                    fgColor: { argb: 'FFE6E6FA' }
-                };
-
-                // Add data
-                transactions.forEach(transaction => {
-                    const createdAt = moment(transaction.created_at).tz('Asia/Jakarta');
-                    transactionSheet.addRow({
-                        date: createdAt.format('DD/MM/YYYY'),
-                        time: createdAt.format('HH:mm'),
-                        location: transaction.location,
-                        unit: transaction.unit,
-                        checkout: transaction.checkout_time,
-                        duration: transaction.duration,
-                        payment: transaction.payment_method,
-                        amount: transaction.amount,
-                        cs: transaction.cs_name,
-                        commission: transaction.commission
-                    });
-                });
+                // Create sheets
+                await createTransactionsSheetForExport(workbook, transactions, displayDate, apartmentName);
+                await createCSSummarySheetForExport(workbook, csSummary, displayDate, apartmentName);
+                await createCommissionSheetForExport(workbook, marketingCommission, displayDate, apartmentName);
 
                 // Save file
                 const apartmentPrefix = apartmentName ? `${apartmentName.replace(/\s+/g, '_')}_` : '';
@@ -2053,6 +2021,281 @@ function findApartmentByPartialName(partialName) {
     };
 
     return keywords[searchTerm] || null;
+}
+
+// Helper functions untuk Excel export
+function calculateCSSummaryFromTransactions(transactions) {
+    const csSummary = {};
+
+    transactions.forEach(transaction => {
+        const csName = transaction.cs_name || 'Unknown';
+        if (!csSummary[csName]) {
+            csSummary[csName] = {
+                cs_name: csName,
+                total_bookings: 0,
+                total_amount: 0,
+                total_commission: 0
+            };
+        }
+
+        csSummary[csName].total_bookings += 1;
+        csSummary[csName].total_amount += parseFloat(transaction.amount || 0);
+        csSummary[csName].total_commission += parseFloat(transaction.commission || 0);
+    });
+
+    return Object.values(csSummary);
+}
+
+function calculateMarketingCommissionFromTransactions(transactions) {
+    const marketingCommission = {};
+
+    transactions.forEach(transaction => {
+        const csName = transaction.cs_name || 'Unknown';
+        // Skip APK dan AMEL (bukan marketing)
+        if (csName.toLowerCase() !== 'apk' && csName.toLowerCase() !== 'amel') {
+            if (!marketingCommission[csName]) {
+                marketingCommission[csName] = {
+                    cs_name: csName,
+                    booking_count: 0,
+                    total_commission: 0
+                };
+            }
+
+            marketingCommission[csName].booking_count += 1;
+            marketingCommission[csName].total_commission += parseFloat(transaction.commission || 0);
+        }
+    });
+
+    return Object.values(marketingCommission);
+}
+
+async function createTransactionsSheetForExport(workbook, transactions, displayDate, apartmentName) {
+    const worksheet = workbook.addWorksheet('Transaksi');
+
+    // Title
+    const titleText = apartmentName ?
+        `Detail Transaksi ${apartmentName} - ${displayDate}` :
+        `Detail Transaksi - ${displayDate}`;
+    worksheet.addRow([titleText]);
+    worksheet.mergeCells('A1:J1');
+    const titleRow = worksheet.getRow(1);
+    titleRow.font = { bold: true, size: 14 };
+    titleRow.alignment = { horizontal: 'center' };
+
+    worksheet.addRow([]);
+
+    // Headers
+    const headerRow = worksheet.addRow([
+        'No', 'Tanggal', 'Waktu', 'Apartemen', 'Unit', 'Check Out', 'Durasi', 'Payment', 'Amount', 'CS', 'Komisi'
+    ]);
+    headerRow.font = { bold: true };
+    headerRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE6E6FA' }
+    };
+
+    // Column widths
+    worksheet.columns = [
+        { width: 5 },   // No
+        { width: 12 },  // Tanggal
+        { width: 8 },   // Waktu
+        { width: 20 },  // Apartemen
+        { width: 12 },  // Unit
+        { width: 10 },  // Check Out
+        { width: 10 },  // Durasi
+        { width: 12 },  // Payment
+        { width: 15 },  // Amount
+        { width: 15 },  // CS
+        { width: 15 }   // Komisi
+    ];
+
+    // Add data
+    if (transactions && transactions.length > 0) {
+        transactions.forEach((transaction, index) => {
+            const moment = require('moment-timezone');
+            const createdAt = moment(transaction.created_at).tz('Asia/Jakarta');
+            const row = worksheet.addRow([
+                index + 1,
+                createdAt.format('DD/MM/YYYY'),
+                createdAt.format('HH:mm'),
+                transaction.location || '-',
+                transaction.unit || '-',
+                transaction.checkout_time || '-',
+                transaction.duration || '-',
+                transaction.payment_method || '-',
+                parseFloat(transaction.amount || 0),
+                transaction.cs_name || '-',
+                parseFloat(transaction.commission || 0)
+            ]);
+
+            // Format currency columns
+            row.getCell(9).numFmt = 'Rp #,##0';  // Amount
+            row.getCell(11).numFmt = 'Rp #,##0'; // Komisi
+        });
+
+        // Add totals row
+        const totalRow = worksheet.addRow([
+            '', '', '', '', '', '', '', 'TOTAL:',
+            { formula: `SUM(I4:I${3 + transactions.length})` },
+            '',
+            { formula: `SUM(K4:K${3 + transactions.length})` }
+        ]);
+
+        totalRow.font = { bold: true };
+        totalRow.getCell(9).numFmt = 'Rp #,##0';
+        totalRow.getCell(11).numFmt = 'Rp #,##0';
+        totalRow.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'F2F2F2' }
+        };
+    } else {
+        worksheet.addRow(['Tidak ada transaksi pada periode ini']);
+        worksheet.mergeCells('A4:K4');
+        const noDataRow = worksheet.getRow(4);
+        noDataRow.alignment = { horizontal: 'center' };
+        noDataRow.font = { italic: true };
+    }
+}
+
+async function createCSSummarySheetForExport(workbook, csSummary, displayDate, apartmentName) {
+    const worksheet = workbook.addWorksheet('Ringkasan CS');
+
+    // Title
+    const titleText = apartmentName ?
+        `Ringkasan Performa CS ${apartmentName} - ${displayDate}` :
+        `Ringkasan Performa CS - ${displayDate}`;
+    worksheet.addRow([titleText]);
+    worksheet.mergeCells('A1:D1');
+    const titleRow = worksheet.getRow(1);
+    titleRow.font = { bold: true, size: 14 };
+    titleRow.alignment = { horizontal: 'center' };
+
+    worksheet.addRow([]);
+
+    // Headers
+    const headerRow = worksheet.addRow(['CS Name', 'Total Booking', 'Total Amount', 'Total Komisi']);
+    headerRow.font = { bold: true };
+    headerRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE6E6FA' }
+    };
+
+    // Column widths
+    worksheet.columns = [
+        { width: 20 }, // CS Name
+        { width: 15 }, // Total Booking
+        { width: 20 }, // Total Amount
+        { width: 20 }  // Total Komisi
+    ];
+
+    // Add data
+    if (csSummary && csSummary.length > 0) {
+        csSummary.forEach(cs => {
+            const row = worksheet.addRow([
+                cs.cs_name,
+                cs.total_bookings,
+                cs.total_amount,
+                cs.total_commission
+            ]);
+
+            // Format currency columns
+            row.getCell(3).numFmt = 'Rp #,##0';
+            row.getCell(4).numFmt = 'Rp #,##0';
+        });
+
+        // Add totals row
+        const totalRow = worksheet.addRow([
+            'TOTAL:',
+            { formula: `SUM(B4:B${3 + csSummary.length})` },
+            { formula: `SUM(C4:C${3 + csSummary.length})` },
+            { formula: `SUM(D4:D${3 + csSummary.length})` }
+        ]);
+
+        totalRow.font = { bold: true };
+        totalRow.getCell(3).numFmt = 'Rp #,##0';
+        totalRow.getCell(4).numFmt = 'Rp #,##0';
+        totalRow.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'F2F2F2' }
+        };
+    } else {
+        worksheet.addRow(['Tidak ada data CS pada periode ini']);
+        worksheet.mergeCells('A4:D4');
+        const noDataRow = worksheet.getRow(4);
+        noDataRow.alignment = { horizontal: 'center' };
+        noDataRow.font = { italic: true };
+    }
+}
+
+async function createCommissionSheetForExport(workbook, marketingCommission, displayDate, apartmentName) {
+    const worksheet = workbook.addWorksheet('Komisi Marketing');
+
+    // Title
+    const titleText = apartmentName ?
+        `Komisi Marketing ${apartmentName} - ${displayDate}` :
+        `Komisi Marketing - ${displayDate}`;
+    worksheet.addRow([titleText]);
+    worksheet.mergeCells('A1:C1');
+    const titleRow = worksheet.getRow(1);
+    titleRow.font = { bold: true, size: 14 };
+    titleRow.alignment = { horizontal: 'center' };
+
+    worksheet.addRow([]);
+
+    // Headers
+    const headerRow = worksheet.addRow(['CS Name', 'Jumlah Booking', 'Total Komisi']);
+    headerRow.font = { bold: true };
+    headerRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE6E6FA' }
+    };
+
+    // Column widths
+    worksheet.columns = [
+        { width: 20 }, // CS Name
+        { width: 15 }, // Jumlah Booking
+        { width: 20 }  // Total Komisi
+    ];
+
+    // Add data
+    if (marketingCommission && marketingCommission.length > 0) {
+        marketingCommission.forEach(cs => {
+            const row = worksheet.addRow([
+                cs.cs_name,
+                cs.booking_count,
+                cs.total_commission
+            ]);
+
+            // Format currency column
+            row.getCell(3).numFmt = 'Rp #,##0';
+        });
+
+        // Add totals row
+        const totalRow = worksheet.addRow([
+            'TOTAL:',
+            { formula: `SUM(B4:B${3 + marketingCommission.length})` },
+            { formula: `SUM(C4:C${3 + marketingCommission.length})` }
+        ]);
+
+        totalRow.font = { bold: true };
+        totalRow.getCell(3).numFmt = 'Rp #,##0';
+        totalRow.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'F2F2F2' }
+        };
+    } else {
+        worksheet.addRow(['Tidak ada data komisi marketing pada periode ini']);
+        worksheet.mergeCells('A4:C4');
+        const noDataRow = worksheet.getRow(4);
+        noDataRow.alignment = { horizontal: 'center' };
+        noDataRow.font = { italic: true };
+    }
 }
 
 // Daftarkan message handler
