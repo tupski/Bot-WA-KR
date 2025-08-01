@@ -1,22 +1,51 @@
-import { Router } from 'express';
+import { Router } from 'express'
+import * as reportController from '@/controllers/reportController'
+import { authenticateToken, requireUserOrAdmin } from '@/middleware/auth'
 
-const router = Router();
+const router = Router()
 
-// Placeholder routes - will be implemented in Reports API task
-router.get('/daily', (req, res) => {
-  res.json({ message: 'Daily reports endpoint - to be implemented' });
-});
+// All report routes require authentication
+router.use(authenticateToken)
+router.use(requireUserOrAdmin)
 
-router.get('/weekly', (req, res) => {
-  res.json({ message: 'Weekly reports endpoint - to be implemented' });
-});
+// Daily report for specific date
+router.get('/daily/:date',
+  reportController.getDailyReport
+)
 
-router.get('/monthly', (req, res) => {
-  res.json({ message: 'Monthly reports endpoint - to be implemented' });
-});
+// Weekly report with date range
+router.get('/weekly',
+  reportController.getWeeklyReport
+)
 
-router.get('/analytics', (req, res) => {
-  res.json({ message: 'Analytics endpoint - to be implemented' });
-});
+// Monthly report for specific year/month
+router.get('/monthly/:year/:month',
+  reportController.getMonthlyReport
+)
 
-export default router;
+// General analytics with flexible filtering
+router.get('/analytics',
+  reportController.getAnalytics
+)
+
+// Growth analysis comparing two periods
+router.get('/growth',
+  reportController.getGrowthAnalysis
+)
+
+// Top performers (CS or locations)
+router.get('/top-performers',
+  reportController.getTopPerformers
+)
+
+// CS performance analysis
+router.get('/cs-performance',
+  reportController.getCSPerformance
+)
+
+// Export reports in various formats
+router.get('/export',
+  reportController.exportReport
+)
+
+export default router
