@@ -11,11 +11,12 @@ import {
 const router = Router()
 
 // Public routes with rate limiting
-router.post('/register',
-  rateLimitByIP(5, 15), // 5 attempts per 15 minutes per IP
-  validateRegister,
-  authController.register
-)
+// Registration disabled for internal application
+// router.post('/register',
+//   rateLimitByIP(5, 15), // 5 attempts per 15 minutes per IP
+//   validateRegister,
+//   authController.register
+// )
 
 router.post('/login',
   rateLimitByIP(10, 15), // 10 attempts per 15 minutes per IP

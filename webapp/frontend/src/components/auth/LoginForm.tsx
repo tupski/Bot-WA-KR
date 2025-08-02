@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link } from 'react-router-dom'
+
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -125,27 +125,7 @@ const LoginForm: React.FC = () => {
             {isFormLoading ? 'Signing in...' : 'Sign In'}
           </Button>
 
-          {/* Divider */}
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                Don't have an account?
-              </span>
-            </div>
-          </div>
 
-          {/* Register Link */}
-          <div className="text-center">
-            <Link
-              to="/register"
-              className="text-sm text-blue-600 hover:text-blue-500 focus:outline-none focus:underline"
-            >
-              Create a new account
-            </Link>
-          </div>
         </form>
       </CardContent>
     </Card>

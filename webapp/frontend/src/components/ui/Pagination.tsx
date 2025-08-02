@@ -67,8 +67,9 @@ const Pagination: React.FC<PaginationProps> = ({
         </div>
         {showItemsPerPage && onItemsPerPageChange && (
           <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-700">Show:</span>
+            <label htmlFor="items-per-page-select" className="text-sm text-gray-700">Show:</label>
             <select
+              id="items-per-page-select"
               value={itemsPerPage}
               onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
               className="border border-gray-300 rounded px-2 py-1 text-sm"
@@ -99,8 +100,9 @@ const Pagination: React.FC<PaginationProps> = ({
         {/* Items per page selector */}
         {showItemsPerPage && onItemsPerPageChange && (
           <div className="flex items-center space-x-2 mr-4">
-            <span className="text-sm text-gray-700">Show:</span>
+            <label htmlFor="items-per-page-select" className="text-sm text-gray-700">Show:</label>
             <select
+              id="items-per-page-select"
               value={itemsPerPage}
               onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
               className="border border-gray-300 rounded px-2 py-1 text-sm"

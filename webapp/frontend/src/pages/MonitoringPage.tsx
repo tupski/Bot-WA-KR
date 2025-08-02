@@ -106,6 +106,7 @@ const MonitoringPage: React.FC = () => {
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-green-600">Refresh rate:</span>
                   <select
+                    aria-label="Refresh rate"
                     value={refreshInterval}
                     onChange={(e) => setRefreshInterval(Number(e.target.value))}
                     className="border border-green-300 rounded px-2 py-1 text-sm bg-white"

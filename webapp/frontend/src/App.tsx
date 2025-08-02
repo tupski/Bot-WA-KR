@@ -6,7 +6,7 @@ import { AuthProvider } from '@/contexts/AuthContext'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 import ErrorBoundary from '@/components/error/ErrorBoundary'
 import LoginPage from '@/pages/auth/LoginPage'
-import RegisterPage from '@/pages/auth/RegisterPage'
+
 import DashboardPage from '@/pages/DashboardPage'
 import './index.css'
 
@@ -39,7 +39,7 @@ function App() {
               <Routes>
               {/* Public routes */}
               <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
+
 
               {/* Protected routes */}
               <Route

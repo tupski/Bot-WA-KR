@@ -67,8 +67,10 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, title = "Dashboard" }) => 
         <div className="flex items-center space-x-4">
           {/* Mobile menu button */}
           <button
+            type="button"
             onClick={onMenuClick}
             className="lg:hidden p-2 rounded-md hover:bg-gray-100 transition-colors"
+            aria-label="Toggle mobile menu"
           >
             <Menu className="h-5 w-5 text-gray-600" />
           </button>
@@ -97,15 +99,23 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, title = "Dashboard" }) => 
         {/* Right side */}
         <div className="flex items-center space-x-4">
           {/* Theme toggle */}
-          <button className="p-2 rounded-md hover:bg-gray-100 transition-colors">
+          <button
+            type="button"
+            title="Toggle theme"
+            aria-label="Toggle theme"
+            className="p-2 rounded-md hover:bg-gray-100 transition-colors"
+          >
             <Sun className="h-5 w-5 text-gray-600" />
           </button>
 
           {/* Notifications */}
           <div className="relative">
             <button
+              type="button"
               onClick={() => setShowNotifications(!showNotifications)}
               className="p-2 rounded-md hover:bg-gray-100 transition-colors relative"
+              title="Notifications"
+              aria-label="Toggle notifications"
             >
               <Bell className="h-5 w-5 text-gray-600" />
               {unreadCount > 0 && (
@@ -165,8 +175,11 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, title = "Dashboard" }) => 
           {/* User menu */}
           <div className="relative">
             <button
+              type="button"
               onClick={() => setShowUserMenu(!showUserMenu)}
               className="flex items-center space-x-2 p-2 rounded-md hover:bg-gray-100 transition-colors"
+              title="User menu"
+              aria-label="Toggle user menu"
             >
               <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
                 <span className="text-white text-sm font-medium">
@@ -213,6 +226,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, title = "Dashboard" }) => 
                 
                 <div className="border-t border-gray-200 py-2">
                   <button
+                    type="button"
                     onClick={handleLogout}
                     className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                   >
