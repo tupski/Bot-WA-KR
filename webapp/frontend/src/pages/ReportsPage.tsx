@@ -4,6 +4,7 @@ import PageWrapper from '@/components/layout/PageWrapper'
 import ReportFilters, { type ReportFilters as RFilters } from '@/components/reports/ReportFilters'
 import ReportCharts from '@/components/reports/ReportCharts'
 import ReportSummary from '@/components/reports/ReportSummary'
+import ExportDialog from '@/components/export/ExportDialog'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import Loading from '@/components/ui/Loading'
@@ -20,6 +21,7 @@ import { formatCurrency } from '@/lib/utils'
 const ReportsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [reportData, setReportData] = useState<any>(null)
+  const [showExportDialog, setShowExportDialog] = useState(false)
   const [filters, setFilters] = useState<RFilters>({
     dateFrom: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     dateTo: new Date().toISOString().split('T')[0],
@@ -116,8 +118,7 @@ const ReportsPage: React.FC = () => {
   }
 
   const handleExport = (format: 'pdf' | 'excel' | 'csv') => {
-    toast.success(`Exporting report as ${format.toUpperCase()}...`)
-    // In real app, this would call the export API
+    setShowExportDialog(true)
   }
 
   const getChartType = () => {
@@ -155,20 +156,11 @@ const ReportsPage: React.FC = () => {
           <div className="flex items-center space-x-3">
             <Button
               variant="outline"
-              onClick={() => handleExport('pdf')}
+              onClick={() => setShowExportDialog(true)}
               leftIcon={<Download className="h-4 w-4" />}
               disabled={isLoading || !reportData}
             >
-              Export PDF
-            </Button>
-            
-            <Button
-              variant="outline"
-              onClick={() => handleExport('excel')}
-              leftIcon={<FileText className="h-4 w-4" />}
-              disabled={isLoading || !reportData}
-            >
-              Export Excel
+              Export Report
             </Button>
             
             <Button
@@ -297,6 +289,15 @@ const ReportsPage: React.FC = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* Export Dialog */}
+        <ExportDialog
+          isOpen={showExportDialog}
+          onClose={() => setShowExportDialog(false)}
+          data={reportData?.chartData || []}
+          dataType="reports"
+          title="Export Analytics Report"
+        />
       </PageWrapper>
     </DashboardLayout>
   )

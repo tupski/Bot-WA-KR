@@ -4,6 +4,7 @@ import PageWrapper from '@/components/layout/PageWrapper'
 import TransactionFilters, { type TransactionFilters as TFilters } from '@/components/transactions/TransactionFilters'
 import TransactionTable from '@/components/transactions/TransactionTable'
 import TransactionForm from '@/components/transactions/TransactionForm'
+import ExportDialog from '@/components/export/ExportDialog'
 import Pagination from '@/components/ui/Pagination'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
@@ -25,6 +26,7 @@ const TransactionsPage: React.FC = () => {
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [showForm, setShowForm] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
+  const [showExportDialog, setShowExportDialog] = useState(false)
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -215,8 +217,7 @@ const TransactionsPage: React.FC = () => {
   }
 
   const handleExport = () => {
-    // In real app, this would call the export API
-    toast.success('Export started - you will receive an email when ready')
+    setShowExportDialog(true)
   }
 
   const handleBulkDelete = async () => {
@@ -378,6 +379,15 @@ const TransactionsPage: React.FC = () => {
             onItemsPerPageChange={setItemsPerPage}
           />
         )}
+
+        {/* Export Dialog */}
+        <ExportDialog
+          isOpen={showExportDialog}
+          onClose={() => setShowExportDialog(false)}
+          data={filteredTransactions}
+          dataType="transactions"
+          title="Export Transactions"
+        />
       </PageWrapper>
     </DashboardLayout>
   )

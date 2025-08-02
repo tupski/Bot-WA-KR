@@ -4,6 +4,7 @@ import PageWrapper from '@/components/layout/PageWrapper'
 import CSPerformanceCard, { type CSPerformance } from '@/components/cs/CSPerformanceCard'
 import CSLeaderboard from '@/components/cs/CSLeaderboard'
 import CSForm from '@/components/cs/CSForm'
+import ExportDialog from '@/components/export/ExportDialog'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import Loading from '@/components/ui/Loading'
@@ -26,6 +27,7 @@ const CSPage: React.FC = () => {
   const [editingCS, setEditingCS] = useState<CSPerformance | null>(null)
   const [selectedMetric, setSelectedMetric] = useState<'revenue' | 'bookings' | 'commission' | 'rating'>('revenue')
   const [viewMode, setViewMode] = useState<'grid' | 'leaderboard'>('grid')
+  const [showExportDialog, setShowExportDialog] = useState(false)
 
   // Mock data - in real app, this would come from API
   useEffect(() => {
@@ -150,7 +152,7 @@ const CSPage: React.FC = () => {
   }
 
   const handleExport = () => {
-    toast.success('Exporting CS performance data...')
+    setShowExportDialog(true)
   }
 
   // Calculate summary stats
@@ -377,6 +379,15 @@ const CSPage: React.FC = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* Export Dialog */}
+        <ExportDialog
+          isOpen={showExportDialog}
+          onClose={() => setShowExportDialog(false)}
+          data={csData}
+          dataType="cs-performance"
+          title="Export CS Performance"
+        />
       </PageWrapper>
     </DashboardLayout>
   )
