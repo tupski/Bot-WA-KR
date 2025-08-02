@@ -201,9 +201,22 @@ server {
         add_header Cache-Control "public, immutable";
     }
     
-    # Handle client-side routing
+    # Handle client-side routing (PENTING untuk React Router)
     location / {
         try_files $uri $uri/ /index.html;
+
+        # Headers untuk SPA
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Pragma "no-cache";
+        add_header Expires "0";
+    }
+
+    # Khusus untuk HTML files (termasuk index.html)
+    location ~* \.html$ {
+        try_files $uri $uri/ /index.html;
+        expires -1;
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Pragma "no-cache";
     }
     
     # Security - block sensitive files
