@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Header from './Header'
+import MobileNavigation from '@/components/mobile/MobileNavigation'
 import { cn } from '@/lib/utils'
 
 interface DashboardLayoutProps {

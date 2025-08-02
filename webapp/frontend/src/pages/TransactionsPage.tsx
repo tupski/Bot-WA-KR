@@ -5,6 +5,7 @@ import TransactionFilters, { type TransactionFilters as TFilters } from '@/compo
 import TransactionTable from '@/components/transactions/TransactionTable'
 import TransactionForm from '@/components/transactions/TransactionForm'
 import ExportDialog from '@/components/export/ExportDialog'
+import MobileTable from '@/components/mobile/MobileTable'
 import Pagination from '@/components/ui/Pagination'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent } from '@/components/ui/Card'
@@ -354,19 +355,33 @@ const TransactionsPage: React.FC = () => {
           </Card>
         </div>
 
-        {/* Transactions Table */}
-        <TransactionTable
-          transactions={paginatedTransactions}
-          isLoading={isLoading}
-          selectedIds={selectedIds}
-          onSelectionChange={setSelectedIds}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          onView={handleView}
-          sortBy={sortBy}
-          sortOrder={sortOrder}
-          onSort={handleSort}
-        />
+        {/* Transactions Table - Desktop */}
+        <div className="hidden md:block">
+          <TransactionTable
+            transactions={paginatedTransactions}
+            isLoading={isLoading}
+            selectedIds={selectedIds}
+            onSelectionChange={setSelectedIds}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onView={handleView}
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onSort={handleSort}
+          />
+        </div>
+
+        {/* Mobile Table */}
+        <div className="md:hidden">
+          <MobileTable
+            data={paginatedTransactions}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onView={handleView}
+            isLoading={isLoading}
+            emptyMessage="No transactions found"
+          />
+        </div>
 
         {/* Pagination */}
         {totalPages > 1 && (
