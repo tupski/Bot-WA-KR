@@ -15,6 +15,7 @@ import ReportsPage from '@/pages/ReportsPage'
 import CSPage from '@/pages/CSPage'
 import SettingsPage from '@/pages/SettingsPage'
 import LogsPage from '@/pages/LogsPage'
+import MonitoringPage from '@/pages/MonitoringPage'
 
 // Create a client
 const queryClient = new QueryClient({
@@ -84,6 +85,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <LogsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/monitoring"
+                element={
+                  <ProtectedRoute>
+                    <MonitoringPage />
                   </ProtectedRoute>
                 }
               />

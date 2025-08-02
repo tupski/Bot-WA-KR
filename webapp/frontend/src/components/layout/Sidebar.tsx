@@ -50,6 +50,11 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
       title: 'Logs',
       href: '/logs',
       icon: 'FileText'
+    },
+    {
+      title: 'Monitoring',
+      href: '/monitoring',
+      icon: 'Activity'
     }
   ]
 

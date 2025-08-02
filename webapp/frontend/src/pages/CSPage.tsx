@@ -285,7 +285,12 @@ const CSPage: React.FC = () => {
                 {/* Metric Selector */}
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-gray-600">Sort by:</span>
+                  <label htmlFor="metric-select" className="sr-only">
+                    Sort by metric
+                  </label>
                   <select
+                    id="metric-select"
+                    aria-label="Sort by metric"
                     value={selectedMetric}
                     onChange={(e) => setSelectedMetric(e.target.value as any)}
                     className="border border-gray-300 rounded px-2 py-1 text-sm"
