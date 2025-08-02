@@ -2,6 +2,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import apiService from '@/services/api'
+import { SessionSecurity, CSRFProtection } from '@/lib/security'
+import { validateAndSanitize, loginSchema } from '@/lib/validation'
 import type { User, LoginRequest, RegisterRequest, AuthResponse } from '@/types'
 
 interface AuthContextType {
@@ -68,16 +70,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (credentials: LoginRequest) => {
     try {
       setIsLoading(true)
-      const response = await apiService.post<AuthResponse>('/auth/login', credentials)
-      
+
+      // Validate and sanitize input
+      const validatedCredentials = validateAndSanitize(loginSchema, credentials)
+
+      // Initialize CSRF token if not present
+      if (!CSRFProtection.getToken()) {
+        CSRFProtection.generateToken()
+      }
+
+      const response = await apiService.post<AuthResponse>('/auth/login', validatedCredentials)
+
       if (response.success && response.data) {
         const { user, accessToken, refreshToken } = response.data
-        
-        // Store tokens
+
+        // Store tokens securely
         localStorage.setItem('accessToken', accessToken)
         localStorage.setItem('refreshToken', refreshToken)
         localStorage.setItem('user', JSON.stringify(user))
-        
+
+        // Update session
+        SessionSecurity.updateActivity()
+
         setUser(user)
         toast.success('Login successful!')
         navigate('/')
@@ -132,6 +146,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       console.error('Logout error:', error)
     } finally {
+      // Clear all session data securely
+      SessionSecurity.clearSession()
+      CSRFProtection.clearToken()
       clearAuthData()
       toast.success('Logged out successfully')
       navigate('/login')
