@@ -11,10 +11,7 @@ import './index.css'
 
 // Import actual components
 import TransactionsPage from '@/pages/TransactionsPage'
-
-function ReportsPage() {
-  return <div className="p-8">Reports Page - To be implemented</div>
-}
+import ReportsPage from '@/pages/ReportsPage'
 
 function CSPage() {
   return <div className="p-8">CS Page - To be implemented</div>
