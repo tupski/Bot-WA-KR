@@ -288,7 +288,7 @@ export const validateAndSanitize = <T>(schema: z.ZodSchema<T>, data: unknown): T
 
 export const validatePartial = <T>(schema: z.ZodObject<any>, data: unknown): Partial<T> => {
   try {
-    return schema.partial().parse(data)
+    return schema.partial().parse(data) as Partial<T>
   } catch (error) {
     if (error instanceof z.ZodError) {
       const firstError = error.issues[0]
