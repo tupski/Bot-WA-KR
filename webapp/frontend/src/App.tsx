@@ -14,10 +14,7 @@ import TransactionsPage from '@/pages/TransactionsPage'
 import ReportsPage from '@/pages/ReportsPage'
 import CSPage from '@/pages/CSPage'
 import SettingsPage from '@/pages/SettingsPage'
-
-function LogsPage() {
-  return <div className="p-8">Logs Page - To be implemented</div>
-}
+import LogsPage from '@/pages/LogsPage'
 
 // Create a client
 const queryClient = new QueryClient({
