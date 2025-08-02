@@ -55,19 +55,21 @@ export interface NavItem {
 // Transaction Types
 export interface Transaction {
   id: number
-  messageId: string
+  messageId?: string
   location: string
   unit: string
   checkoutTime: string
-  duration: string
+  duration?: string
   paymentMethod: 'Cash' | 'Transfer'
   csName: string
   commission: number
   amount: number
-  netAmount: number
-  skipFinancial: boolean
+  netAmount?: number
+  skipFinancial?: boolean
   createdAt: string
+  updatedAt: string
   dateOnly: string
+  notes?: string
 }
 
 export interface TransactionFilters {

@@ -9,11 +9,8 @@ import RegisterPage from '@/pages/auth/RegisterPage'
 import DashboardPage from '@/pages/DashboardPage'
 import './index.css'
 
-// Placeholder components - will be created in later tasks
-
-function TransactionsPage() {
-  return <div className="p-8">Transactions Page - To be implemented</div>
-}
+// Import actual components
+import TransactionsPage from '@/pages/TransactionsPage'
 
 function ReportsPage() {
   return <div className="p-8">Reports Page - To be implemented</div>
