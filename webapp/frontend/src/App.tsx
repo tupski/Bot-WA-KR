@@ -13,10 +13,7 @@ import './index.css'
 import TransactionsPage from '@/pages/TransactionsPage'
 import ReportsPage from '@/pages/ReportsPage'
 import CSPage from '@/pages/CSPage'
-
-function ConfigPage() {
-  return <div className="p-8">Config Page - To be implemented</div>
-}
+import SettingsPage from '@/pages/SettingsPage'
 
 function LogsPage() {
   return <div className="p-8">Logs Page - To be implemented</div>
@@ -81,7 +78,7 @@ function App() {
                 path="/config"
                 element={
                   <ProtectedRoute requiredRole="admin">
-                    <ConfigPage />
+                    <SettingsPage />
                   </ProtectedRoute>
                 }
               />
