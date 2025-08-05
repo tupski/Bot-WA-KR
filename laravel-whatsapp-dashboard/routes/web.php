@@ -61,6 +61,15 @@ Route::middleware('auth')->group(function () {
             Route::get('/system-status', [\App\Http\Controllers\MonitoringController::class, 'systemStatus'])->name('system-status');
         });
     });
+
+    // Bot Status routes
+    Route::prefix('bot-status')->name('bot-status.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\BotStatusController::class, 'index'])->name('index');
+        Route::get('/status', [\App\Http\Controllers\BotStatusController::class, 'status'])->name('status');
+        Route::get('/qr-code', [\App\Http\Controllers\BotStatusController::class, 'qrCode'])->name('qr-code');
+        Route::post('/restart', [\App\Http\Controllers\BotStatusController::class, 'restart'])->name('restart');
+        Route::post('/logout', [\App\Http\Controllers\BotStatusController::class, 'logout'])->name('logout');
+    });
 });
 
 require __DIR__.'/auth.php';

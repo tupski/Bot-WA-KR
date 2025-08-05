@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate PWA Icons</title>
+</head>
+<body>
+    <canvas id="canvas" width="512" height="512"></canvas>
+    <script>
+        // Generate simple icon for PWA
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Background gradient
+        const gradient = ctx.createLinearGradient(0, 0, 512, 512);
+        gradient.addColorStop(0, '#667eea');
+        gradient.addColorStop(1, '#764ba2');
+        
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 512, 512);
+        
+        // Add rounded corners
+        ctx.globalCompositeOperation = 'destination-in';
+        ctx.beginPath();
+        ctx.roundRect(0, 0, 512, 512, 80);
+        ctx.fill();
+        
+        ctx.globalCompositeOperation = 'source-over';
+        
+        // Add WhatsApp-like icon
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 200px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('KR', 256, 256);
+        
+        // Add smaller text
+        ctx.font = 'bold 60px Arial';
+        ctx.fillText('Dashboard', 256, 380);
+        
+        // Download function
+        function downloadIcon(size) {
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = size;
+            tempCanvas.height = size;
+            
+            tempCtx.drawImage(canvas, 0, 0, size, size);
+            
+            const link = document.createElement('a');
+            link.download = `icon-${size}x${size}.png`;
+            link.href = tempCanvas.toDataURL();
+            link.click();
+        }
+        
+        // Generate all required sizes
+        const sizes = [16, 32, 57, 60, 72, 76, 96, 114, 120, 128, 144, 152, 180, 192, 384, 512];
+        
+        setTimeout(() => {
+            sizes.forEach(size => {
+                setTimeout(() => downloadIcon(size), size * 10);
+            });
+        }, 1000);
+        
+        console.log('Icons will be generated automatically...');
+    </script>
+</body>
+</html>

@@ -5,7 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ config('app.name', 'Laravel') }}</title>
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="KakaRama">
+    <meta name="description" content="Dashboard untuk mengelola transaksi booking apartemen melalui bot WhatsApp">
+    <meta name="keywords" content="whatsapp, dashboard, booking, apartemen, kakarama">
+
+    <title>@yield('title', 'Dashboard') - {{ config('app.name') }}</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/images/icons/icon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/images/icons/icon-16x16.png">
+
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/icons/icon-180x180.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/images/icons/icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="/images/icons/icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="/images/icons/icon-120x120.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="/images/icons/icon-114x114.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="/images/icons/icon-76x76.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="/images/icons/icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="/images/icons/icon-60x60.png">
+    <link rel="apple-touch-icon" sizes="57x57" href="/images/icons/icon-57x57.png">
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
@@ -170,6 +197,12 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('bot-status.*') ? 'active' : '' }}" href="{{ route('bot-status.index') }}">
+                                <i class="bi bi-whatsapp"></i>
+                                Status Bot
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('config.*') ? 'active' : '' }}" href="{{ route('config.index') }}">
                                 <i class="bi bi-gear"></i>
                                 Konfigurasi Bot
@@ -245,6 +278,150 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- PWA Installation Prompt -->
+    <div id="pwaInstallPrompt" class="position-fixed bottom-0 start-50 translate-middle-x mb-3" style="display: none; z-index: 9999;">
+        <div class="card shadow-lg" style="max-width: 350px;">
+            <div class="card-body text-center">
+                <h6 class="card-title">Install KakaRama App</h6>
+                <p class="card-text small">Install aplikasi untuk akses yang lebih cepat dan notifikasi real-time</p>
+                <div class="d-flex gap-2 justify-content-center">
+                    <button id="pwaInstallBtn" class="btn btn-primary btn-sm">Install</button>
+                    <button id="pwaCloseBtn" class="btn btn-outline-secondary btn-sm">Nanti</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PWA Scripts -->
+    <script>
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(function(registration) {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+
+                        // Check for updates
+                        registration.addEventListener('updatefound', function() {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', function() {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // New content is available
+                                    if (confirm('Update tersedia! Refresh halaman untuk mendapatkan versi terbaru?')) {
+                                        window.location.reload();
+                                    }
+                                }
+                            });
+                        });
+                    })
+                    .catch(function(err) {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+            });
+        }
+
+        // PWA Install Prompt
+        let deferredPrompt;
+        const pwaInstallPrompt = document.getElementById('pwaInstallPrompt');
+        const pwaInstallBtn = document.getElementById('pwaInstallBtn');
+        const pwaCloseBtn = document.getElementById('pwaCloseBtn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent Chrome 67 and earlier from automatically showing the prompt
+            e.preventDefault();
+            // Stash the event so it can be triggered later
+            deferredPrompt = e;
+            // Show install prompt
+            pwaInstallPrompt.style.display = 'block';
+        });
+
+        pwaInstallBtn.addEventListener('click', (e) => {
+            // Hide the app provided install promotion
+            pwaInstallPrompt.style.display = 'none';
+            // Show the install prompt
+            deferredPrompt.prompt();
+            // Wait for the user to respond to the prompt
+            deferredPrompt.userChoice.then((choiceResult) => {
+                if (choiceResult.outcome === 'accepted') {
+                    console.log('User accepted the install prompt');
+                } else {
+                    console.log('User dismissed the install prompt');
+                }
+                deferredPrompt = null;
+            });
+        });
+
+        pwaCloseBtn.addEventListener('click', (e) => {
+            pwaInstallPrompt.style.display = 'none';
+            // Remember user choice for 7 days
+            localStorage.setItem('pwaPromptDismissed', Date.now() + (7 * 24 * 60 * 60 * 1000));
+        });
+
+        // Check if user previously dismissed the prompt
+        window.addEventListener('load', function() {
+            const dismissedTime = localStorage.getItem('pwaPromptDismissed');
+            if (dismissedTime && Date.now() < parseInt(dismissedTime)) {
+                // Don't show prompt if recently dismissed
+                window.addEventListener('beforeinstallprompt', (e) => {
+                    e.preventDefault();
+                });
+            }
+        });
+
+        // PWA App Installed
+        window.addEventListener('appinstalled', (evt) => {
+            console.log('PWA was installed');
+            // Hide install prompt
+            pwaInstallPrompt.style.display = 'none';
+            // Show success message
+            if (typeof showNotification === 'function') {
+                showNotification({
+                    unit: 'PWA',
+                    location: 'Installed',
+                    cs_name: 'System',
+                    formatted_amount: 'Success'
+                });
+            }
+        });
+
+        // Push Notification Permission
+        if ('Notification' in window && 'serviceWorker' in navigator) {
+            // Request notification permission on first visit
+            if (Notification.permission === 'default') {
+                setTimeout(() => {
+                    Notification.requestPermission().then(permission => {
+                        console.log('Notification permission:', permission);
+                    });
+                }, 5000); // Wait 5 seconds before asking
+            }
+        }
+
+        // Online/Offline Status
+        window.addEventListener('online', function() {
+            console.log('App is online');
+            // Show online indicator
+            const offlineIndicator = document.getElementById('offlineIndicator');
+            if (offlineIndicator) {
+                offlineIndicator.style.display = 'none';
+            }
+        });
+
+        window.addEventListener('offline', function() {
+            console.log('App is offline');
+            // Show offline indicator
+            let offlineIndicator = document.getElementById('offlineIndicator');
+            if (!offlineIndicator) {
+                offlineIndicator = document.createElement('div');
+                offlineIndicator.id = 'offlineIndicator';
+                offlineIndicator.className = 'position-fixed top-0 start-0 w-100 bg-warning text-dark text-center py-2';
+                offlineIndicator.style.zIndex = '9999';
+                offlineIndicator.innerHTML = '<i class="bi bi-wifi-off"></i> Anda sedang offline. Beberapa fitur mungkin tidak tersedia.';
+                document.body.appendChild(offlineIndicator);
+            }
+            offlineIndicator.style.display = 'block';
+        });
+    </script>
 
     @stack('scripts')
 </body>
