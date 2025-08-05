@@ -29,6 +29,7 @@
             background: rgba(255, 255, 255, 0.2);
             border: 2px solid rgba(255, 255, 255, 0.3);
             color: white;
+            -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
             transition: all 0.3s ease;
         }
@@ -43,6 +44,7 @@
             border-radius: 10px;
             padding: 1.5rem;
             margin-top: 2rem;
+            -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
         }
         .feature-item {
@@ -69,17 +71,17 @@
         <div class="offline-icon pulse">
             <i class="bi bi-wifi-off"></i>
         </div>
-        
+
         <h1 class="mb-3">Anda Sedang Offline</h1>
         <p class="lead mb-4">
-            Tidak dapat terhubung ke internet. Beberapa fitur mungkin tidak tersedia, 
+            Tidak dapat terhubung ke internet. Beberapa fitur mungkin tidak tersedia,
             tetapi Anda masih dapat menggunakan fitur yang telah di-cache.
         </p>
-        
-        <button onclick="retryConnection()" class="btn btn-retry btn-lg mb-4">
+
+        <button type="button" onclick="retryConnection()" class="btn btn-retry btn-lg mb-4">
             <i class="bi bi-arrow-clockwise"></i> Coba Lagi
         </button>
-        
+
         <div class="feature-list">
             <h5 class="mb-3">Fitur yang Tersedia Offline:</h5>
             <div class="feature-item">
@@ -103,7 +105,7 @@
                 <span>Notifikasi push</span>
             </div>
         </div>
-        
+
         <div class="mt-4">
             <small class="text-white-50">
                 Data akan disinkronkan otomatis ketika koneksi kembali tersedia
@@ -115,12 +117,12 @@
         function retryConnection() {
             const btn = event.target.closest('button');
             const icon = btn.querySelector('i');
-            
+
             // Add spinning animation
             icon.classList.remove('bi-arrow-clockwise');
             icon.classList.add('bi-arrow-clockwise', 'fa-spin');
             btn.disabled = true;
-            
+
             // Try to reload the page
             setTimeout(() => {
                 window.location.reload();
@@ -140,7 +142,7 @@
                     <p class="lead">Mengarahkan ke dashboard...</p>
                 </div>
             `;
-            
+
             setTimeout(() => {
                 window.location.href = '/dashboard';
             }, 2000);
@@ -149,7 +151,7 @@
         // Check connection status
         function checkConnection() {
             if (navigator.onLine) {
-                fetch('/api/health', { 
+                fetch('/api/health', {
                     method: 'HEAD',
                     cache: 'no-cache'
                 })
@@ -174,7 +176,7 @@
                     item.style.opacity = '0';
                     item.style.transform = 'translateX(-20px)';
                     item.style.transition = 'all 0.5s ease';
-                    
+
                     setTimeout(() => {
                         item.style.opacity = '1';
                         item.style.transform = 'translateX(0)';

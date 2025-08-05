@@ -46,7 +46,24 @@ class WhatsAppBot {
 
             // Save QR code to file for Laravel dashboard
             const fs = require('fs');
-            fs.writeFileSync('qr-code.txt', qr);
+            const path = require('path');
+
+            // Try to save to Laravel storage directory first
+            const laravelDir = path.join(__dirname, '..', 'laravel-whatsapp-dashboard');
+            const storageDir = path.join(laravelDir, 'storage', 'app');
+
+            if (fs.existsSync(storageDir)) {
+                fs.writeFileSync(path.join(storageDir, 'qr-code.txt'), qr);
+                // Also save status as disconnected
+                fs.writeFileSync(path.join(storageDir, 'bot-status.json'), JSON.stringify({
+                    status: 'DISCONNECTED',
+                    last_seen: new Date().toISOString(),
+                    qr_available: true
+                }, null, 2));
+            } else {
+                // Fallback to root directory
+                fs.writeFileSync('qr-code.txt', qr);
+            }
 
             logger.info('QR Code dibuat untuk autentikasi WhatsApp');
         });
@@ -57,10 +74,33 @@ class WhatsAppBot {
             console.log('\n✅ WhatsApp Bot siap dan terhubung!');
             logger.info('WhatsApp Bot berhasil terhubung');
 
-            // Remove QR code file when connected
+            // Remove QR code file when connected and update status
             const fs = require('fs');
-            if (fs.existsSync('qr-code.txt')) {
-                fs.unlinkSync('qr-code.txt');
+            const path = require('path');
+
+            // Try Laravel storage directory first
+            const laravelDir = path.join(__dirname, '..', 'laravel-whatsapp-dashboard');
+            const storageDir = path.join(laravelDir, 'storage', 'app');
+
+            if (fs.existsSync(storageDir)) {
+                // Remove QR code file
+                const qrPath = path.join(storageDir, 'qr-code.txt');
+                if (fs.existsSync(qrPath)) {
+                    fs.unlinkSync(qrPath);
+                }
+
+                // Update status to connected
+                fs.writeFileSync(path.join(storageDir, 'bot-status.json'), JSON.stringify({
+                    status: 'CONNECTED',
+                    last_seen: new Date().toISOString(),
+                    qr_available: false,
+                    pid: process.pid
+                }, null, 2));
+            } else {
+                // Fallback cleanup
+                if (fs.existsSync('qr-code.txt')) {
+                    fs.unlinkSync('qr-code.txt');
+                }
             }
 
             // Tampilkan daftar grup
@@ -84,6 +124,22 @@ class WhatsAppBot {
         this.client.on('disconnected', (reason) => {
             this.isReady = false;
             logger.warn('Bot WhatsApp terputus:', reason);
+
+            // Update status to disconnected
+            const fs = require('fs');
+            const path = require('path');
+
+            const laravelDir = path.join(__dirname, '..', 'laravel-whatsapp-dashboard');
+            const storageDir = path.join(laravelDir, 'storage', 'app');
+
+            if (fs.existsSync(storageDir)) {
+                fs.writeFileSync(path.join(storageDir, 'bot-status.json'), JSON.stringify({
+                    status: 'DISCONNECTED',
+                    last_seen: new Date().toISOString(),
+                    qr_available: false,
+                    reason: reason
+                }, null, 2));
+            }
         });
 
         // Message event with edit detection

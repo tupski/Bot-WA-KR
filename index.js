@@ -2539,6 +2539,23 @@ async function startBot() {
     try {
         logger.info('Memulai Bot WhatsApp...');
 
+        // Save PID for Laravel dashboard monitoring
+        const fs = require('fs');
+        const path = require('path');
+
+        // Create Laravel dashboard directory if not exists
+        const laravelDir = path.join(__dirname, 'laravel-whatsapp-dashboard');
+        const storageDir = path.join(laravelDir, 'storage', 'app');
+
+        if (fs.existsSync(storageDir)) {
+            fs.writeFileSync(path.join(storageDir, 'bot.pid'), process.pid.toString());
+            logger.info(`Bot PID ${process.pid} disimpan untuk monitoring Laravel`);
+        } else {
+            // Fallback ke root directory
+            fs.writeFileSync(path.join(__dirname, 'bot.pid'), process.pid.toString());
+            logger.info(`Bot PID ${process.pid} disimpan di root directory`);
+        }
+
         // Setup global error handlers
         errorHandler.setupGlobalHandlers();
 
@@ -2565,10 +2582,40 @@ async function startBot() {
     }
 }
 
+// Function to cleanup PID file
+function cleanupPidFile() {
+    const fs = require('fs');
+    const path = require('path');
+
+    try {
+        // Try Laravel storage directory first
+        const laravelDir = path.join(__dirname, 'laravel-whatsapp-dashboard');
+        const storageDir = path.join(laravelDir, 'storage', 'app');
+        const laravelPidPath = path.join(storageDir, 'bot.pid');
+
+        if (fs.existsSync(laravelPidPath)) {
+            fs.unlinkSync(laravelPidPath);
+            logger.info('PID file Laravel berhasil dihapus');
+        }
+
+        // Also cleanup root directory PID file
+        const rootPidPath = path.join(__dirname, 'bot.pid');
+        if (fs.existsSync(rootPidPath)) {
+            fs.unlinkSync(rootPidPath);
+            logger.info('PID file root berhasil dihapus');
+        }
+    } catch (error) {
+        logger.error('Error cleaning up PID file:', error);
+    }
+}
+
 // Graceful shutdown
 process.on('SIGINT', async () => {
     console.log('\nShutting down bot...');
     logger.info('Graceful shutdown initiated');
+
+    // Cleanup PID file
+    cleanupPidFile();
 
     // Stop all scheduled tasks
     scheduler.stopAllTasks();
@@ -2585,6 +2632,9 @@ process.on('SIGINT', async () => {
 process.on('SIGTERM', async () => {
     console.log('\nShutting down bot...');
     logger.info('Graceful shutdown initiated');
+
+    // Cleanup PID file
+    cleanupPidFile();
 
     // Stop all scheduled tasks
     scheduler.stopAllTasks();

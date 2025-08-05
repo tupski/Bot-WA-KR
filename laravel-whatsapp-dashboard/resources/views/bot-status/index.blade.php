@@ -306,7 +306,13 @@ function refreshStatus() {
 
 function restartBot() {
     if (confirm('Apakah Anda yakin ingin restart bot? Bot akan terputus sementara.')) {
-        fetch('/bot-status/restart', { method: 'POST' })
+        fetch('/bot-status/restart', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
             .then(response => response.json())
             .then(data => {
                 alert('Bot restart berhasil dimulai');
@@ -322,7 +328,13 @@ function restartBot() {
 
 function logoutBot() {
     if (confirm('Apakah Anda yakin ingin logout bot? Anda perlu scan QR code lagi.')) {
-        fetch('/bot-status/logout', { method: 'POST' })
+        fetch('/bot-status/logout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
             .then(response => response.json())
             .then(data => {
                 alert('Bot berhasil logout');
@@ -372,7 +384,13 @@ function startQrTimer() {
 function simulateConnection() {
     if (confirm('Simulasi koneksi bot? (untuk testing)')) {
         // Simulate successful connection
-        fetch('/bot-status/restart', { method: 'POST' })
+        fetch('/bot-status/restart', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
             .then(() => {
                 // Update cache to show connected status
                 setTimeout(() => {

@@ -183,6 +183,42 @@ class BotStatusController extends Controller
      */
     private function getBotStatus()
     {
+        // Try to read from status file first (most accurate)
+        $statusFile = storage_path('app/bot-status.json');
+        $qrFile = storage_path('app/qr-code.txt');
+
+        if (file_exists($statusFile)) {
+            $statusData = json_decode(file_get_contents($statusFile), true);
+            if ($statusData) {
+                // Verify PID if status says connected
+                if ($statusData['status'] === 'CONNECTED' && isset($statusData['pid'])) {
+                    if (!$this->isProcessRunning($statusData['pid'])) {
+                        $statusData['status'] = 'DISCONNECTED';
+                        $statusData['last_seen'] = now()->toISOString();
+                    }
+                }
+
+                // Check for QR code
+                $statusData['qr_available'] = file_exists($qrFile);
+                if ($statusData['qr_available']) {
+                    $statusData['qr_code'] = file_get_contents($qrFile);
+                }
+
+                // Convert to expected format
+                return [
+                    'status' => strtolower($statusData['status']),
+                    'is_running' => $statusData['status'] === 'CONNECTED',
+                    'has_session' => $statusData['status'] === 'CONNECTED',
+                    'pid' => $statusData['pid'] ?? null,
+                    'session_path' => $this->sessionPath,
+                    'last_seen' => $statusData['last_seen'] ?? null,
+                    'qr_available' => $statusData['qr_available'] ?? false,
+                    'qr_code' => $statusData['qr_code'] ?? null
+                ];
+            }
+        }
+
+        // Fallback to old method
         $isRunning = $this->isBotRunning();
         $hasSession = $this->hasSession();
         $pid = $this->getBotPid();
@@ -199,7 +235,9 @@ class BotStatusController extends Controller
             'is_running' => $isRunning,
             'has_session' => $hasSession,
             'pid' => $pid,
-            'session_path' => $this->sessionPath
+            'session_path' => $this->sessionPath,
+            'qr_available' => file_exists($qrFile),
+            'qr_code' => file_exists($qrFile) ? file_get_contents($qrFile) : null
         ];
     }
 
@@ -209,7 +247,14 @@ class BotStatusController extends Controller
     private function isBotRunning()
     {
         $pid = $this->getBotPid();
+        return $this->isProcessRunning($pid);
+    }
 
+    /**
+     * Check if a process is running by PID
+     */
+    private function isProcessRunning($pid)
+    {
         if (!$pid) {
             return false;
         }
