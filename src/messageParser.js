@@ -132,13 +132,18 @@ class MessageParser {
                 checkoutTime: data.checkoutTime || '',
                 duration: data.duration || '',
                 paymentMethod: data.paymentMethod || 'Unknown',
-                csName: data.csName,
+                customerName: data.csName, // Update untuk Laravel compatibility
+                csName: data.csName, // Keep for backward compatibility
+                customerPhone: null, // Will be set by whatsappBot if available
                 amount: amount,
                 commission: commission,
                 netAmount: netAmount,
                 date: currentDate,
                 dateOnly: currentDate, // Tambahkan dateOnly untuk backlog checking
                 createdAt: currentDateTime,
+                updatedAt: currentDateTime,
+                chatId: null, // Will be set by whatsappBot
+                whatsappGroupId: null, // Will be set by whatsappBot
                 skipFinancial: data.csName.toLowerCase() === 'apk', // Skip APK dari perhitungan keuangan
                 originalMessage: messageBody
             };

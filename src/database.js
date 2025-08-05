@@ -43,23 +43,34 @@ class Database {
     }
 
     async createTables() {
+        // Untuk MySQL, gunakan tabel Laravel yang sudah ada
+        if (this.dbType === 'mysql') {
+            logger.info('Menggunakan tabel Laravel yang sudah ada untuk MySQL');
+            return;
+        }
+
+        // Hanya buat tabel untuk SQLite (development/testing)
         const tables = {
             transactions: `
                 CREATE TABLE IF NOT EXISTS transactions (
-                    id INTEGER PRIMARY KEY ${this.dbType === 'mysql' ? 'AUTO_INCREMENT' : 'AUTOINCREMENT'},
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                     message_id VARCHAR(255),
                     location VARCHAR(100),
                     unit VARCHAR(50),
                     checkout_time VARCHAR(100),
                     duration VARCHAR(50),
                     payment_method VARCHAR(20),
-                    cs_name VARCHAR(50),
+                    customer_name VARCHAR(50),
+                    customer_phone VARCHAR(20),
                     commission DECIMAL(10,2),
                     amount DECIMAL(12,2),
                     net_amount DECIMAL(12,2),
                     skip_financial BOOLEAN DEFAULT FALSE,
-                    created_at ${this.dbType === 'mysql' ? 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP' : 'DATETIME DEFAULT CURRENT_TIMESTAMP'},
-                    date_only DATE
+                    date_only DATE,
+                    chat_id VARCHAR(255),
+                    whatsapp_group_id VARCHAR(255),
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
             `,
             cs_summary: `
@@ -134,12 +145,14 @@ class Database {
     }
 
     async saveTransaction(data) {
+        // Query untuk struktur tabel Laravel
         const query = `
             INSERT INTO transactions
-            (message_id, location, unit, checkout_time, duration, payment_method, cs_name, commission, amount, net_amount, skip_financial, date_only, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (message_id, location, unit, checkout_time, duration, payment_method, customer_name, customer_phone, commission, amount, net_amount, skip_financial, date_only, chat_id, whatsapp_group_id, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
+        const now = new Date();
         const params = [
             data.messageId,
             data.location,
@@ -147,21 +160,27 @@ class Database {
             data.checkoutTime,
             data.duration,
             data.paymentMethod,
-            data.csName,
+            data.customerName || data.csName, // Support backward compatibility
+            data.customerPhone || null,
             data.commission,
             data.amount,
             data.netAmount || (data.amount - data.commission),
             data.skipFinancial || false,
             data.date,
-            data.createdAt // Tambahkan created_at dengan timezone Indonesia
+            data.chatId || null,
+            data.whatsappGroupId || data.chatId,
+            data.createdAt || now,
+            data.updatedAt || now
         ];
 
         const result = await this.executeQuery(query, params);
-        
-        // Update daily summaries
+
+        // Update daily summaries (tetap menggunakan logika bot)
         await this.updateDailySummary(data);
         await this.updateCSSummary(data);
-        
+
+        logger.info(`Transaksi disimpan ke database: ${data.messageId} - ${data.customerName || data.csName}`);
+
         return result;
     }
 
@@ -208,19 +227,62 @@ class Database {
     }
 
     async getDailySummary(date) {
-        const query = 'SELECT * FROM daily_summary WHERE date = ?';
-        const result = await this.executeQuery(query, [date]);
-        return this.dbType === 'sqlite' ? result[0] : result[0];
+        // Untuk MySQL Laravel, generate summary dari tabel transactions
+        if (this.dbType === 'mysql') {
+            const query = `
+                SELECT
+                    date_only as date,
+                    COUNT(*) as total_bookings,
+                    SUM(amount) as total_amount,
+                    SUM(commission) as total_commission,
+                    SUM(CASE WHEN payment_method = 'Cash' THEN amount ELSE 0 END) as cash_amount,
+                    SUM(CASE WHEN payment_method != 'Cash' THEN amount ELSE 0 END) as transfer_amount,
+                    SUM(CASE WHEN payment_method = 'Cash' THEN commission ELSE 0 END) as cash_commission,
+                    SUM(CASE WHEN payment_method != 'Cash' THEN commission ELSE 0 END) as transfer_commission
+                FROM transactions
+                WHERE date_only = ?
+                GROUP BY date_only
+            `;
+            const result = await this.executeQuery(query, [date]);
+            return result[0] || null;
+        } else {
+            // SQLite menggunakan tabel daily_summary
+            const query = 'SELECT * FROM daily_summary WHERE date = ?';
+            const result = await this.executeQuery(query, [date]);
+            return this.dbType === 'sqlite' ? result[0] : result[0];
+        }
     }
 
     async getCSSummary(date) {
-        const query = 'SELECT * FROM cs_summary WHERE date = ? ORDER BY cs_name';
-        return await this.executeQuery(query, [date]);
+        // Untuk MySQL Laravel, generate summary dari tabel transactions
+        if (this.dbType === 'mysql') {
+            const query = `
+                SELECT
+                    customer_name as cs_name,
+                    COUNT(*) as total_bookings,
+                    SUM(amount) as total_amount,
+                    SUM(commission) as total_commission,
+                    location
+                FROM transactions
+                WHERE date_only = ?
+                GROUP BY customer_name, location
+                ORDER BY customer_name
+            `;
+            return await this.executeQuery(query, [date]);
+        } else {
+            // SQLite menggunakan tabel cs_summary
+            const query = 'SELECT * FROM cs_summary WHERE date = ? ORDER BY cs_name';
+            return await this.executeQuery(query, [date]);
+        }
     }
 
     async getTransactions(date) {
         const query = 'SELECT * FROM transactions WHERE date_only = ? ORDER BY location ASC, created_at ASC';
         return await this.executeQuery(query, [date]);
+    }
+
+    async getTransactionsByDate(date) {
+        return await this.getTransactions(date);
     }
 
     async getMarketingCommission(date, apartmentName = null) {
@@ -251,15 +313,15 @@ class Database {
     async getMarketingCommissionByApartment(date) {
         const query = `
             SELECT
-                cs_name,
+                customer_name as cs_name,
                 location,
                 COUNT(*) as booking_count,
                 SUM(commission) as total_commission
             FROM transactions
             WHERE date_only = ?
-            AND cs_name NOT IN ('apk', 'amel', 'APK', 'AMEL')
-            GROUP BY cs_name, location
-            ORDER BY cs_name, location
+            AND customer_name NOT IN ('apk', 'amel', 'APK', 'AMEL')
+            GROUP BY customer_name, location
+            ORDER BY customer_name, location
         `;
         return await this.executeQuery(query, [date]);
     }
@@ -300,7 +362,7 @@ class Database {
     async getCSPerformance(startDate, endDate) {
         const query = `
             SELECT
-                cs_name,
+                customer_name as cs_name,
                 COUNT(*) as total_bookings,
                 SUM(CASE WHEN payment_method = 'Cash' THEN amount ELSE 0 END) as total_cash,
                 SUM(CASE WHEN payment_method = 'TF' THEN amount ELSE 0 END) as total_transfer,
@@ -309,7 +371,7 @@ class Database {
                 AVG(amount) as avg_booking_value
             FROM transactions
             WHERE date_only BETWEEN ? AND ?
-            GROUP BY cs_name
+            GROUP BY customer_name
             ORDER BY total_revenue DESC
         `;
         return await this.executeQuery(query, [startDate, endDate]);

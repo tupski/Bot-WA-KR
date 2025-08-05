@@ -123,6 +123,10 @@ async function handleNewBookingMessage(message, apartmentName) {
     const parseResult = messageParser.parseBookingMessage(message.body, message.id.id, apartmentName);
 
     if (parseResult.status === 'VALID') {
+        // Set chat ID dan WhatsApp group ID untuk Laravel compatibility
+        parseResult.data.chatId = message.from;
+        parseResult.data.whatsappGroupId = message.from;
+
         // Simpan ke database
         await database.saveTransaction(parseResult.data);
         await database.markMessageProcessed(message.id.id, message.from);

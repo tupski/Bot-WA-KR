@@ -4,6 +4,7 @@ const config = require('../config/config.js');
 const database = require('./database');
 const numberFormatter = require('./numberFormatter');
 const logger = require('./logger');
+const laravelReportSync = require('./laravelReportSync');
 
 class ReportGenerator {
     constructor() {
@@ -34,11 +35,37 @@ class ReportGenerator {
             const financeSection = this.buildFinanceSection(csSummary, dailySummary);
             const commissionSection = this.buildCommissionSection(marketingCommissionByApartment);
 
+            // Get transactions for Laravel sync validation
+            const transactions = await database.getTransactionsByDate(reportDate);
+
+            // Validate consistency with Laravel if enabled
+            if (laravelReportSync.isEnabled()) {
+                const consistency = await laravelReportSync.validateReportConsistency(
+                    transactions, reportDate, reportDate
+                );
+
+                if (!consistency.consistent) {
+                    logger.warn('Report data inconsistency detected with Laravel', consistency);
+                }
+            }
+
             // Combine all sections
             const report = this.formatReport(displayDate, displayTime, csSection, financeSection, commissionSection);
 
+            // Add Laravel dashboard footer if enabled
+            const footer = laravelReportSync.formatReportFooter('daily', reportDate);
+            const finalReport = report + footer;
+
+            // Log report generation with Laravel context
+            await laravelReportSync.logReportGeneration(
+                'daily',
+                reportDate,
+                transactions.length,
+                transactions.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0)
+            );
+
             logger.info('Laporan harian berhasil dibuat');
-            return report;
+            return finalReport;
 
         } catch (error) {
             logger.error('Error membuat laporan harian:', error);
@@ -304,7 +331,20 @@ ${commissionSection}`;
                 });
             }
 
-            return report;
+            // Add Laravel dashboard footer if enabled
+            const monthKey = targetDate.format('YYYY-MM');
+            const footer = laravelReportSync.formatReportFooter('monthly', monthKey);
+            const finalReport = report + footer;
+
+            // Log report generation with Laravel context
+            await laravelReportSync.logReportGeneration(
+                'monthly',
+                monthKey,
+                totalBookings,
+                totalRevenue
+            );
+
+            return finalReport;
 
         } catch (error) {
             logger.error('Error membuat laporan bulanan:', error);
@@ -399,7 +439,7 @@ ${commissionSection}`;
         };
 
         transactions.forEach(transaction => {
-            const csName = transaction.cs_name || transaction.csName;
+            const csName = transaction.customer_name || transaction.cs_name || transaction.csName;
             const amount = parseFloat(transaction.amount || 0);
             const commission = parseFloat(transaction.commission || 0);
             const paymentMethod = transaction.payment_method || transaction.paymentMethod || '';
@@ -688,7 +728,7 @@ ${commissionSection}`;
                     cashTfDisplay += ` ${displayAmount}`;
                 } else {
                     // Untuk kasus khusus seperti "tf amel" atau "cash apk"
-                    cashTfDisplay += ` ${transaction.cs_name}`;
+                    cashTfDisplay += ` ${transaction.customer_name || transaction.cs_name}`;
                 }
 
                 // Format commission
@@ -699,7 +739,7 @@ ${commissionSection}`;
                     komisiDisplay = displayCommission.toString();
                 } else {
                     // Untuk kasus khusus seperti komisi amel/apk
-                    komisiDisplay = transaction.cs_name;
+                    komisiDisplay = transaction.customer_name || transaction.cs_name;
                 }
 
                 report += `Tanggal & Jam input: ${inputDate}\n`;
@@ -707,7 +747,7 @@ ${commissionSection}`;
                 report += `Cek out: ${transaction.checkout_time}\n`;
                 report += `Untuk   : ${transaction.duration}\n`;
                 report += `Cash/tf: ${cashTfDisplay}\n`;
-                report += `Cs         : ${transaction.cs_name}\n`;
+                report += `Cs         : ${transaction.customer_name || transaction.cs_name}\n`;
                 report += `komisi : ${komisiDisplay}\n`;
 
                 if (index < transactions.length - 1) {
