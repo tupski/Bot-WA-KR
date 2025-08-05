@@ -147,7 +147,7 @@ class ReportGenerator {
 
         // Special cases
         if (lowerName === 'apk') return 'APK';
-        if (lowerName === 'amel' || lowerName === 'ka amel') return 'Amel';
+        if (lowerName === 'amel' || lowerName.includes('amel')) return 'Amel';
 
         // Capitalize first letter, lowercase the rest
         return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
