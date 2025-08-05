@@ -1,6 +1,6 @@
 import { Router } from 'express'
-import * as csController from '@/controllers/csController'
-import { authenticateToken, requireUserOrAdmin } from '@/middleware/auth'
+import * as csController from '../controllers/csController'
+import { authenticateToken, requireUserOrAdmin } from '../middleware/auth'
 
 const router = Router()
 

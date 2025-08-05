@@ -1,8 +1,8 @@
 #!/usr/bin/env ts-node
 
-import { connectDatabase, closeDatabase } from '@/utils/database'
-import { DatabaseSeeder } from '@/utils/seeder'
-import { logger } from '@/utils/logger'
+import { connectDatabase, closeDatabase } from '../utils/database'
+import { DatabaseSeeder } from '../utils/seeder'
+import { logger } from '../utils/logger'
 
 async function runMigrations() {
   try {

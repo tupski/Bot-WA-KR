@@ -1,6 +1,6 @@
 import { Router } from 'express'
-import * as reportController from '@/controllers/reportController'
-import { authenticateToken, requireUserOrAdmin } from '@/middleware/auth'
+import * as reportController from '../controllers/reportController'
+import { authenticateToken, requireUserOrAdmin } from '../middleware/auth'
 
 const router = Router()
 

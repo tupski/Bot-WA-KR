@@ -92,27 +92,18 @@ const LoginForm: React.FC = () => {
             required
           />
 
-          {/* Remember Me & Forgot Password */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <input
-                {...register('rememberMe')}
-                type="checkbox"
-                id="rememberMe"
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                disabled={isFormLoading}
-              />
-              <label htmlFor="rememberMe" className="text-sm text-gray-600">
-                Remember me
-              </label>
-            </div>
-            
-            <Link
-              to="/forgot-password"
-              className="text-sm text-blue-600 hover:text-blue-500 focus:outline-none focus:underline"
-            >
-              Forgot password?
-            </Link>
+          {/* Remember Me */}
+          <div className="flex items-center space-x-2">
+            <input
+              {...register('rememberMe')}
+              type="checkbox"
+              id="rememberMe"
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              disabled={isFormLoading}
+            />
+            <label htmlFor="rememberMe" className="text-sm text-gray-600">
+              Remember me
+            </label>
           </div>
 
           {/* Submit Button */}

@@ -1,11 +1,11 @@
 import { Router } from 'express'
-import * as transactionController from '@/controllers/transactionController'
-import { authenticateToken, requireUserOrAdmin, requireAdmin } from '@/middleware/auth'
+import * as transactionController from '../controllers/transactionController'
+import { authenticateToken, requireUserOrAdmin, requireAdmin } from '../middleware/auth'
 import {
   validateCreateTransaction,
   validateUpdateTransaction,
   validateBulkDelete
-} from '@/middleware/validation'
+} from '../middleware/validation'
 
 const router = Router()
 
