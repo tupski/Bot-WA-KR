@@ -59,16 +59,36 @@ class ApartmentController extends Controller
 
     public function show(Apartment $apartment)
     {
-        $today = Carbon::today();
-        $thisMonth = Carbon::now()->startOfMonth();
+        // Get statistics
+        $stats = [
+            'total_transactions' => Transaction::where('location', $apartment->name)->count(),
+            'total_revenue' => Transaction::where('location', $apartment->name)->sum('amount'),
+            'this_month_transactions' => Transaction::where('location', $apartment->name)
+                ->whereMonth('created_at', now()->month)
+                ->whereYear('created_at', now()->year)
+                ->count(),
+            'avg_transaction' => Transaction::where('location', $apartment->name)->avg('amount') ?? 0,
+        ];
 
-        $todayStats = $this->getApartmentStats($apartment, $today, $today);
-        $monthlyStats = $this->getApartmentStats($apartment, $thisMonth, Carbon::now());
-
+        // Get recent transactions
         $recentTransactions = Transaction::where('location', $apartment->name)
-            ->orderBy('created_at', 'desc')->limit(10)->get();
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
 
-        return view('apartments.show', compact('apartment', 'todayStats', 'monthlyStats', 'recentTransactions'));
+        // Get WhatsApp groups for this apartment
+        $whatsappGroups = \App\Models\WhatsAppGroup::where('apartment_id', $apartment->id)->get();
+
+        // Get chart data for last 30 days
+        $chartData = $this->getChartData($apartment);
+
+        return view('apartments.show', compact(
+            'apartment',
+            'stats',
+            'recentTransactions',
+            'whatsappGroups',
+            'chartData'
+        ));
     }
 
     public function edit(Apartment $apartment)
@@ -130,6 +150,35 @@ class ApartmentController extends Controller
             'total_revenue' => $transactions->sum('amount'),
             'total_commission' => $transactions->sum('commission'),
             'avg_amount' => $transactions->avg('amount') ?? 0,
+        ];
+    }
+
+    /**
+     * Get chart data for apartment performance
+     */
+    private function getChartData($apartment)
+    {
+        $labels = [];
+        $transactions = [];
+        $revenue = [];
+
+        // Get data for last 30 days
+        for ($i = 29; $i >= 0; $i--) {
+            $date = Carbon::now()->subDays($i);
+            $labels[] = $date->format('M d');
+
+            $dayTransactions = Transaction::where('location', $apartment->name)
+                ->whereDate('created_at', $date)
+                ->get();
+
+            $transactions[] = $dayTransactions->count();
+            $revenue[] = round($dayTransactions->sum('amount') / 1000, 1); // In thousands
+        }
+
+        return [
+            'labels' => $labels,
+            'transactions' => $transactions,
+            'revenue' => $revenue,
         ];
     }
 }
