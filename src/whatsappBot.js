@@ -220,8 +220,66 @@ class WhatsAppBot {
             });
 
             logger.info(`Ditemukan ${groups.length} grup WhatsApp`);
+
+            // Simpan data grup ke database Laravel
+            await this.saveGroupsToDatabase(groups);
         } catch (error) {
             logger.error('Error menampilkan daftar grup:', error);
+        }
+    }
+
+    /**
+     * Simpan data grup ke database Laravel
+     */
+    async saveGroupsToDatabase(groups) {
+        try {
+            const database = require('./database');
+
+            for (const group of groups) {
+                const groupData = {
+                    group_id: group.id._serialized,
+                    group_name: group.name,
+                    group_subject: group.name,
+                    group_description: `Grup WhatsApp: ${group.name}`,
+                    participant_count: group.participants ? group.participants.length : 0,
+                    admin_count: 1, // Default admin count
+                    is_active: true,
+                    is_monitoring: true,
+                    last_activity_at: new Date(),
+                    created_by_bot_at: new Date()
+                };
+
+                // Insert or update grup
+                const query = `
+                    INSERT INTO whats_app_groups (
+                        group_id, group_name, group_subject, group_description,
+                        participant_count, admin_count, is_active, is_monitoring,
+                        last_activity_at, created_by_bot_at, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                    ON DUPLICATE KEY UPDATE
+                        group_name = VALUES(group_name),
+                        participant_count = VALUES(participant_count),
+                        last_activity_at = VALUES(last_activity_at),
+                        updated_at = NOW()
+                `;
+
+                await database.executeQuery(query, [
+                    groupData.group_id,
+                    groupData.group_name,
+                    groupData.group_subject,
+                    groupData.group_description,
+                    groupData.participant_count,
+                    groupData.admin_count,
+                    groupData.is_active,
+                    groupData.is_monitoring,
+                    groupData.last_activity_at,
+                    groupData.created_by_bot_at
+                ]);
+            }
+
+            logger.info(`✅ Data ${groups.length} grup berhasil disimpan ke database Laravel`);
+        } catch (error) {
+            logger.error('Error menyimpan grup ke database:', error);
         }
     }
 

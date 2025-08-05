@@ -186,40 +186,76 @@ class WhatsAppGroupController extends Controller
     }
 
     /**
-     * Get available groups from WhatsApp API
+     * Get available groups from WhatsApp Bot
      */
     private function getAvailableGroups()
     {
-        return Cache::remember('whatsapp_available_groups', 300, function () {
-            // In production, this would call actual WhatsApp API
-            // For now, return sample data
-            return [
-                [
-                    'id' => '120363317169602122@g.us',
-                    'name' => 'SKY HOUSE BSD - Booking',
-                    'subject' => 'Grup booking apartemen SKY HOUSE BSD',
-                    'description' => 'Grup untuk koordinasi booking apartemen',
-                    'participant_count' => 25,
-                    'admin_count' => 3,
-                ],
-                [
-                    'id' => '120363317169602123@g.us',
-                    'name' => 'TREE PARK - Booking',
-                    'subject' => 'Grup booking apartemen TREE PARK',
-                    'description' => 'Grup untuk koordinasi booking apartemen',
-                    'participant_count' => 18,
-                    'admin_count' => 2,
-                ],
-                [
-                    'id' => '120363317169602124@g.us',
-                    'name' => 'EMERALD TOWER - Booking',
-                    'subject' => 'Grup booking apartemen EMERALD TOWER',
-                    'description' => 'Grup untuk koordinasi booking apartemen',
-                    'participant_count' => 32,
-                    'admin_count' => 4,
-                ],
-            ];
+        return Cache::remember('whatsapp_available_groups', 60, function () {
+            try {
+                // Try to get groups from bot status file first
+                $statusFile = storage_path('app/bot-status.json');
+                if (file_exists($statusFile)) {
+                    $statusData = json_decode(file_get_contents($statusFile), true);
+                    if ($statusData && $statusData['status'] === 'CONNECTED') {
+                        // Bot is connected, try to get groups from bot API
+                        $groups = $this->getGroupsFromBot();
+                        if (!empty($groups)) {
+                            return $groups;
+                        }
+                    }
+                }
+
+                // Fallback: get groups from database
+                return $this->getGroupsFromDatabase();
+
+            } catch (\Exception $e) {
+                \Log::error('Error getting available groups: ' . $e->getMessage());
+                return $this->getGroupsFromDatabase();
+            }
         });
+    }
+
+    /**
+     * Get groups from WhatsApp Bot via HTTP API
+     */
+    private function getGroupsFromBot()
+    {
+        try {
+            // For now, we'll use the groups that are already in the database
+            // In the future, we can implement a direct API call to the bot
+            return $this->getGroupsFromDatabase();
+        } catch (\Exception $e) {
+            \Log::error('Error getting groups from bot: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Get groups from database
+     */
+    private function getGroupsFromDatabase()
+    {
+        try {
+            $groups = WhatsAppGroup::select('group_id', 'group_name', 'group_subject', 'group_description', 'participant_count', 'admin_count')
+                ->where('is_active', true)
+                ->get()
+                ->map(function ($group) {
+                    return [
+                        'id' => $group->group_id,
+                        'name' => $group->group_name,
+                        'subject' => $group->group_subject ?: $group->group_name,
+                        'description' => $group->group_description ?: 'Grup WhatsApp',
+                        'participant_count' => $group->participant_count ?: 0,
+                        'admin_count' => $group->admin_count ?: 1,
+                    ];
+                })
+                ->toArray();
+
+            return $groups;
+        } catch (\Exception $e) {
+            \Log::error('Error getting groups from database: ' . $e->getMessage());
+            return [];
+        }
     }
 
     /**
