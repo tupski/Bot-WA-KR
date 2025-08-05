@@ -43,6 +43,11 @@ class WhatsAppBot {
             console.log('\n=== WhatsApp Bot QR Code ===');
             console.log('Scan this QR code with your WhatsApp mobile app:');
             qrcode.generate(qr, { small: true });
+
+            // Save QR code to file for Laravel dashboard
+            const fs = require('fs');
+            fs.writeFileSync('qr-code.txt', qr);
+
             logger.info('QR Code dibuat untuk autentikasi WhatsApp');
         });
 
@@ -51,6 +56,12 @@ class WhatsAppBot {
             this.isReady = true;
             console.log('\n✅ WhatsApp Bot siap dan terhubung!');
             logger.info('WhatsApp Bot berhasil terhubung');
+
+            // Remove QR code file when connected
+            const fs = require('fs');
+            if (fs.existsSync('qr-code.txt')) {
+                fs.unlinkSync('qr-code.txt');
+            }
 
             // Tampilkan daftar grup
             await this.displayGroupList();

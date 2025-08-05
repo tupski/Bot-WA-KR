@@ -2,44 +2,47 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Process\Process as SymfonyProcess;
 
-class BotStatusController extends Controller
+class BotController extends Controller
 {
     private $botPath;
     private $sessionPath;
-
+    
     public function __construct()
     {
+        $this->middleware('auth');
         $this->botPath = base_path('../'); // Root directory where bot is located
         $this->sessionPath = $this->botPath . 'session';
     }
 
+    /**
+     * Show bot status page
+     */
     public function index()
     {
-        $botStatus = $this->getBotStatus();
+        $status = $this->getBotStatus();
         $qrCode = $this->getQRCode();
-
-        return view('bot-status.index', compact('botStatus', 'qrCode'));
+        
+        return view('bot.index', compact('status', 'qrCode'));
     }
 
+    /**
+     * Get bot status via API
+     */
     public function status()
     {
         $status = $this->getBotStatus();
-
-        // Add debug info
-        $status['debug'] = [
-            'bot_path' => $this->botPath,
-            'session_path' => $this->sessionPath,
-            'session_exists' => is_dir($this->sessionPath),
-            'pid_file_exists' => file_exists($this->botPath . 'bot.pid'),
-            'qr_file_exists' => file_exists($this->botPath . 'qr-code.txt')
-        ];
-
         return response()->json($status);
     }
 
+    /**
+     * Get QR code for WhatsApp connection
+     */
     public function qrCode()
     {
         $qrCode = $this->getQRCode();
@@ -61,6 +64,7 @@ class BotStatusController extends Controller
             }
 
             // Start bot process in background
+            $command = 'node index.js';
             $process = new SymfonyProcess(['node', 'index.js'], $this->botPath);
             $process->setTimeout(null);
             $process->start();
@@ -78,7 +82,7 @@ class BotStatusController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Failed to start WhatsApp Bot: ' . $e->getMessage());
-
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to start bot: ' . $e->getMessage()
@@ -93,7 +97,7 @@ class BotStatusController extends Controller
     {
         try {
             $pid = $this->getBotPid();
-
+            
             if (!$pid) {
                 return response()->json([
                     'success' => false,
@@ -120,7 +124,7 @@ class BotStatusController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Failed to stop WhatsApp Bot: ' . $e->getMessage());
-
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to stop bot: ' . $e->getMessage()
@@ -128,21 +132,24 @@ class BotStatusController extends Controller
         }
     }
 
+    /**
+     * Restart WhatsApp bot
+     */
     public function restart()
     {
         try {
             // Stop bot first
             $this->stop();
-
+            
             // Wait a moment
             sleep(2);
-
+            
             // Start bot again
             return $this->start();
 
         } catch (\Exception $e) {
             Log::error('Failed to restart WhatsApp Bot: ' . $e->getMessage());
-
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to restart bot: ' . $e->getMessage()
@@ -150,12 +157,15 @@ class BotStatusController extends Controller
         }
     }
 
+    /**
+     * Logout from WhatsApp (clear session)
+     */
     public function logout()
     {
         try {
             // Stop bot first
             $this->stop();
-
+            
             // Clear session directory
             if (is_dir($this->sessionPath)) {
                 $this->deleteDirectory($this->sessionPath);
@@ -170,7 +180,7 @@ class BotStatusController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Failed to logout WhatsApp Bot: ' . $e->getMessage());
-
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to logout: ' . $e->getMessage()
@@ -209,7 +219,7 @@ class BotStatusController extends Controller
     private function isBotRunning()
     {
         $pid = $this->getBotPid();
-
+        
         if (!$pid) {
             return false;
         }
@@ -238,12 +248,12 @@ class BotStatusController extends Controller
     private function getQRCode()
     {
         $qrFile = $this->botPath . 'qr-code.txt';
-
+        
         if (file_exists($qrFile)) {
             $qrCode = file_get_contents($qrFile);
             return trim($qrCode);
         }
-
+        
         return null;
     }
 
@@ -261,11 +271,11 @@ class BotStatusController extends Controller
     private function getBotPid()
     {
         $pidFile = $this->botPath . 'bot.pid';
-
+        
         if (file_exists($pidFile)) {
             return (int) file_get_contents($pidFile);
         }
-
+        
         return null;
     }
 
@@ -275,7 +285,7 @@ class BotStatusController extends Controller
     private function removeBotPid()
     {
         $pidFile = $this->botPath . 'bot.pid';
-
+        
         if (file_exists($pidFile)) {
             unlink($pidFile);
         }
@@ -291,17 +301,17 @@ class BotStatusController extends Controller
         }
 
         $files = array_diff(scandir($dir), ['.', '..']);
-
+        
         foreach ($files as $file) {
             $path = $dir . DIRECTORY_SEPARATOR . $file;
-
+            
             if (is_dir($path)) {
                 $this->deleteDirectory($path);
             } else {
                 unlink($path);
             }
         }
-
+        
         rmdir($dir);
     }
 }

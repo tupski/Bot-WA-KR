@@ -15,6 +15,9 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
+                    <x-nav-link :href="route('bot-status.index')" :active="request()->routeIs('bot-status.*')">
+                        {{ __('WhatsApp Bot') }}
+                    </x-nav-link>
                 </div>
             </div>
 
