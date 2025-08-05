@@ -5,7 +5,7 @@ namespace Database\Seeders;
 use App\Models\User;
 use App\Models\Apartment;
 use App\Models\CustomerService;
-use App\Models\BotConfig;
+use App\Models\Config;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -52,17 +52,9 @@ class DatabaseSeeder extends Seeder
             CustomerService::create($cs);
         }
 
-        // Create bot configurations
-        $configs = [
-            ['key_name' => 'bot_status', 'value' => 'active', 'description' => 'Bot status (active/inactive)', 'type' => 'string'],
-            ['key_name' => 'daily_report_time', 'value' => '12:00', 'description' => 'Daily report schedule time', 'type' => 'string'],
-            ['key_name' => 'monthly_report_enabled', 'value' => 'true', 'description' => 'Enable monthly reports', 'type' => 'boolean'],
-            ['key_name' => 'email_notifications', 'value' => 'true', 'description' => 'Enable email notifications', 'type' => 'boolean'],
-            ['key_name' => 'commission_rate_default', 'value' => '5.0', 'description' => 'Default commission rate percentage', 'type' => 'number'],
-        ];
-
-        foreach ($configs as $config) {
-            BotConfig::create($config);
-        }
+        // Call config seeder
+        $this->call([
+            ConfigSeeder::class,
+        ]);
     }
 }
