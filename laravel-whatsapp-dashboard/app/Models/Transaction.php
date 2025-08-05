@@ -1,0 +1,88 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+
+class Transaction extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'message_id',
+        'location',
+        'unit',
+        'checkout_time',
+        'duration',
+        'payment_method',
+        'cs_name',
+        'commission',
+        'amount',
+        'net_amount',
+        'skip_financial',
+        'date_only',
+    ];
+
+    protected $casts = [
+        'commission' => 'decimal:2',
+        'amount' => 'decimal:2',
+        'net_amount' => 'decimal:2',
+        'skip_financial' => 'boolean',
+        'date_only' => 'date',
+    ];
+
+    // Relationships
+    public function apartment(): BelongsTo
+    {
+        return $this->belongsTo(Apartment::class, 'location', 'name');
+    }
+
+    public function customerService(): BelongsTo
+    {
+        return $this->belongsTo(CustomerService::class, 'cs_name', 'name');
+    }
+
+    // Scopes
+    public function scopeByDate($query, $date)
+    {
+        return $query->where('date_only', $date);
+    }
+
+    public function scopeByDateRange($query, $startDate, $endDate)
+    {
+        return $query->whereBetween('date_only', [$startDate, $endDate]);
+    }
+
+    public function scopeByLocation($query, $location)
+    {
+        return $query->where('location', $location);
+    }
+
+    public function scopeByCs($query, $csName)
+    {
+        return $query->where('cs_name', $csName);
+    }
+
+    public function scopeByPaymentMethod($query, $method)
+    {
+        return $query->where('payment_method', $method);
+    }
+
+    // Accessors
+    public function getFormattedAmountAttribute()
+    {
+        return number_format($this->amount, 0, ',', '.');
+    }
+
+    public function getFormattedCommissionAttribute()
+    {
+        return number_format($this->commission, 0, ',', '.');
+    }
+
+    public function getFormattedNetAmountAttribute()
+    {
+        return number_format($this->net_amount, 0, ',', '.');
+    }
+}
