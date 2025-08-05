@@ -691,7 +691,7 @@ class ExcelExporter {
 
         // Title for CS Summary
         worksheet.addRow([`Ringkasan CS - ${date}`]);
-        worksheet.mergeCells(`A${currentRow + 1}:F${currentRow + 1}`);
+        worksheet.mergeCells(`A${currentRow + 1}:D${currentRow + 1}`);
         const titleRowObj = worksheet.getRow(currentRow + 1);
         titleRowObj.font = { bold: true, size: 14 };
         titleRowObj.alignment = { horizontal: 'center' };
@@ -705,7 +705,7 @@ class ExcelExporter {
         worksheet.addRow([]);
 
         // Headers for CS Summary
-        const headerRow2 = worksheet.addRow(['No', 'Nama CS', 'Total Booking', 'Total Cash', 'Total Transfer', 'Total Komisi']);
+        const headerRow2 = worksheet.addRow(['No', 'Nama CS', 'Total Booking', 'Total Komisi']);
         headerRow2.font = { bold: true, color: { argb: 'FFFFFF' } };
         headerRow2.fill = {
             type: 'pattern',
@@ -723,15 +723,11 @@ class ExcelExporter {
                     index + 1,
                     cs.cs_name || '-',
                     cs.total_bookings || 0,
-                    parseFloat(cs.total_cash || 0),
-                    parseFloat(cs.total_transfer || 0),
                     parseFloat(cs.total_commission || 0)
                 ]);
 
                 // Format currency columns
-                row.getCell(4).numFmt = 'Rp #,##0'; // Total Cash
-                row.getCell(5).numFmt = 'Rp #,##0'; // Total Transfer
-                row.getCell(6).numFmt = 'Rp #,##0'; // Total Komisi
+                row.getCell(4).numFmt = 'Rp #,##0'; // Total Komisi
 
                 // Add zebra stripe (alternating row colors)
                 if (index % 2 === 1) {
@@ -750,19 +746,15 @@ class ExcelExporter {
                 '',
                 'TOTAL:',
                 { formula: `SUM(C${currentRow - csSummary.length + 1}:C${currentRow})` },
-                { formula: `SUM(D${currentRow - csSummary.length + 1}:D${currentRow})` },
-                { formula: `SUM(E${currentRow - csSummary.length + 1}:E${currentRow})` },
-                { formula: `SUM(F${currentRow - csSummary.length + 1}:F${currentRow})` }
+                { formula: `SUM(D${currentRow - csSummary.length + 1}:D${currentRow})` }
             ]);
 
             totalRow.font = { bold: true };
             totalRow.getCell(4).numFmt = 'Rp #,##0';
-            totalRow.getCell(5).numFmt = 'Rp #,##0';
-            totalRow.getCell(6).numFmt = 'Rp #,##0';
             // No background for total row
         } else {
             worksheet.addRow(['', 'Tidak ada data CS pada tanggal ini']);
-            worksheet.mergeCells(`A${currentRow + 1}:F${currentRow + 1}`);
+            worksheet.mergeCells(`A${currentRow + 1}:D${currentRow + 1}`);
             const noDataRow = worksheet.getRow(currentRow + 1);
             noDataRow.alignment = { horizontal: 'center' };
             noDataRow.font = { italic: true };

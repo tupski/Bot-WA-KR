@@ -2471,13 +2471,11 @@ async function createCombinedSummarySheetForExport(workbook, csSummary, marketin
             const row = worksheet.addRow([
                 cs.cs_name,
                 cs.total_bookings,
-                cs.total_amount,
                 cs.total_commission
             ]);
 
             // Format currency columns
-            // row.getCell(3).numFmt = 'Rp #,##0'; // Total Amount
-            row.getCell(4).numFmt = 'Rp #,##0'; // Total Komisi
+            row.getCell(3).numFmt = 'Rp #,##0'; // Total Komisi
 
             // Add zebra stripe (alternating row colors)
             if (csRowIndex % 2 === 1) {
@@ -2506,13 +2504,11 @@ async function createCombinedSummarySheetForExport(workbook, csSummary, marketin
         const totalRow = worksheet.addRow([
             'TOTAL:',
             { formula: `SUM(B${currentRow - csSummary.length + 1}:B${currentRow})` },
-            { formula: `SUM(C${currentRow - csSummary.length + 1}:C${currentRow})` },
-            { formula: `SUM(D${currentRow - csSummary.length + 1}:D${currentRow})` }
+            { formula: `SUM(C${currentRow - csSummary.length + 1}:C${currentRow})` }
         ]);
 
         totalRow.font = { bold: true };
         totalRow.getCell(3).numFmt = 'Rp #,##0';
-        totalRow.getCell(4).numFmt = 'Rp #,##0';
 
         // Add borders to total row (no background)
         totalRow.eachCell((cell) => {
