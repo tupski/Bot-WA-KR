@@ -203,6 +203,12 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('whatsapp-groups.*') ? 'active' : '' }}" href="{{ route('whatsapp-groups.index') }}">
+                                <i class="bi bi-people"></i>
+                                Grup WhatsApp
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('config.*') ? 'active' : '' }}" href="{{ route('config.index') }}">
                                 <i class="bi bi-gear"></i>
                                 Konfigurasi Bot

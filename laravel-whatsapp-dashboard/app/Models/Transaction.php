@@ -17,12 +17,17 @@ class Transaction extends Model
         'checkout_time',
         'duration',
         'payment_method',
-        'cs_name',
+        'customer_name', // Changed from cs_name to customer_name
+        'customer_phone',
         'commission',
         'amount',
         'net_amount',
         'skip_financial',
         'date_only',
+        'chat_id',
+        'whatsapp_group_id',
+        'processed_by', // User who processed this transaction
+        'notes',
     ];
 
     protected $casts = [

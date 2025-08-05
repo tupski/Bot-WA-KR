@@ -70,6 +70,11 @@ Route::middleware('auth')->group(function () {
         Route::post('/restart', [\App\Http\Controllers\BotStatusController::class, 'restart'])->name('restart');
         Route::post('/logout', [\App\Http\Controllers\BotStatusController::class, 'logout'])->name('logout');
     });
+
+    // WhatsApp Groups routes
+    Route::resource('whatsapp-groups', \App\Http\Controllers\WhatsAppGroupController::class);
+    Route::post('whatsapp-groups/{whatsappGroup}/toggle-monitoring', [\App\Http\Controllers\WhatsAppGroupController::class, 'toggleMonitoring'])->name('whatsapp-groups.toggle-monitoring');
+    Route::get('whatsapp-groups-sync', [\App\Http\Controllers\WhatsAppGroupController::class, 'sync'])->name('whatsapp-groups.sync');
 });
 
 require __DIR__.'/auth.php';
