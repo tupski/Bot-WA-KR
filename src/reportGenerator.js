@@ -23,17 +23,16 @@ class ReportGenerator {
             logger.info(`Membuat laporan harian untuk ${reportDate}`);
 
             // Get data from database
-            const [csSummary, dailySummary, marketingCommission, locationStats] = await Promise.all([
+            const [csSummary, dailySummary, marketingCommissionByApartment] = await Promise.all([
                 database.getCSSummary(reportDate),
                 database.getDailySummary(reportDate),
-                database.getMarketingCommission(reportDate, null), // null = semua apartemen
-                database.getLocationStats(reportDate)
+                database.getMarketingCommissionByApartment(reportDate)
             ]);
 
             // Build report sections
             const csSection = this.buildCSSection(csSummary);
             const financeSection = this.buildFinanceSection(csSummary, dailySummary);
-            const commissionSection = this.buildCommissionSection(marketingCommission);
+            const commissionSection = this.buildCommissionSection(marketingCommissionByApartment);
 
             // Combine all sections
             const report = this.formatReport(displayDate, displayTime, csSection, financeSection, commissionSection);
@@ -139,26 +138,87 @@ class ReportGenerator {
     }
 
     /**
-     * Build commission section of the report
+     * Build commission section of the report in table format
      */
-    buildCommissionSection(marketingCommission) {
+    buildCommissionSection(marketingCommissionByApartment) {
         let section = '=== *Komisi Marketing* ===\n';
-        let totalCommission = 0;
 
-        if (marketingCommission && marketingCommission.length > 0) {
-            marketingCommission.forEach(commission => {
-                const csName = commission.cs_name;
-                const bookingCount = commission.booking_count || 0;
-                const commissionAmount = parseFloat(commission.total_commission || 0);
-                
-                section += `(${csName}): ${bookingCount} booking, ${this.formatCurrency(commissionAmount)}\n`;
-                totalCommission += commissionAmount;
-            });
-        } else {
+        // Define apartment order as requested by user
+        const apartmentOrder = [
+            'TREEPARK BSD',
+            'SKY HOUSE BSD',
+            'SPRINGWOOD',
+            'EMERALD BINTARO',
+            'TOKYO RIVERSIDE PIK2',
+            'SERPONG GARDEN',
+            'TRANSPARK BINTARO'
+        ];
+
+        if (!marketingCommissionByApartment || marketingCommissionByApartment.length === 0) {
             section += 'Tidak ada komisi hari ini\n';
+            return section;
         }
 
-        section += `Total Komisi: ${this.formatCurrency(totalCommission)}\n`;
+        // Group data by marketing name and apartment
+        const marketingData = {};
+        let totalCommissionAll = 0;
+
+        marketingCommissionByApartment.forEach(item => {
+            const csName = item.cs_name;
+            const location = item.location;
+            const bookingCount = parseInt(item.booking_count || 0);
+            const commission = parseFloat(item.total_commission || 0);
+
+            if (!marketingData[csName]) {
+                marketingData[csName] = {};
+                apartmentOrder.forEach(apt => {
+                    marketingData[csName][apt] = { count: 0, commission: 0 };
+                });
+                marketingData[csName].totalCount = 0;
+                marketingData[csName].totalCommission = 0;
+            }
+
+            // Map location to apartment name
+            if (marketingData[csName][location]) {
+                marketingData[csName][location].count += bookingCount;
+                marketingData[csName][location].commission += commission;
+            }
+
+            marketingData[csName].totalCount += bookingCount;
+            marketingData[csName].totalCommission += commission;
+            totalCommissionAll += commission;
+        });
+
+        // Build table header
+        section += '```\n';
+        section += '| Marketing | Treepark | Sky House | Springwood | Emerald | Tokyo | Serpong | Transpark | Total |\n';
+        section += '|-----------|----------|-----------|------------|---------|-------|---------|-----------|-------|\n';
+
+        // Build table rows
+        Object.keys(marketingData).forEach(csName => {
+            const data = marketingData[csName];
+            let row = `| ${csName.padEnd(9)} |`;
+
+            apartmentOrder.forEach(apt => {
+                const count = data[apt].count;
+                const countStr = count > 0 ? count.toString() : '';
+                row += ` ${countStr.padEnd(8)} |`;
+            });
+
+            row += ` ${data.totalCount.toString().padEnd(5)} |\n`;
+            section += row;
+        });
+
+        section += '```\n\n';
+
+        // Build summary table
+        section += '*Ringkasan Komisi:*\n';
+        Object.keys(marketingData).forEach(csName => {
+            const data = marketingData[csName];
+            section += `${csName}: ${data.totalCount} booking, ${this.formatCurrency(data.totalCommission)}\n`;
+        });
+
+        section += `\n*Total Komisi: ${this.formatCurrency(totalCommissionAll)}*\n`;
         return section;
     }
 
@@ -179,54 +239,6 @@ ${commissionSection}`;
      */
     formatCurrency(amount) {
         return numberFormatter.formatByContext(amount, 'whatsapp');
-    }
-
-    /**
-     * Generate weekly report
-     */
-    async generateWeeklyReport(startDate = null) {
-        try {
-            const endDate = startDate ? 
-                moment(startDate).add(6, 'days').format('YYYY-MM-DD') :
-                moment().tz(this.timezone).format('YYYY-MM-DD');
-            
-            const actualStartDate = startDate || 
-                moment().tz(this.timezone).subtract(6, 'days').format('YYYY-MM-DD');
-
-            logger.info(`Membuat laporan mingguan dari ${actualStartDate} sampai ${endDate}`);
-
-            const [transactions, csPerformance] = await Promise.all([
-                database.getTransactionsByDateRange(actualStartDate, endDate),
-                database.getCSPerformance(actualStartDate, endDate)
-            ]);
-
-            let report = `*Laporan Mingguan KAKARAMA ROOM*\n`;
-            report += `*Periode: ${moment(actualStartDate).format('DD MMM')} - ${moment(endDate).format('DD MMM YYYY')}*\n\n`;
-
-            // Weekly summary
-            const totalBookings = transactions.length;
-            const totalRevenue = transactions.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
-            const totalCommission = transactions.reduce((sum, t) => sum + parseFloat(t.commission || 0), 0);
-
-            report += `=== *Ringkasan Mingguan* ===\n`;
-            report += `- Total Booking: ${totalBookings}\n`;
-            report += `- Total Pendapatan: ${this.formatCurrency(totalRevenue)}\n`;
-            report += `- Total Komisi: ${this.formatCurrency(totalCommission)}\n\n`;
-
-            // CS Performance
-            if (csPerformance.length > 0) {
-                report += `=== *Performa CS* ===\n`;
-                csPerformance.forEach(cs => {
-                    report += `- ${cs.cs_name}: ${cs.total_bookings} booking, ${this.formatCurrency(cs.total_revenue)}\n`;
-                });
-            }
-
-            return report;
-
-        } catch (error) {
-            logger.error('Error membuat laporan mingguan:', error);
-            throw error;
-        }
     }
 
     /**

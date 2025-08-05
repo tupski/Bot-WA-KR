@@ -244,6 +244,26 @@ class Database {
         return await this.executeQuery(query, params);
     }
 
+    /**
+     * Get marketing commission data per apartment for a specific date
+     * Returns data in format suitable for table with apartments as columns and marketing as rows
+     */
+    async getMarketingCommissionByApartment(date) {
+        const query = `
+            SELECT
+                cs_name,
+                location,
+                COUNT(*) as booking_count,
+                SUM(commission) as total_commission
+            FROM transactions
+            WHERE date_only = ?
+            AND cs_name NOT IN ('apk', 'amel', 'APK', 'AMEL')
+            GROUP BY cs_name, location
+            ORDER BY cs_name, location
+        `;
+        return await this.executeQuery(query, [date]);
+    }
+
     // Additional utility functions
     async getTransactionsByDateRange(startDate, endDate, apartmentName = null) {
         // Jika startDate dan endDate mengandung waktu, gunakan created_at

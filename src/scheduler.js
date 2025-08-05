@@ -22,10 +22,7 @@ class Scheduler {
         try {
             // Daily report at 12:00 WIB
             this.scheduleDailyReport();
-            
-            // Weekly report every Monday at 09:00 WIB
-            this.scheduleWeeklyReport();
-            
+
             // Monthly report on 1st day of month at 10:00 WIB
             this.scheduleMonthlyReport();
             
@@ -87,33 +84,6 @@ class Scheduler {
 
         this.scheduledTasks.set('dailyReport', task);
         logger.info(`Laporan harian dijadwalkan untuk ${config.report.dailyReportTime} ${this.timezone}`);
-    }
-
-    /**
-     * Schedule weekly report every Monday at 09:00 WIB
-     */
-    scheduleWeeklyReport() {
-        const task = cron.schedule('0 9 * * 1', async () => {
-            try {
-                logger.info('Memulai pembuatan laporan mingguan terjadwal...');
-
-                const report = await reportGenerator.generateWeeklyReport();
-                const messageSent = await this.bot.sendToAllEnabledGroups(report);
-
-                if (messageSent) {
-                    logger.info('Laporan mingguan berhasil dikirim ke semua grup yang enabled');
-                } else {
-                    logger.error('Gagal mengirim laporan mingguan ke grup WhatsApp');
-                }
-            } catch (error) {
-                logger.error('Error dalam laporan mingguan terjadwal:', error);
-            }
-        }, {
-            timezone: this.timezone
-        });
-
-        this.scheduledTasks.set('weeklyReport', task);
-        logger.info('Laporan mingguan dijadwalkan setiap Senin jam 09:00 WIB');
     }
 
     /**

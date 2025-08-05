@@ -148,12 +148,13 @@ class Configuration {
 
         // Define all possible groups
         const groups = [
-            { id: 'GROUP_SKYHOUSE_ID', name: 'GROUP_SKYHOUSE_NAME', enabled: 'GROUP_SKYHOUSE_ENABLED' },
             { id: 'GROUP_TREEPARK_ID', name: 'GROUP_TREEPARK_NAME', enabled: 'GROUP_TREEPARK_ENABLED' },
-            { id: 'GROUP_EMERALD_ID', name: 'GROUP_EMERALD_NAME', enabled: 'GROUP_EMERALD_ENABLED' },
+            { id: 'GROUP_SKYHOUSE_ID', name: 'GROUP_SKYHOUSE_NAME', enabled: 'GROUP_SKYHOUSE_ENABLED' },
             { id: 'GROUP_SPRINGWOOD_ID', name: 'GROUP_SPRINGWOOD_NAME', enabled: 'GROUP_SPRINGWOOD_ENABLED' },
-            { id: 'GROUP_SERPONG_ID', name: 'GROUP_SERPONG_NAME', enabled: 'GROUP_SERPONG_ENABLED' },
+            { id: 'GROUP_EMERALD_ID', name: 'GROUP_EMERALD_NAME', enabled: 'GROUP_EMERALD_ENABLED' },
             { id: 'GROUP_TOKYO_ID', name: 'GROUP_TOKYO_NAME', enabled: 'GROUP_TOKYO_ENABLED' },
+            { id: 'GROUP_SERPONG_ID', name: 'GROUP_SERPONG_NAME', enabled: 'GROUP_SERPONG_ENABLED' },
+            { id: 'GROUP_TRANSPARK_ID', name: 'GROUP_TRANSPARK_NAME', enabled: 'GROUP_TRANSPARK_ENABLED' },
             { id: 'GROUP_TESTER_ID', name: 'GROUP_TESTER_NAME', enabled: 'GROUP_TESTER_ENABLED' }
         ];
 
@@ -177,14 +178,15 @@ class Configuration {
     buildAllowedGroups() {
         const allowedGroups = [];
 
-        // Define all possible groups
+        // Define all possible groups - urutan sesuai permintaan user
         const groups = [
-            { id: 'GROUP_SKYHOUSE_ID', enabled: 'GROUP_SKYHOUSE_ENABLED' },
             { id: 'GROUP_TREEPARK_ID', enabled: 'GROUP_TREEPARK_ENABLED' },
-            { id: 'GROUP_EMERALD_ID', enabled: 'GROUP_EMERALD_ENABLED' },
+            { id: 'GROUP_SKYHOUSE_ID', enabled: 'GROUP_SKYHOUSE_ENABLED' },
             { id: 'GROUP_SPRINGWOOD_ID', enabled: 'GROUP_SPRINGWOOD_ENABLED' },
-            { id: 'GROUP_SERPONG_ID', enabled: 'GROUP_SERPONG_ENABLED' },
+            { id: 'GROUP_EMERALD_ID', enabled: 'GROUP_EMERALD_ENABLED' },
             { id: 'GROUP_TOKYO_ID', enabled: 'GROUP_TOKYO_ENABLED' },
+            { id: 'GROUP_SERPONG_ID', enabled: 'GROUP_SERPONG_ENABLED' },
+            { id: 'GROUP_TRANSPARK_ID', enabled: 'GROUP_TRANSPARK_ENABLED' },
             { id: 'GROUP_TESTER_ID', enabled: 'GROUP_TESTER_ENABLED' }
         ];
 

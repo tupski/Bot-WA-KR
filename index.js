@@ -566,9 +566,6 @@ async function handleCommand(message, apartmentName) {
                     if (nextRuns.dailyReport) {
                         statusMessage += `• Harian: ${new Date(nextRuns.dailyReport).toLocaleString('id-ID', {timeZone: 'Asia/Jakarta'})}\n`;
                     }
-                    if (nextRuns.weeklyReport) {
-                        statusMessage += `• Mingguan: ${new Date(nextRuns.weeklyReport).toLocaleString('id-ID', {timeZone: 'Asia/Jakarta'})}\n`;
-                    }
                     if (nextRuns.monthlyReport) {
                         statusMessage += `• Bulanan: ${new Date(nextRuns.monthlyReport).toLocaleString('id-ID', {timeZone: 'Asia/Jakarta'})}\n`;
                     }
@@ -576,7 +573,6 @@ async function handleCommand(message, apartmentName) {
                     statusMessage += `⚠️ Jadwal tidak tersedia - Scheduler mungkin belum diinisialisasi\n`;
                     statusMessage += `📋 Jadwal yang dikonfigurasi:\n`;
                     statusMessage += `• Harian: Setiap hari jam 12:00 WIB\n`;
-                    statusMessage += `• Mingguan: Setiap Senin jam 09:00 WIB\n`;
                     statusMessage += `• Bulanan: Tanggal 1 jam 10:00 WIB\n`;
                 }
 
@@ -896,7 +892,7 @@ async function handleCommand(message, apartmentName) {
 
                 // Manual rebuild mapping
                 const manualMapping = {};
-                const groups = ['SKYHOUSE', 'TREEPARK', 'EMERALD', 'SPRINGWOOD', 'SERPONG', 'TOKYO', 'TESTER'];
+                const groups = ['TREEPARK', 'SKYHOUSE', 'SPRINGWOOD', 'EMERALD', 'TOKYO', 'SERPONG', 'TRANSPARK', 'TESTER'];
 
                 let fixMsg = `🔧 *Fix Environment Variables*\n\n`;
                 fixMsg += `📁 *Manual .env Parsing:*\n`;
@@ -1068,7 +1064,7 @@ async function handleCommand(message, apartmentName) {
                 let envMsg = `🔍 *Environment Variables Detail*\n\n`;
 
                 // Test semua group environment variables dengan detail
-                const groups = ['SKYHOUSE', 'TREEPARK', 'EMERALD', 'SPRINGWOOD', 'SERPONG', 'TOKYO', 'TESTER'];
+                const groups = ['TREEPARK', 'SKYHOUSE', 'SPRINGWOOD', 'EMERALD', 'TOKYO', 'SERPONG', 'TRANSPARK', 'TESTER'];
 
                 groups.forEach(group => {
                     const id = process.env[`GROUP_${group}_ID`];
@@ -1129,7 +1125,7 @@ async function handleCommand(message, apartmentName) {
                 let envMsg = `🔧 *Environment Variables Test*\n\n`;
 
                 // Test semua group environment variables
-                const groups = ['SKYHOUSE', 'TREEPARK', 'EMERALD', 'SPRINGWOOD', 'SERPONG', 'TOKYO', 'TESTER'];
+                const groups = ['TREEPARK', 'SKYHOUSE', 'SPRINGWOOD', 'EMERALD', 'TOKYO', 'SERPONG', 'TRANSPARK', 'TESTER'];
 
                 groups.forEach(group => {
                     const id = process.env[`GROUP_${group}_ID`];
@@ -1239,7 +1235,7 @@ async function handleCommand(message, apartmentName) {
 
                 // Manual rebuild mapping dari environment variables
                 const manualMapping = {};
-                const groups = ['SKYHOUSE', 'TREEPARK', 'EMERALD', 'SPRINGWOOD', 'SERPONG', 'TOKYO', 'TESTER'];
+                const groups = ['TREEPARK', 'SKYHOUSE', 'SPRINGWOOD', 'EMERALD', 'TOKYO', 'SERPONG', 'TRANSPARK', 'TESTER'];
 
                 logger.info('Force reload: Checking environment variables...');
                 groups.forEach(group => {

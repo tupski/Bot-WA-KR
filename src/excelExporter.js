@@ -32,10 +32,10 @@ class ExcelExporter {
                 displayDate = moment(reportDate).format('YYYY-MM-DD');
 
                 // Get data from database untuk tanggal spesifik
-                const [transactions, csSummary, marketingCommission] = await Promise.all([
+                const [transactions, csSummary, marketingCommissionByApartment] = await Promise.all([
                     database.getTransactions(reportDate),
                     database.getCSSummary(reportDate),
-                    database.getMarketingCommission(reportDate, null) // null = semua apartemen
+                    database.getMarketingCommissionByApartment(reportDate)
                 ]);
 
                 logger.info(`Membuat laporan Excel untuk tanggal spesifik: ${reportDate}`);
@@ -50,7 +50,7 @@ class ExcelExporter {
                 // Create sheets
                 await this.createTransactionsSheet(workbook, transactions, displayDate);
                 await this.createCSSummarySheet(workbook, csSummary, displayDate);
-                await this.createCommissionSheet(workbook, marketingCommission, displayDate);
+                await this.createCommissionSheet(workbook, marketingCommissionByApartment, displayDate);
 
                 // Save file
                 const filename = `Laporan_KAKARAMA_ROOM_${displayDate}.xlsx`;
@@ -135,29 +135,35 @@ class ExcelExporter {
     }
 
     /**
-     * Calculate marketing commission from transactions array
+     * Calculate marketing commission by apartment from transactions array
      */
     calculateMarketingCommissionFromTransactions(transactions) {
-        const marketingCommission = {};
+        const result = [];
+        const groupedData = {};
 
         transactions.forEach(transaction => {
             const csName = transaction.cs_name || 'Unknown';
+            const location = transaction.location || 'Unknown';
+
             // Skip APK dan AMEL (bukan marketing)
             if (csName.toLowerCase() !== 'apk' && csName.toLowerCase() !== 'amel') {
-                if (!marketingCommission[csName]) {
-                    marketingCommission[csName] = {
+                const key = `${csName}_${location}`;
+
+                if (!groupedData[key]) {
+                    groupedData[key] = {
                         cs_name: csName,
+                        location: location,
                         booking_count: 0,
                         total_commission: 0
                     };
                 }
 
-                marketingCommission[csName].booking_count += 1;
-                marketingCommission[csName].total_commission += parseFloat(transaction.commission || 0);
+                groupedData[key].booking_count += 1;
+                groupedData[key].total_commission += parseFloat(transaction.commission || 0);
             }
         });
 
-        return Object.values(marketingCommission);
+        return Object.values(groupedData);
     }
 
     /**
@@ -351,23 +357,38 @@ class ExcelExporter {
     }
 
     /**
-     * Create Marketing Commission sheet
+     * Create Marketing Commission sheet with apartment table format
      */
-    async createCommissionSheet(workbook, marketingCommission, date) {
+    async createCommissionSheet(workbook, marketingCommissionByApartment, date) {
         const worksheet = workbook.addWorksheet('Komisi Marketing');
 
-        // Set column widths
+        // Define apartment order
+        const apartmentOrder = [
+            'TREEPARK BSD',
+            'SKY HOUSE BSD',
+            'SPRINGWOOD',
+            'EMERALD BINTARO',
+            'TOKYO RIVERSIDE PIK2',
+            'SERPONG GARDEN',
+            'TRANSPARK BINTARO'
+        ];
+
+        // Set column widths for table format
         worksheet.columns = [
-            { header: 'No', key: 'no', width: 5 },
-            { header: 'Nama CS', key: 'cs_name', width: 15 },
-            { header: 'Jumlah Booking', key: 'booking_count', width: 18 },
-            { header: 'Total Komisi', key: 'total_commission', width: 18 },
-            { header: 'Komisi per Booking', key: 'commission_per_booking', width: 20 }
+            { header: 'Marketing', key: 'marketing', width: 12 },
+            { header: 'Treepark', key: 'treepark', width: 10 },
+            { header: 'Sky House', key: 'skyhouse', width: 10 },
+            { header: 'Springwood', key: 'springwood', width: 12 },
+            { header: 'Emerald', key: 'emerald', width: 10 },
+            { header: 'Tokyo', key: 'tokyo', width: 10 },
+            { header: 'Serpong', key: 'serpong', width: 10 },
+            { header: 'Transpark', key: 'transpark', width: 10 },
+            { header: 'Total', key: 'total', width: 10 }
         ];
 
         // Add title
         worksheet.insertRow(1, [`Komisi Marketing KAKARAMA ROOM - ${date}`]);
-        worksheet.mergeCells('A1:E1');
+        worksheet.mergeCells('A1:I1');
         const titleRow = worksheet.getRow(1);
         titleRow.font = { bold: true, size: 14 };
         titleRow.alignment = { horizontal: 'center' };
@@ -390,49 +411,55 @@ class ExcelExporter {
         };
         headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
 
-        // Add data rows
-        if (marketingCommission && marketingCommission.length > 0) {
-            marketingCommission.forEach((commission, index) => {
-                const totalCommission = parseFloat(commission.total_commission || 0);
-                const bookingCount = commission.booking_count || 0;
-                const commissionPerBooking = bookingCount > 0 ? totalCommission / bookingCount : 0;
-
-                const row = worksheet.addRow({
-                    no: index + 1,
-                    cs_name: commission.cs_name || '-',
-                    booking_count: bookingCount,
-                    total_commission: totalCommission,
-                    commission_per_booking: commissionPerBooking
-                });
-
-                // Format currency columns
-                row.getCell('total_commission').numFmt = 'Rp #,##0';
-                row.getCell('commission_per_booking').numFmt = 'Rp #,##0';
-            });
-
-            // Add totals row
-            const totalRow = worksheet.addRow({
-                no: '',
-                cs_name: 'TOTAL:',
-                booking_count: { formula: `SUM(C4:C${3 + marketingCommission.length})` },
-                total_commission: { formula: `SUM(D4:D${3 + marketingCommission.length})` },
-                commission_per_booking: { formula: `AVERAGE(E4:E${3 + marketingCommission.length})` }
-            });
-
-            totalRow.font = { bold: true };
-            totalRow.getCell('total_commission').numFmt = 'Rp #,##0';
-            totalRow.getCell('commission_per_booking').numFmt = 'Rp #,##0';
-            totalRow.fill = {
-                type: 'pattern',
-                pattern: 'solid',
-                fgColor: { argb: 'F2F2F2' }
-            };
-        } else {
+        if (!marketingCommissionByApartment || marketingCommissionByApartment.length === 0) {
             worksheet.addRow(['Tidak ada data komisi pada tanggal ini']);
-            worksheet.mergeCells(`A4:E4`);
+            worksheet.mergeCells(`A4:I4`);
             const noDataRow = worksheet.getRow(4);
             noDataRow.alignment = { horizontal: 'center' };
             noDataRow.font = { italic: true };
+        } else {
+            // Group data by marketing name and apartment
+            const marketingData = {};
+
+            marketingCommissionByApartment.forEach(item => {
+                const csName = item.cs_name;
+                const location = item.location;
+                const bookingCount = parseInt(item.booking_count || 0);
+
+                if (!marketingData[csName]) {
+                    marketingData[csName] = {};
+                    apartmentOrder.forEach(apt => {
+                        marketingData[csName][apt] = 0;
+                    });
+                    marketingData[csName].total = 0;
+                }
+
+                // Map location to apartment name
+                if (marketingData[csName][location] !== undefined) {
+                    marketingData[csName][location] += bookingCount;
+                }
+
+                marketingData[csName].total += bookingCount;
+            });
+
+            // Add data rows
+            Object.keys(marketingData).forEach(csName => {
+                const data = marketingData[csName];
+                const row = worksheet.addRow({
+                    marketing: csName,
+                    treepark: data['TREEPARK BSD'] || '',
+                    skyhouse: data['SKY HOUSE BSD'] || '',
+                    springwood: data['SPRINGWOOD'] || '',
+                    emerald: data['EMERALD BINTARO'] || '',
+                    tokyo: data['TOKYO RIVERSIDE PIK2'] || '',
+                    serpong: data['SERPONG GARDEN'] || '',
+                    transpark: data['TRANSPARK BINTARO'] || '',
+                    total: data.total
+                });
+
+                // Center align all cells
+                row.alignment = { horizontal: 'center', vertical: 'middle' };
+            });
         }
 
         // Add borders to all cells
