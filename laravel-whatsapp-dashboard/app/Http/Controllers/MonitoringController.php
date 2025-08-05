@@ -37,7 +37,7 @@ class MonitoringController extends Controller
         ));
     }
 
-    public function logs(Request $request)
+    public function activityLogs(Request $request)
     {
         $query = ActivityLog::with('user');
 
@@ -68,7 +68,7 @@ class MonitoringController extends Controller
         $users = User::all();
         $actions = ActivityLog::distinct()->pluck('action');
 
-        return view('monitoring.logs', compact('logs', 'users', 'actions'));
+        return view('monitoring.activity-logs', compact('logs', 'users', 'actions'));
     }
 
     public function systemStatus()
@@ -216,5 +216,126 @@ class MonitoringController extends Controller
     {
         // Placeholder - would get actual CPU usage
         return rand(10, 80) . '%';
+    }
+
+    /**
+     * Show system logs
+     */
+    public function logs(Request $request)
+    {
+        $logs = $this->getSystemLogs($request);
+
+        return view('monitoring.logs', compact('logs'));
+    }
+
+    /**
+     * Clear system logs
+     */
+    public function clearLogs()
+    {
+        try {
+            // Clear Laravel logs
+            $logPath = storage_path('logs/laravel.log');
+            if (file_exists($logPath)) {
+                file_put_contents($logPath, '');
+            }
+
+            return response()->json(['success' => true, 'message' => 'Logs cleared successfully']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to clear logs']);
+        }
+    }
+
+    /**
+     * Get system logs with filtering
+     */
+    private function getSystemLogs(Request $request)
+    {
+        $logPath = storage_path('logs/laravel.log');
+
+        if (!file_exists($logPath)) {
+            return [];
+        }
+
+        $logs = [];
+        $lines = file($logPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+
+        // Parse log lines
+        foreach (array_reverse($lines) as $line) {
+            $parsed = $this->parseLogLine($line);
+            if ($parsed) {
+                // Apply filters
+                if ($request->filled('level') && $parsed['level'] !== $request->level) {
+                    continue;
+                }
+
+                if ($request->filled('search') && stripos($parsed['message'], $request->search) === false) {
+                    continue;
+                }
+
+                if ($request->filled('date') && !str_contains($parsed['timestamp'], $request->date)) {
+                    continue;
+                }
+
+                $logs[] = $parsed;
+
+                // Limit to 100 entries for performance
+                if (count($logs) >= 100) {
+                    break;
+                }
+            }
+        }
+
+        return $logs;
+    }
+
+    /**
+     * Parse a single log line
+     */
+    private function parseLogLine($line)
+    {
+        // Laravel log format: [2023-08-05 18:42:03] local.ERROR: Message {"context":"data"}
+        if (preg_match('/\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] \w+\.(\w+): (.+)/', $line, $matches)) {
+            $level = strtolower($matches[2]);
+            $message = $matches[3];
+
+            // Extract context if present
+            $context = [];
+            if (preg_match('/\{.+\}$/', $message, $contextMatch)) {
+                $contextJson = $contextMatch[0];
+                $message = trim(str_replace($contextJson, '', $message));
+                $context = json_decode($contextJson, true) ?: [];
+            }
+
+            return [
+                'timestamp' => $matches[1],
+                'level' => $level,
+                'level_color' => $this->getLevelColor($level),
+                'message' => $message,
+                'context' => $context,
+                'channel' => 'laravel',
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * Get color for log level
+     */
+    private function getLevelColor($level)
+    {
+        $colors = [
+            'emergency' => 'danger',
+            'alert' => 'danger',
+            'critical' => 'danger',
+            'error' => 'danger',
+            'warning' => 'warning',
+            'notice' => 'info',
+            'info' => 'info',
+            'debug' => 'secondary',
+        ];
+
+        return $colors[$level] ?? 'secondary';
     }
 }

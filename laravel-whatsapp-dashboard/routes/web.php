@@ -58,6 +58,8 @@ Route::middleware('auth')->group(function () {
         Route::prefix('monitoring')->name('monitoring.')->group(function () {
             Route::get('/', [\App\Http\Controllers\MonitoringController::class, 'index'])->name('index');
             Route::get('/logs', [\App\Http\Controllers\MonitoringController::class, 'logs'])->name('logs');
+            Route::post('/logs/clear', [\App\Http\Controllers\MonitoringController::class, 'clearLogs'])->name('logs.clear');
+            Route::get('/activity-logs', [\App\Http\Controllers\MonitoringController::class, 'activityLogs'])->name('activity-logs');
             Route::get('/system-status', [\App\Http\Controllers\MonitoringController::class, 'systemStatus'])->name('system-status');
         });
     });
