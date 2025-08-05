@@ -84,44 +84,73 @@ class WhatsAppGroupController extends Controller
 
     public function show(WhatsAppGroup $whatsappGroup)
     {
-        $whatsappGroup->load('apartment', 'transactions');
+        $this->authorize('view whatsapp groups');
+
+        $group = $whatsappGroup->load('apartment', 'transactions');
 
         // Get recent transactions from this group
-        $recentTransactions = $whatsappGroup->transactions()
+        $recentTransactions = $group->transactions()
             ->orderBy('created_at', 'desc')
             ->limit(20)
             ->get();
 
         // Get group statistics
         $stats = [
-            'total_transactions' => $whatsappGroup->transactions()->count(),
-            'total_amount' => $whatsappGroup->transactions()->sum('amount'),
-            'total_commission' => $whatsappGroup->transactions()->sum('commission'),
-            'avg_amount' => $whatsappGroup->transactions()->avg('amount') ?? 0,
+            'total_transactions' => $group->transactions()->count(),
+            'total_amount' => $group->transactions()->sum('amount'),
+            'total_commission' => $group->transactions()->sum('commission'),
+            'avg_amount' => $group->transactions()->avg('amount') ?? 0,
         ];
 
-        return view('whatsapp-groups.show', compact('whatsappGroup', 'recentTransactions', 'stats'));
+        return view('whatsapp-groups.show', compact('group', 'recentTransactions', 'stats'));
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(WhatsAppGroup $whatsappGroup)
+    {
+        $this->authorize('edit whatsapp groups');
+
+        $group = $whatsappGroup;
+        $apartments = Apartment::active()->get();
+
+        return view('whatsapp-groups.edit', compact('group', 'apartments'));
     }
 
     public function update(Request $request, WhatsAppGroup $whatsappGroup)
     {
+        $this->authorize('edit whatsapp groups');
+
         $validated = $request->validate([
             'group_name' => 'required|string|max:255',
+            'group_subject' => 'nullable|string|max:255',
+            'group_description' => 'nullable|string|max:1000',
             'apartment_id' => 'nullable|exists:apartments,id',
+            'participant_count' => 'nullable|integer|min:0',
+            'admin_count' => 'nullable|integer|min:1',
             'is_active' => 'boolean',
             'is_monitoring' => 'boolean',
         ]);
+
+        // Handle checkbox values
+        $validated['is_active'] = $request->has('is_active');
+        $validated['is_monitoring'] = $request->has('is_monitoring');
 
         $oldValues = $whatsappGroup->toArray();
         $whatsappGroup->update($validated);
 
         ActivityLog::log('updated', $whatsappGroup, $oldValues, $validated, 'WhatsApp group updated');
 
-        return redirect()->route('whatsapp-groups.index')->with('success', 'Grup WhatsApp berhasil diperbarui.');
+        return redirect()
+            ->route('whatsapp-groups.show', $whatsappGroup)
+            ->with('success', 'Grup WhatsApp berhasil diperbarui!');
     }
 
     public function destroy(WhatsAppGroup $whatsappGroup)
     {
+        $this->authorize('delete whatsapp groups');
+
         $hasTransactions = $whatsappGroup->transactions()->exists();
 
         if ($hasTransactions) {
@@ -129,12 +158,14 @@ class WhatsAppGroupController extends Controller
                 ->with('error', 'Tidak dapat menghapus grup yang memiliki transaksi.');
         }
 
+        $groupName = $whatsappGroup->group_name;
         $oldValues = $whatsappGroup->toArray();
         $whatsappGroup->delete();
 
         ActivityLog::log('deleted', $whatsappGroup, $oldValues, null, 'WhatsApp group removed from monitoring');
 
-        return redirect()->route('whatsapp-groups.index')->with('success', 'Grup WhatsApp berhasil dihapus dari sistem.');
+        return redirect()->route('whatsapp-groups.index')
+            ->with('success', "Grup WhatsApp '{$groupName}' berhasil dihapus!");
     }
 
     /**
