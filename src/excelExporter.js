@@ -49,8 +49,7 @@ class ExcelExporter {
 
                 // Create sheets
                 await this.createTransactionsSheet(workbook, transactions, displayDate);
-                await this.createCSSummarySheet(workbook, csSummary, displayDate);
-                await this.createCommissionSheet(workbook, marketingCommissionByApartment, displayDate);
+                await this.createCombinedSummarySheet(workbook, csSummary, marketingCommissionByApartment, displayDate);
 
                 // Save file
                 const filename = `Laporan_KAKARAMA_ROOM_${displayDate}.xlsx`;
@@ -90,8 +89,7 @@ class ExcelExporter {
 
                 // Create sheets dengan data yang sudah dihitung
                 await this.createTransactionsSheet(workbook, transactions, `${displayDate} (Business Day Range)`);
-                await this.createCSSummarySheet(workbook, csSummary, `${displayDate} (Business Day Range)`);
-                await this.createCommissionSheet(workbook, marketingCommission, `${displayDate} (Business Day Range)`);
+                await this.createCombinedSummarySheet(workbook, csSummary, marketingCommission, `${displayDate} (Business Day Range)`);
 
                 // Save file
                 const filename = `Laporan_KAKARAMA_ROOM_${displayDate}_BusinessDay.xlsx`;
@@ -460,6 +458,201 @@ class ExcelExporter {
                 // Center align all cells
                 row.alignment = { horizontal: 'center', vertical: 'middle' };
             });
+        }
+
+        // Add borders to all cells
+        this.addBordersToSheet(worksheet);
+    }
+
+    /**
+     * Create Combined Summary sheet with Marketing Commission on top and CS Summary below
+     */
+    async createCombinedSummarySheet(workbook, csSummary, marketingCommissionByApartment, date) {
+        const worksheet = workbook.addWorksheet('Ringkasan');
+
+        // Define apartment order
+        const apartmentOrder = [
+            'TREEPARK BSD',
+            'SKY HOUSE BSD',
+            'SPRINGWOOD',
+            'EMERALD BINTARO',
+            'TOKYO RIVERSIDE PIK2',
+            'SERPONG GARDEN',
+            'TRANSPARK BINTARO'
+        ];
+
+        // ===== KOMISI MARKETING SECTION (TOP) =====
+
+        // Title for Marketing Commission
+        worksheet.addRow([`Komisi Marketing - ${date}`]);
+        worksheet.mergeCells('A1:I1');
+        const titleRow1 = worksheet.getRow(1);
+        titleRow1.font = { bold: true, size: 14 };
+        titleRow1.alignment = { horizontal: 'center' };
+        titleRow1.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'E7E6E6' }
+        };
+
+        worksheet.addRow([]);
+
+        // Headers for Marketing Commission table
+        const headerRow1 = worksheet.addRow(['Marketing', 'Treepark', 'Sky House', 'Springwood', 'Emerald', 'Tokyo', 'Serpong', 'Transpark', 'Total']);
+        headerRow1.font = { bold: true, color: { argb: 'FFFFFF' } };
+        headerRow1.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: '366092' }
+        };
+        headerRow1.alignment = { horizontal: 'center', vertical: 'middle' };
+
+        // Set column widths for table format
+        worksheet.columns = [
+            { width: 12 }, // Marketing
+            { width: 10 }, // Treepark
+            { width: 10 }, // Sky House
+            { width: 12 }, // Springwood
+            { width: 10 }, // Emerald
+            { width: 10 }, // Tokyo
+            { width: 10 }, // Serpong
+            { width: 10 }, // Transpark
+            { width: 10 }  // Total
+        ];
+
+        let currentRow = 4; // Track current row for spacing
+
+        if (!marketingCommissionByApartment || marketingCommissionByApartment.length === 0) {
+            worksheet.addRow(['Tidak ada data komisi marketing pada tanggal ini']);
+            worksheet.mergeCells(`A4:I4`);
+            const noDataRow = worksheet.getRow(4);
+            noDataRow.alignment = { horizontal: 'center' };
+            noDataRow.font = { italic: true };
+            currentRow = 5;
+        } else {
+            // Group data by marketing name and apartment
+            const marketingData = {};
+
+            marketingCommissionByApartment.forEach(item => {
+                const csName = item.cs_name;
+                const location = item.location;
+                const bookingCount = parseInt(item.booking_count || 0);
+
+                if (!marketingData[csName]) {
+                    marketingData[csName] = {};
+                    apartmentOrder.forEach(apt => {
+                        marketingData[csName][apt] = 0;
+                    });
+                    marketingData[csName].total = 0;
+                }
+
+                // Map location to apartment name
+                if (marketingData[csName][location] !== undefined) {
+                    marketingData[csName][location] += bookingCount;
+                }
+
+                marketingData[csName].total += bookingCount;
+            });
+
+            // Add data rows for marketing commission
+            Object.keys(marketingData).forEach(csName => {
+                const data = marketingData[csName];
+                const row = worksheet.addRow([
+                    csName,
+                    data['TREEPARK BSD'] || '',
+                    data['SKY HOUSE BSD'] || '',
+                    data['SPRINGWOOD'] || '',
+                    data['EMERALD BINTARO'] || '',
+                    data['TOKYO RIVERSIDE PIK2'] || '',
+                    data['SERPONG GARDEN'] || '',
+                    data['TRANSPARK BINTARO'] || '',
+                    data.total
+                ]);
+
+                // Center align all cells
+                row.alignment = { horizontal: 'center', vertical: 'middle' };
+                currentRow++;
+            });
+        }
+
+        // Add spacing between sections
+        currentRow += 2;
+        worksheet.addRow([]);
+        worksheet.addRow([]);
+
+        // ===== RINGKASAN CS SECTION (BOTTOM) =====
+
+        // Title for CS Summary
+        worksheet.addRow([`Ringkasan CS - ${date}`]);
+        worksheet.mergeCells(`A${currentRow + 1}:F${currentRow + 1}`);
+        const titleRowObj = worksheet.getRow(currentRow + 1);
+        titleRowObj.font = { bold: true, size: 14 };
+        titleRowObj.alignment = { horizontal: 'center' };
+        titleRowObj.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'E7E6E6' }
+        };
+
+        currentRow += 2;
+        worksheet.addRow([]);
+
+        // Headers for CS Summary
+        const headerRow2 = worksheet.addRow(['No', 'Nama CS', 'Total Booking', 'Total Cash', 'Total Transfer', 'Total Komisi']);
+        headerRow2.font = { bold: true, color: { argb: 'FFFFFF' } };
+        headerRow2.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: '366092' }
+        };
+        headerRow2.alignment = { horizontal: 'center', vertical: 'middle' };
+
+        currentRow += 1;
+
+        // Add CS Summary data
+        if (csSummary && csSummary.length > 0) {
+            csSummary.forEach((cs, index) => {
+                const row = worksheet.addRow([
+                    index + 1,
+                    cs.cs_name || '-',
+                    cs.total_bookings || 0,
+                    parseFloat(cs.total_cash || 0),
+                    parseFloat(cs.total_transfer || 0),
+                    parseFloat(cs.total_commission || 0)
+                ]);
+
+                // Format currency columns
+                row.getCell(4).numFmt = 'Rp #,##0'; // Total Cash
+                row.getCell(5).numFmt = 'Rp #,##0'; // Total Transfer
+                row.getCell(6).numFmt = 'Rp #,##0'; // Total Komisi
+                currentRow++;
+            });
+
+            // Add totals row for CS Summary
+            const totalRow = worksheet.addRow([
+                '',
+                'TOTAL:',
+                { formula: `SUM(C${currentRow - csSummary.length + 1}:C${currentRow})` },
+                { formula: `SUM(D${currentRow - csSummary.length + 1}:D${currentRow})` },
+                { formula: `SUM(E${currentRow - csSummary.length + 1}:E${currentRow})` },
+                { formula: `SUM(F${currentRow - csSummary.length + 1}:F${currentRow})` }
+            ]);
+
+            totalRow.font = { bold: true };
+            totalRow.getCell(4).numFmt = 'Rp #,##0';
+            totalRow.getCell(5).numFmt = 'Rp #,##0';
+            totalRow.getCell(6).numFmt = 'Rp #,##0';
+            totalRow.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'F2F2F2' }
+            };
+        } else {
+            worksheet.addRow(['', 'Tidak ada data CS pada tanggal ini']);
+            worksheet.mergeCells(`A${currentRow + 1}:F${currentRow + 1}`);
+            const noDataRow = worksheet.getRow(currentRow + 1);
+            noDataRow.alignment = { horizontal: 'center' };
+            noDataRow.font = { italic: true };
         }
 
         // Add borders to all cells

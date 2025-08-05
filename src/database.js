@@ -219,7 +219,7 @@ class Database {
     }
 
     async getTransactions(date) {
-        const query = 'SELECT * FROM transactions WHERE date_only = ? ORDER BY created_at';
+        const query = 'SELECT * FROM transactions WHERE date_only = ? ORDER BY location ASC, created_at ASC';
         return await this.executeQuery(query, [date]);
     }
 
@@ -292,7 +292,7 @@ class Database {
             params.push(apartmentName);
         }
 
-        query += ` ORDER BY created_at DESC`;
+        query += ` ORDER BY location ASC, created_at ASC`;
 
         return await this.executeQuery(query, params);
     }
