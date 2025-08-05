@@ -25,7 +25,7 @@
             <div class="card-body">
                 <form action="{{ route('transactions.store') }}" method="POST">
                     @csrf
-                    
+
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="location" class="form-label">Apartemen <span class="text-danger">*</span></label>
@@ -44,7 +44,7 @@
 
                         <div class="col-md-6 mb-3">
                             <label for="unit" class="form-label">Unit <span class="text-danger">*</span></label>
-                            <input type="text" name="unit" id="unit" class="form-control @error('unit') is-invalid @enderror" 
+                            <input type="text" name="unit" id="unit" class="form-control @error('unit') is-invalid @enderror"
                                    value="{{ old('unit') }}" placeholder="Contoh: L3/10D" required>
                             @error('unit')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -55,7 +55,7 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="checkout_time" class="form-label">Checkout Time <span class="text-danger">*</span></label>
-                            <input type="text" name="checkout_time" id="checkout_time" class="form-control @error('checkout_time') is-invalid @enderror" 
+                            <input type="text" name="checkout_time" id="checkout_time" class="form-control @error('checkout_time') is-invalid @enderror"
                                    value="{{ old('checkout_time') }}" placeholder="Contoh: 14:00" required>
                             @error('checkout_time')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -64,7 +64,7 @@
 
                         <div class="col-md-6 mb-3">
                             <label for="duration" class="form-label">Durasi <span class="text-danger">*</span></label>
-                            <input type="text" name="duration" id="duration" class="form-control @error('duration') is-invalid @enderror" 
+                            <input type="text" name="duration" id="duration" class="form-control @error('duration') is-invalid @enderror"
                                    value="{{ old('duration') }}" placeholder="Contoh: 3 jam" required>
                             @error('duration')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -89,16 +89,19 @@
                         </div>
 
                         <div class="col-md-6 mb-3">
-                            <label for="cs_name" class="form-label">Customer Service <span class="text-danger">*</span></label>
-                            <select name="cs_name" id="cs_name" class="form-select @error('cs_name') is-invalid @enderror" required>
-                                <option value="">Pilih CS</option>
-                                @foreach($customerServices as $cs)
-                                    <option value="{{ $cs->name }}" {{ old('cs_name') == $cs->name ? 'selected' : '' }}>
-                                        {{ $cs->full_name ?? $cs->name }} ({{ $cs->name }})
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('cs_name')
+                            <label for="customer_name" class="form-label">Customer Name <span class="text-danger">*</span></label>
+                            <input type="text" name="customer_name" id="customer_name" class="form-control @error('customer_name') is-invalid @enderror"
+                                   value="{{ old('customer_name') }}" required placeholder="Nama customer">
+                            @error('customer_name')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="customer_phone" class="form-label">Customer Phone</label>
+                            <input type="text" name="customer_phone" id="customer_phone" class="form-control @error('customer_phone') is-invalid @enderror"
+                                   value="{{ old('customer_phone') }}" placeholder="Nomor telepon customer">
+                            @error('customer_phone')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
@@ -109,7 +112,7 @@
                             <label for="amount" class="form-label">Amount <span class="text-danger">*</span></label>
                             <div class="input-group">
                                 <span class="input-group-text">Rp</span>
-                                <input type="number" name="amount" id="amount" class="form-control @error('amount') is-invalid @enderror" 
+                                <input type="number" name="amount" id="amount" class="form-control @error('amount') is-invalid @enderror"
                                        value="{{ old('amount') }}" placeholder="500000" min="0" step="1000" required>
                             </div>
                             @error('amount')
@@ -121,7 +124,7 @@
                             <label for="commission" class="form-label">Komisi <span class="text-danger">*</span></label>
                             <div class="input-group">
                                 <span class="input-group-text">Rp</span>
-                                <input type="number" name="commission" id="commission" class="form-control @error('commission') is-invalid @enderror" 
+                                <input type="number" name="commission" id="commission" class="form-control @error('commission') is-invalid @enderror"
                                        value="{{ old('commission') }}" placeholder="25000" min="0" step="1000" required>
                             </div>
                             @error('commission')
@@ -133,7 +136,7 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="date_only" class="form-label">Tanggal Transaksi <span class="text-danger">*</span></label>
-                            <input type="date" name="date_only" id="date_only" class="form-control @error('date_only') is-invalid @enderror" 
+                            <input type="date" name="date_only" id="date_only" class="form-control @error('date_only') is-invalid @enderror"
                                    value="{{ old('date_only', date('Y-m-d')) }}" required>
                             @error('date_only')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -222,15 +225,15 @@ function calculateNetAmount() {
     const amount = parseFloat(document.getElementById('amount').value) || 0;
     const commission = parseFloat(document.getElementById('commission').value) || 0;
     const netAmount = amount - commission;
-    
+
     document.getElementById('net_amount').value = netAmount.toLocaleString('id-ID');
 }
 
 document.getElementById('amount').addEventListener('input', calculateNetAmount);
 document.getElementById('commission').addEventListener('input', calculateNetAmount);
 
-// Auto calculate commission based on CS selection
-document.getElementById('cs_name').addEventListener('change', function() {
+// Auto calculate commission based on amount
+document.getElementById('amount').addEventListener('input', function() {
     const amount = parseFloat(document.getElementById('amount').value) || 0;
     if (amount > 0) {
         // Default 5% commission

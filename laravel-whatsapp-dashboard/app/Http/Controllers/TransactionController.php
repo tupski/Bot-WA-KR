@@ -34,8 +34,8 @@ class TransactionController extends Controller
             $query->where('location', $request->location);
         }
 
-        if ($request->filled('cs_name')) {
-            $query->where('cs_name', $request->cs_name);
+        if ($request->filled('customer_name')) {
+            $query->where('customer_name', $request->customer_name);
         }
 
         if ($request->filled('payment_method')) {
@@ -103,7 +103,7 @@ class TransactionController extends Controller
             'checkout_time' => 'required|string|max:100',
             'duration' => 'required|string|max:50',
             'payment_method' => 'required|in:Cash,TF',
-            'cs_name' => 'required|string|max:50',
+            'customer_name' => 'required|string|max:50',
             'amount' => 'required|numeric|min:0',
             'commission' => 'required|numeric|min:0',
             'date_only' => 'required|date',
@@ -157,7 +157,7 @@ class TransactionController extends Controller
             'checkout_time' => 'required|string|max:100',
             'duration' => 'required|string|max:50',
             'payment_method' => 'required|in:Cash,TF',
-            'cs_name' => 'required|string|max:50',
+            'customer_name' => 'required|string|max:50',
             'amount' => 'required|numeric|min:0',
             'commission' => 'required|numeric|min:0',
             'date_only' => 'required|date',

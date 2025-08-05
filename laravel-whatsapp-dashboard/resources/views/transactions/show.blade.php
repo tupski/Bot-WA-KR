@@ -79,8 +79,8 @@
                                 </td>
                             </tr>
                             <tr>
-                                <td><strong>Customer Service:</strong></td>
-                                <td><span class="badge bg-secondary">{{ $transaction->cs_name }}</span></td>
+                                <td><strong>Customer:</strong></td>
+                                <td><span class="badge bg-secondary">{{ $transaction->customer_name }}</span></td>
                             </tr>
                             <tr>
                                 <td><strong>Skip Financial:</strong></td>
@@ -147,7 +147,7 @@
                                 <td class="text-end">Rp {{ number_format($transaction->amount, 0, ',', '.') }}</td>
                             </tr>
                             <tr>
-                                <td>Komisi CS ({{ $transaction->cs_name }})</td>
+                                <td>Komisi Customer ({{ $transaction->customer_name }})</td>
                                 <td class="text-end">- Rp {{ number_format($transaction->commission, 0, ',', '.') }}</td>
                             </tr>
                             <tr class="table-success">
@@ -238,14 +238,14 @@
             <div class="card-body">
                 @php
                     $todayTransactions = \App\Models\Transaction::byDate($transaction->date_only)->get();
-                    $csTransactions = \App\Models\Transaction::byCs($transaction->cs_name)->byDate($transaction->date_only)->get();
+                    $csTransactions = \App\Models\Transaction::byCs($transaction->customer_name)->byDate($transaction->date_only)->get();
                     $apartmentTransactions = \App\Models\Transaction::byLocation($transaction->location)->byDate($transaction->date_only)->get();
                 @endphp
 
                 <small class="text-muted">Pada tanggal {{ $transaction->date_only->format('d/m/Y') }}:</small>
                 <ul class="list-unstyled mt-2">
                     <li><strong>Total transaksi:</strong> {{ $todayTransactions->count() }}</li>
-                    <li><strong>Transaksi {{ $transaction->cs_name }}:</strong> {{ $csTransactions->count() }}</li>
+                    <li><strong>Transaksi {{ $transaction->customer_name }}:</strong> {{ $csTransactions->count() }}</li>
                     <li><strong>Transaksi {{ $transaction->location }}:</strong> {{ $apartmentTransactions->count() }}</li>
                 </ul>
 
@@ -254,7 +254,7 @@
                 <small class="text-muted">Revenue pada hari ini:</small>
                 <ul class="list-unstyled mt-2">
                     <li><strong>Total:</strong> Rp {{ number_format($todayTransactions->sum('amount'), 0, ',', '.') }}</li>
-                    <li><strong>{{ $transaction->cs_name }}:</strong> Rp {{ number_format($csTransactions->sum('amount'), 0, ',', '.') }}</li>
+                    <li><strong>{{ $transaction->customer_name }}:</strong> Rp {{ number_format($csTransactions->sum('amount'), 0, ',', '.') }}</li>
                     <li><strong>{{ $transaction->location }}:</strong> Rp {{ number_format($apartmentTransactions->sum('amount'), 0, ',', '.') }}</li>
                 </ul>
             </div>
@@ -275,7 +275,7 @@
                     <i class="bi bi-exclamation-triangle"></i>
                     <strong>Peringatan!</strong> Anda akan menghapus transaksi berikut:
                 </div>
-                
+
                 <table class="table table-sm">
                     <tr>
                         <td><strong>ID:</strong></td>
@@ -290,8 +290,8 @@
                         <td>Rp {{ number_format($transaction->amount, 0, ',', '.') }}</td>
                     </tr>
                     <tr>
-                        <td><strong>CS:</strong></td>
-                        <td>{{ $transaction->cs_name }}</td>
+                        <td><strong>Customer:</strong></td>
+                        <td>{{ $transaction->customer_name }}</td>
                     </tr>
                 </table>
 

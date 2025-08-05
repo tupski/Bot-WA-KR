@@ -46,7 +46,7 @@ class Transaction extends Model
 
     public function customerService(): BelongsTo
     {
-        return $this->belongsTo(CustomerService::class, 'cs_name', 'name');
+        return $this->belongsTo(CustomerService::class, 'customer_name', 'name');
     }
 
     // Scopes
@@ -67,7 +67,7 @@ class Transaction extends Model
 
     public function scopeByCs($query, $csName)
     {
-        return $query->where('cs_name', $csName);
+        return $query->where('customer_name', $csName);
     }
 
     public function scopeByPaymentMethod($query, $method)

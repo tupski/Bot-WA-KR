@@ -101,11 +101,11 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label">Customer Service</label>
-                    <select name="cs_name" class="form-select">
-                        <option value="">Semua CS</option>
+                    <label class="form-label">Customer</label>
+                    <select name="customer_name" class="form-select">
+                        <option value="">Semua Customer</option>
                         @foreach($customerServices as $cs)
-                            <option value="{{ $cs }}" {{ request('cs_name') == $cs ? 'selected' : '' }}>
+                            <option value="{{ $cs }}" {{ request('customer_name') == $cs ? 'selected' : '' }}>
                                 {{ $cs }}
                             </option>
                         @endforeach
@@ -188,7 +188,7 @@
                                 <td>{{ $transaction->location }}</td>
                                 <td>{{ $transaction->checkout_time }}</td>
                                 <td>{{ $transaction->duration }}</td>
-                                <td>{{ $transaction->cs_name }}</td>
+                                <td>{{ $transaction->customer_name }}</td>
                                 <td>Rp {{ number_format($transaction->amount, 0, ',', '.') }}</td>
                                 <td>Rp {{ number_format($transaction->commission, 0, ',', '.') }}</td>
                                 <td>

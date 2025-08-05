@@ -212,7 +212,7 @@
                             <tbody>
                                 @foreach($csPerformance as $cs)
                                     <tr>
-                                        <td><strong>{{ $cs->cs_name }}</strong></td>
+                                        <td><strong>{{ $cs->customer_name }}</strong></td>
                                         <td>{{ $cs->total_bookings }}</td>
                                         <td>Rp {{ number_format($cs->total_revenue, 0, ',', '.') }}</td>
                                         <td>Rp {{ number_format($cs->total_commission, 0, ',', '.') }}</td>

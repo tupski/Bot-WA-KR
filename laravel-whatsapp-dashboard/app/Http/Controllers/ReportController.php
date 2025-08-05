@@ -116,13 +116,13 @@ class ReportController extends Controller
             $selectedMonth->endOfMonth()->copy()
         ])
         ->selectRaw('
-            cs_name,
+            customer_name,
             COUNT(*) as total_bookings,
             SUM(amount) as total_revenue,
             SUM(commission) as total_commission,
             AVG(amount) as avg_amount
         ')
-        ->groupBy('cs_name')
+        ->groupBy('customer_name')
         ->orderBy('total_commission', 'desc')
         ->get();
 
@@ -167,16 +167,16 @@ class ReportController extends Controller
             ->orderBy('date')
             ->get();
 
-        // CS performance
+        // Customer performance
         $csPerformance = Transaction::whereBetween('date_only', [$start, $end])
             ->selectRaw('
-                cs_name,
+                customer_name,
                 COUNT(*) as total_bookings,
                 SUM(amount) as total_revenue,
                 SUM(commission) as total_commission,
                 AVG(amount) as avg_amount
             ')
-            ->groupBy('cs_name')
+            ->groupBy('customer_name')
             ->orderBy('total_commission', 'desc')
             ->get();
 
@@ -228,7 +228,7 @@ class ReportController extends Controller
             'total_cash' => $transactions->where('payment_method', 'Cash')->sum('amount'),
             'total_transfer' => $transactions->where('payment_method', 'TF')->sum('amount'),
             'avg_booking_value' => $transactions->avg('amount') ?? 0,
-            'unique_cs' => $transactions->pluck('cs_name')->unique()->count(),
+            'unique_cs' => $transactions->pluck('customer_name')->unique()->count(),
             'unique_apartments' => $transactions->pluck('location')->unique()->count(),
         ];
     }
@@ -250,12 +250,12 @@ class ReportController extends Controller
 
         return Transaction::whereBetween('date_only', [$start, $end])
             ->selectRaw('
-                cs_name,
+                customer_name,
                 COUNT(*) as total_bookings,
                 SUM(amount) as total_revenue,
                 SUM(commission) as total_commission
             ')
-            ->groupBy('cs_name')
+            ->groupBy('customer_name')
             ->orderBy('total_commission', 'desc')
             ->limit(5)
             ->get();
