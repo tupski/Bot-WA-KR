@@ -108,6 +108,22 @@ class ExcelExporter {
     }
 
     /**
+     * Normalize marketing name untuk konsistensi case
+     */
+    normalizeMarketingName(name) {
+        if (!name) return 'Unknown';
+
+        const lowerName = name.toLowerCase().trim();
+
+        // Special cases
+        if (lowerName === 'apk') return 'APK';
+        if (lowerName === 'amel' || lowerName === 'ka amel') return 'Amel';
+
+        // Capitalize first letter, lowercase the rest
+        return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+    }
+
+    /**
      * Calculate CS summary from transactions array
      */
     calculateCSSummaryFromTransactions(transactions) {
@@ -136,20 +152,20 @@ class ExcelExporter {
      * Calculate marketing commission by apartment from transactions array
      */
     calculateMarketingCommissionFromTransactions(transactions) {
-        const result = [];
         const groupedData = {};
 
         transactions.forEach(transaction => {
-            const csName = transaction.cs_name || 'Unknown';
+            const rawCsName = transaction.cs_name || 'Unknown';
+            const normalizedCsName = this.normalizeMarketingName(rawCsName);
             const location = transaction.location || 'Unknown';
 
             // Skip APK dan AMEL (bukan marketing)
-            if (csName.toLowerCase() !== 'apk' && csName.toLowerCase() !== 'amel') {
-                const key = `${csName}_${location}`;
+            if (normalizedCsName !== 'APK' && normalizedCsName !== 'Amel') {
+                const key = `${normalizedCsName}_${location}`;
 
                 if (!groupedData[key]) {
                     groupedData[key] = {
-                        cs_name: csName,
+                        cs_name: normalizedCsName,
                         location: location,
                         booking_count: 0,
                         total_commission: 0
@@ -211,23 +227,100 @@ class ExcelExporter {
 
         // Add data rows
         if (transactions && transactions.length > 0) {
-            transactions.forEach((transaction, index) => {
-                const row = worksheet.addRow({
-                    no: index + 1,
-                    time: moment(transaction.created_at).tz(this.timezone).format('DD/MM/YYYY HH:mm'),
-                    location: transaction.location || '-',
-                    unit: transaction.unit || '-',
-                    checkout: transaction.checkout_time || '-',
-                    duration: transaction.duration || '-',
-                    payment: transaction.payment_method || '-',
-                    cs: transaction.cs_name || '-',
-                    amount: parseFloat(transaction.amount || 0),
-                    commission: parseFloat(transaction.commission || 0)
-                });
+            // Group transactions by apartment for zebra striping
+            const apartmentGroups = {};
+            transactions.forEach((transaction) => {
+                const location = transaction.location || 'Unknown';
+                if (!apartmentGroups[location]) {
+                    apartmentGroups[location] = [];
+                }
+                apartmentGroups[location].push(transaction);
+            });
 
-                // Format currency columns
-                row.getCell('amount').numFmt = 'Rp #,##0';
-                row.getCell('commission').numFmt = 'Rp #,##0';
+            // Define apartment order for consistent grouping
+            const apartmentOrder = [
+                'TREEPARK BSD',
+                'SKY HOUSE BSD',
+                'SPRINGWOOD',
+                'EMERALD BINTARO',
+                'TOKYO RIVERSIDE PIK2',
+                'SERPONG GARDEN',
+                'TRANSPARK BINTARO'
+            ];
+
+            let currentRowNumber = 1;
+            let apartmentIndex = 0;
+
+            // Process apartments in order
+            apartmentOrder.forEach(apartmentName => {
+                if (apartmentGroups[apartmentName]) {
+                    apartmentGroups[apartmentName].forEach((transaction) => {
+                        const row = worksheet.addRow({
+                            no: currentRowNumber,
+                            time: moment(transaction.created_at).tz(this.timezone).format('DD/MM/YYYY HH:mm'),
+                            location: transaction.location || '-',
+                            unit: transaction.unit || '-',
+                            checkout: transaction.checkout_time || '-',
+                            duration: transaction.duration || '-',
+                            payment: transaction.payment_method || '-',
+                            cs: transaction.cs_name || '-',
+                            amount: parseFloat(transaction.amount || 0),
+                            commission: parseFloat(transaction.commission || 0)
+                        });
+
+                        // Format currency columns
+                        row.getCell('amount').numFmt = 'Rp #,##0';
+                        row.getCell('commission').numFmt = 'Rp #,##0';
+
+                        // Add zebra stripe by apartment (alternating apartment colors)
+                        if (apartmentIndex % 2 === 1) {
+                            row.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'F8F9FA' }
+                            };
+                        }
+
+                        currentRowNumber++;
+                    });
+                    apartmentIndex++;
+                }
+            });
+
+            // Process any remaining apartments not in the order
+            Object.keys(apartmentGroups).forEach(apartmentName => {
+                if (!apartmentOrder.includes(apartmentName)) {
+                    apartmentGroups[apartmentName].forEach((transaction) => {
+                        const row = worksheet.addRow({
+                            no: currentRowNumber,
+                            time: moment(transaction.created_at).tz(this.timezone).format('DD/MM/YYYY HH:mm'),
+                            location: transaction.location || '-',
+                            unit: transaction.unit || '-',
+                            checkout: transaction.checkout_time || '-',
+                            duration: transaction.duration || '-',
+                            payment: transaction.payment_method || '-',
+                            cs: transaction.cs_name || '-',
+                            amount: parseFloat(transaction.amount || 0),
+                            commission: parseFloat(transaction.commission || 0)
+                        });
+
+                        // Format currency columns
+                        row.getCell('amount').numFmt = 'Rp #,##0';
+                        row.getCell('commission').numFmt = 'Rp #,##0';
+
+                        // Add zebra stripe by apartment
+                        if (apartmentIndex % 2 === 1) {
+                            row.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'F8F9FA' }
+                            };
+                        }
+
+                        currentRowNumber++;
+                    });
+                    apartmentIndex++;
+                }
             });
 
             // Add totals row
@@ -534,27 +627,28 @@ class ExcelExporter {
             const marketingData = {};
 
             marketingCommissionByApartment.forEach(item => {
-                const csName = item.cs_name;
+                const normalizedCsName = this.normalizeMarketingName(item.cs_name);
                 const location = item.location;
                 const bookingCount = parseInt(item.booking_count || 0);
 
-                if (!marketingData[csName]) {
-                    marketingData[csName] = {};
+                if (!marketingData[normalizedCsName]) {
+                    marketingData[normalizedCsName] = {};
                     apartmentOrder.forEach(apt => {
-                        marketingData[csName][apt] = 0;
+                        marketingData[normalizedCsName][apt] = 0;
                     });
-                    marketingData[csName].total = 0;
+                    marketingData[normalizedCsName].total = 0;
                 }
 
                 // Map location to apartment name
-                if (marketingData[csName][location] !== undefined) {
-                    marketingData[csName][location] += bookingCount;
+                if (marketingData[normalizedCsName][location] !== undefined) {
+                    marketingData[normalizedCsName][location] += bookingCount;
                 }
 
-                marketingData[csName].total += bookingCount;
+                marketingData[normalizedCsName].total += bookingCount;
             });
 
             // Add data rows for marketing commission
+            let marketingRowIndex = 0;
             Object.keys(marketingData).forEach(csName => {
                 const data = marketingData[csName];
                 const row = worksheet.addRow([
@@ -571,6 +665,17 @@ class ExcelExporter {
 
                 // Center align all cells
                 row.alignment = { horizontal: 'center', vertical: 'middle' };
+
+                // Add zebra stripe (alternating row colors)
+                if (marketingRowIndex % 2 === 1) {
+                    row.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: 'F8F9FA' }
+                    };
+                }
+
+                marketingRowIndex++;
                 currentRow++;
             });
         }
@@ -625,6 +730,16 @@ class ExcelExporter {
                 row.getCell(4).numFmt = 'Rp #,##0'; // Total Cash
                 row.getCell(5).numFmt = 'Rp #,##0'; // Total Transfer
                 row.getCell(6).numFmt = 'Rp #,##0'; // Total Komisi
+
+                // Add zebra stripe (alternating row colors)
+                if (index % 2 === 1) {
+                    row.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: 'F8F9FA' }
+                    };
+                }
+
                 currentRow++;
             });
 

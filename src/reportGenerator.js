@@ -138,6 +138,22 @@ class ReportGenerator {
     }
 
     /**
+     * Normalize marketing name untuk konsistensi case
+     */
+    normalizeMarketingName(name) {
+        if (!name) return 'Unknown';
+
+        const lowerName = name.toLowerCase().trim();
+
+        // Special cases
+        if (lowerName === 'apk') return 'APK';
+        if (lowerName === 'amel' || lowerName === 'ka amel') return 'Amel';
+
+        // Capitalize first letter, lowercase the rest
+        return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+    }
+
+    /**
      * Build commission section of the report in table format
      */
     buildCommissionSection(marketingCommissionByApartment) {
@@ -164,28 +180,28 @@ class ReportGenerator {
         let totalCommissionAll = 0;
 
         marketingCommissionByApartment.forEach(item => {
-            const csName = item.cs_name;
+            const normalizedCsName = this.normalizeMarketingName(item.cs_name);
             const location = item.location;
             const bookingCount = parseInt(item.booking_count || 0);
             const commission = parseFloat(item.total_commission || 0);
 
-            if (!marketingData[csName]) {
-                marketingData[csName] = {};
+            if (!marketingData[normalizedCsName]) {
+                marketingData[normalizedCsName] = {};
                 apartmentOrder.forEach(apt => {
-                    marketingData[csName][apt] = { count: 0, commission: 0 };
+                    marketingData[normalizedCsName][apt] = { count: 0, commission: 0 };
                 });
-                marketingData[csName].totalCount = 0;
-                marketingData[csName].totalCommission = 0;
+                marketingData[normalizedCsName].totalCount = 0;
+                marketingData[normalizedCsName].totalCommission = 0;
             }
 
             // Map location to apartment name
-            if (marketingData[csName][location]) {
-                marketingData[csName][location].count += bookingCount;
-                marketingData[csName][location].commission += commission;
+            if (marketingData[normalizedCsName][location]) {
+                marketingData[normalizedCsName][location].count += bookingCount;
+                marketingData[normalizedCsName][location].commission += commission;
             }
 
-            marketingData[csName].totalCount += bookingCount;
-            marketingData[csName].totalCommission += commission;
+            marketingData[normalizedCsName].totalCount += bookingCount;
+            marketingData[normalizedCsName].totalCommission += commission;
             totalCommissionAll += commission;
         });
 
@@ -510,16 +526,14 @@ ${commissionSection}`;
         // Group by marketing (berdasarkan CS yang bukan APK dan bukan AMEL)
         const marketingStats = {};
         Object.entries(stats.csSummary).forEach(([csName, data]) => {
-            if (csName.toLowerCase() !== 'apk' && csName.toLowerCase() !== 'amel') {
-                // Gunakan nama asli CS dengan capitalize first letter
-                const displayName = csName.charAt(0).toUpperCase() + csName.slice(1).toLowerCase();
-
+            const normalizedName = this.normalizeMarketingName(csName);
+            if (normalizedName !== 'APK' && normalizedName !== 'Amel') {
                 // Gabungkan data jika CS sudah ada (case-insensitive)
-                if (marketingStats[displayName]) {
-                    marketingStats[displayName].totalCS += data.count;
-                    marketingStats[displayName].totalKomisi += data.commission;
+                if (marketingStats[normalizedName]) {
+                    marketingStats[normalizedName].totalCS += data.count;
+                    marketingStats[normalizedName].totalKomisi += data.commission;
                 } else {
-                    marketingStats[displayName] = {
+                    marketingStats[normalizedName] = {
                         totalCS: data.count,
                         totalKomisi: data.commission
                     };

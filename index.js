@@ -2019,6 +2019,23 @@ function findApartmentByPartialName(partialName) {
 }
 
 // Helper functions untuk Excel export
+
+/**
+ * Normalize marketing name untuk konsistensi case
+ */
+function normalizeMarketingName(name) {
+    if (!name) return 'Unknown';
+
+    const lowerName = name.toLowerCase().trim();
+
+    // Special cases
+    if (lowerName === 'apk') return 'APK';
+    if (lowerName === 'amel' || lowerName === 'ka amel') return 'Amel';
+
+    // Capitalize first letter, lowercase the rest
+    return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+}
+
 function calculateCSSummaryFromTransactions(transactions) {
     const csSummary = {};
 
@@ -2045,16 +2062,17 @@ function calculateMarketingCommissionFromTransactions(transactions) {
     const groupedData = {};
 
     transactions.forEach(transaction => {
-        const csName = transaction.cs_name || 'Unknown';
+        const rawCsName = transaction.cs_name || 'Unknown';
+        const normalizedCsName = normalizeMarketingName(rawCsName);
         const location = transaction.location || 'Unknown';
 
         // Skip APK dan AMEL (bukan marketing)
-        if (csName.toLowerCase() !== 'apk' && csName.toLowerCase() !== 'amel') {
-            const key = `${csName}_${location}`;
+        if (normalizedCsName !== 'APK' && normalizedCsName !== 'Amel') {
+            const key = `${normalizedCsName}_${location}`;
 
             if (!groupedData[key]) {
                 groupedData[key] = {
-                    cs_name: csName,
+                    cs_name: normalizedCsName,
                     location: location,
                     booking_count: 0,
                     total_commission: 0
@@ -2112,26 +2130,106 @@ async function createTransactionsSheetForExport(workbook, transactions, displayD
 
     // Add data
     if (transactions && transactions.length > 0) {
-        transactions.forEach((transaction, index) => {
-            const moment = require('moment-timezone');
-            const createdAt = moment(transaction.created_at).tz('Asia/Jakarta');
-            const row = worksheet.addRow([
-                index + 1,
-                createdAt.format('DD/MM/YYYY'),
-                createdAt.format('HH:mm'),
-                transaction.location || '-',
-                transaction.unit || '-',
-                transaction.checkout_time || '-',
-                transaction.duration || '-',
-                transaction.payment_method || '-',
-                parseFloat(transaction.amount || 0),
-                transaction.cs_name || '-',
-                parseFloat(transaction.commission || 0)
-            ]);
+        // Group transactions by apartment for zebra striping
+        const apartmentGroups = {};
+        transactions.forEach((transaction) => {
+            const location = transaction.location || 'Unknown';
+            if (!apartmentGroups[location]) {
+                apartmentGroups[location] = [];
+            }
+            apartmentGroups[location].push(transaction);
+        });
 
-            // Format currency columns
-            row.getCell(9).numFmt = 'Rp #,##0';  // Amount
-            row.getCell(11).numFmt = 'Rp #,##0'; // Komisi
+        // Define apartment order for consistent grouping
+        const apartmentOrder = [
+            'TREEPARK BSD',
+            'SKY HOUSE BSD',
+            'SPRINGWOOD',
+            'EMERALD BINTARO',
+            'TOKYO RIVERSIDE PIK2',
+            'SERPONG GARDEN',
+            'TRANSPARK BINTARO'
+        ];
+
+        let currentRowNumber = 1;
+        let apartmentIndex = 0;
+
+        // Process apartments in order
+        apartmentOrder.forEach(apartmentName => {
+            if (apartmentGroups[apartmentName]) {
+                apartmentGroups[apartmentName].forEach((transaction) => {
+                    const moment = require('moment-timezone');
+                    const createdAt = moment(transaction.created_at).tz('Asia/Jakarta');
+                    const row = worksheet.addRow([
+                        currentRowNumber,
+                        createdAt.format('DD/MM/YYYY'),
+                        createdAt.format('HH:mm'),
+                        transaction.location || '-',
+                        transaction.unit || '-',
+                        transaction.checkout_time || '-',
+                        transaction.duration || '-',
+                        transaction.payment_method || '-',
+                        parseFloat(transaction.amount || 0),
+                        transaction.cs_name || '-',
+                        parseFloat(transaction.commission || 0)
+                    ]);
+
+                    // Format currency columns
+                    row.getCell(9).numFmt = 'Rp #,##0';  // Amount
+                    row.getCell(11).numFmt = 'Rp #,##0'; // Komisi
+
+                    // Add zebra stripe by apartment (alternating apartment colors)
+                    if (apartmentIndex % 2 === 1) {
+                        row.fill = {
+                            type: 'pattern',
+                            pattern: 'solid',
+                            fgColor: { argb: 'F8F9FA' }
+                        };
+                    }
+
+                    currentRowNumber++;
+                });
+                apartmentIndex++;
+            }
+        });
+
+        // Process any remaining apartments not in the order
+        Object.keys(apartmentGroups).forEach(apartmentName => {
+            if (!apartmentOrder.includes(apartmentName)) {
+                apartmentGroups[apartmentName].forEach((transaction) => {
+                    const moment = require('moment-timezone');
+                    const createdAt = moment(transaction.created_at).tz('Asia/Jakarta');
+                    const row = worksheet.addRow([
+                        currentRowNumber,
+                        createdAt.format('DD/MM/YYYY'),
+                        createdAt.format('HH:mm'),
+                        transaction.location || '-',
+                        transaction.unit || '-',
+                        transaction.checkout_time || '-',
+                        transaction.duration || '-',
+                        transaction.payment_method || '-',
+                        parseFloat(transaction.amount || 0),
+                        transaction.cs_name || '-',
+                        parseFloat(transaction.commission || 0)
+                    ]);
+
+                    // Format currency columns
+                    row.getCell(9).numFmt = 'Rp #,##0';  // Amount
+                    row.getCell(11).numFmt = 'Rp #,##0'; // Komisi
+
+                    // Add zebra stripe by apartment
+                    if (apartmentIndex % 2 === 1) {
+                        row.fill = {
+                            type: 'pattern',
+                            pattern: 'solid',
+                            fgColor: { argb: 'F8F9FA' }
+                        };
+                    }
+
+                    currentRowNumber++;
+                });
+                apartmentIndex++;
+            }
         });
 
         // Add totals row
@@ -2229,27 +2327,28 @@ async function createCombinedSummarySheetForExport(workbook, csSummary, marketin
         const marketingData = {};
 
         marketingCommissionByApartment.forEach(item => {
-            const csName = item.cs_name;
+            const normalizedCsName = normalizeMarketingName(item.cs_name);
             const location = item.location;
             const bookingCount = parseInt(item.booking_count || 0);
 
-            if (!marketingData[csName]) {
-                marketingData[csName] = {};
+            if (!marketingData[normalizedCsName]) {
+                marketingData[normalizedCsName] = {};
                 apartmentOrder.forEach(apt => {
-                    marketingData[csName][apt] = 0;
+                    marketingData[normalizedCsName][apt] = 0;
                 });
-                marketingData[csName].total = 0;
+                marketingData[normalizedCsName].total = 0;
             }
 
             // Map location to apartment name
-            if (marketingData[csName][location] !== undefined) {
-                marketingData[csName][location] += bookingCount;
+            if (marketingData[normalizedCsName][location] !== undefined) {
+                marketingData[normalizedCsName][location] += bookingCount;
             }
 
-            marketingData[csName].total += bookingCount;
+            marketingData[normalizedCsName].total += bookingCount;
         });
 
         // Add data rows for marketing commission
+        let marketingRowIndex = 0;
         Object.keys(marketingData).forEach(csName => {
             const data = marketingData[csName];
             const row = worksheet.addRow([
@@ -2266,6 +2365,17 @@ async function createCombinedSummarySheetForExport(workbook, csSummary, marketin
 
             // Center align all cells
             row.alignment = { horizontal: 'center', vertical: 'middle' };
+
+            // Add zebra stripe (alternating row colors)
+            if (marketingRowIndex % 2 === 1) {
+                row.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'F8F9FA' }
+                };
+            }
+
+            marketingRowIndex++;
             currentRow++;
         });
     }
@@ -2309,6 +2419,7 @@ async function createCombinedSummarySheetForExport(workbook, csSummary, marketin
 
     // Add CS Summary data
     if (csSummary && csSummary.length > 0) {
+        let csRowIndex = 0;
         csSummary.forEach(cs => {
             const row = worksheet.addRow([
                 cs.cs_name,
@@ -2320,6 +2431,17 @@ async function createCombinedSummarySheetForExport(workbook, csSummary, marketin
             // Format currency columns
             // row.getCell(3).numFmt = 'Rp #,##0'; // Total Amount
             row.getCell(4).numFmt = 'Rp #,##0'; // Total Komisi
+
+            // Add zebra stripe (alternating row colors)
+            if (csRowIndex % 2 === 1) {
+                row.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'F8F9FA' }
+                };
+            }
+
+            csRowIndex++;
             currentRow++;
         });
 
