@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\Models\User;
 use App\Models\Apartment;
 use App\Models\CustomerService;
-use App\Models\Config;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -17,14 +16,16 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // Create admin user
-        User::create([
-            'name' => 'Administrator',
-            'email' => 'admin@kakaramaroom.com',
-            'password' => Hash::make('password'),
-            'role' => 'admin',
-            'is_active' => true,
-            'phone' => '081234567890',
-        ]);
+        User::updateOrCreate(
+            ['email' => 'admin@kakaramaroom.com'],
+            [
+                'name' => 'Administrator',
+                'password' => Hash::make('password'),
+                'role' => 'admin',
+                'is_active' => true,
+                'phone' => '081234567890',
+            ]
+        );
 
         // Create sample apartments
         $apartments = [
@@ -37,7 +38,10 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($apartments as $apartment) {
-            Apartment::create($apartment);
+            Apartment::updateOrCreate(
+                ['code' => $apartment['code']],
+                $apartment
+            );
         }
 
         // Create sample customer services
@@ -49,7 +53,10 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($customerServices as $cs) {
-            CustomerService::create($cs);
+            CustomerService::updateOrCreate(
+                ['name' => $cs['name']],
+                $cs
+            );
         }
 
         // Call config seeder

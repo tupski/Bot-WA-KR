@@ -25,6 +25,7 @@ return new class extends Migration
             $table->decimal('net_amount', 12, 2);
             $table->boolean('skip_financial')->default(false);
             $table->date('date_only')->index();
+            $table->string('chat_id')->nullable()->index(); // WhatsApp chat ID
             $table->timestamps();
 
             // Indexes for better performance

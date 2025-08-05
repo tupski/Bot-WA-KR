@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'whatsapp' => [
+        'api_url' => env('WHATSAPP_API_URL'),
+        'api_token' => env('WHATSAPP_API_TOKEN'),
+        'webhook_secret' => env('WHATSAPP_WEBHOOK_SECRET'),
+        'instance_id' => env('WHATSAPP_INSTANCE_ID'),
+        'phone_number' => env('WHATSAPP_PHONE_NUMBER'),
+    ],
+
 ];
