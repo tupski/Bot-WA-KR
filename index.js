@@ -719,7 +719,7 @@ async function handleCommand(message, apartmentName) {
                     // Validasi apartemen
                     apartmentName = findApartmentByPartialName(apartmentParam);
                     if (!apartmentName) {
-                        await bot.sendMessage(message.from, `❌ Apartemen "${apartmentParam}" tidak ditemukan. Gunakan: sky, treepark, emerald, springwood, serpong, tokyo`);
+                        await bot.sendMessage(message.from, `❌ Apartemen "${apartmentParam}" tidak ditemukan. Gunakan: treepark, sky, springwood, emerald, tokyo, serpong, transpark`);
                         return;
                     }
 
@@ -2043,26 +2043,31 @@ function calculateCSSummaryFromTransactions(transactions) {
 }
 
 function calculateMarketingCommissionFromTransactions(transactions) {
-    const marketingCommission = {};
+    const groupedData = {};
 
     transactions.forEach(transaction => {
         const csName = transaction.cs_name || 'Unknown';
+        const location = transaction.location || 'Unknown';
+
         // Skip APK dan AMEL (bukan marketing)
         if (csName.toLowerCase() !== 'apk' && csName.toLowerCase() !== 'amel') {
-            if (!marketingCommission[csName]) {
-                marketingCommission[csName] = {
+            const key = `${csName}_${location}`;
+
+            if (!groupedData[key]) {
+                groupedData[key] = {
                     cs_name: csName,
+                    location: location,
                     booking_count: 0,
                     total_commission: 0
                 };
             }
 
-            marketingCommission[csName].booking_count += 1;
-            marketingCommission[csName].total_commission += parseFloat(transaction.commission || 0);
+            groupedData[key].booking_count += 1;
+            groupedData[key].total_commission += parseFloat(transaction.commission || 0);
         }
     });
 
-    return Object.values(marketingCommission);
+    return Object.values(groupedData);
 }
 
 async function createTransactionsSheetForExport(workbook, transactions, displayDate, apartmentName) {
@@ -2227,23 +2232,34 @@ async function createCSSummarySheetForExport(workbook, csSummary, displayDate, a
     }
 }
 
-async function createCommissionSheetForExport(workbook, marketingCommission, displayDate, apartmentName) {
+async function createCommissionSheetForExport(workbook, marketingCommissionByApartment, displayDate, apartmentName) {
     const worksheet = workbook.addWorksheet('Komisi Marketing');
+
+    // Define apartment order
+    const apartmentOrder = [
+        'TREEPARK BSD',
+        'SKY HOUSE BSD',
+        'SPRINGWOOD',
+        'EMERALD BINTARO',
+        'TOKYO RIVERSIDE PIK2',
+        'SERPONG GARDEN',
+        'TRANSPARK BINTARO'
+    ];
 
     // Title
     const titleText = apartmentName ?
         `Komisi Marketing ${apartmentName} - ${displayDate}` :
         `Komisi Marketing - ${displayDate}`;
     worksheet.addRow([titleText]);
-    worksheet.mergeCells('A1:C1');
+    worksheet.mergeCells('A1:I1');
     const titleRow = worksheet.getRow(1);
     titleRow.font = { bold: true, size: 14 };
     titleRow.alignment = { horizontal: 'center' };
 
     worksheet.addRow([]);
 
-    // Headers
-    const headerRow = worksheet.addRow(['CS Name', 'Jumlah Booking', 'Total Komisi']);
+    // Headers for table format
+    const headerRow = worksheet.addRow(['Marketing', 'Treepark', 'Sky House', 'Springwood', 'Emerald', 'Tokyo', 'Serpong', 'Transpark', 'Total']);
     headerRow.font = { bold: true };
     headerRow.fill = {
         type: 'pattern',
@@ -2251,46 +2267,69 @@ async function createCommissionSheetForExport(workbook, marketingCommission, dis
         fgColor: { argb: 'FFE6E6FA' }
     };
 
-    // Column widths
+    // Column widths for table format
     worksheet.columns = [
-        { width: 20 }, // CS Name
-        { width: 15 }, // Jumlah Booking
-        { width: 20 }  // Total Komisi
+        { width: 12 }, // Marketing
+        { width: 10 }, // Treepark
+        { width: 10 }, // Sky House
+        { width: 12 }, // Springwood
+        { width: 10 }, // Emerald
+        { width: 10 }, // Tokyo
+        { width: 10 }, // Serpong
+        { width: 10 }, // Transpark
+        { width: 10 }  // Total
     ];
 
     // Add data
-    if (marketingCommission && marketingCommission.length > 0) {
-        marketingCommission.forEach(cs => {
-            const row = worksheet.addRow([
-                cs.cs_name,
-                cs.booking_count,
-                cs.total_commission
-            ]);
-
-            // Format currency column
-            row.getCell(3).numFmt = 'Rp #,##0';
-        });
-
-        // Add totals row
-        const totalRow = worksheet.addRow([
-            'TOTAL:',
-            { formula: `SUM(B4:B${3 + marketingCommission.length})` },
-            { formula: `SUM(C4:C${3 + marketingCommission.length})` }
-        ]);
-
-        totalRow.font = { bold: true };
-        totalRow.getCell(3).numFmt = 'Rp #,##0';
-        totalRow.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: 'F2F2F2' }
-        };
-    } else {
+    if (!marketingCommissionByApartment || marketingCommissionByApartment.length === 0) {
         worksheet.addRow(['Tidak ada data komisi marketing pada periode ini']);
-        worksheet.mergeCells('A4:C4');
+        worksheet.mergeCells('A4:I4');
         const noDataRow = worksheet.getRow(4);
         noDataRow.alignment = { horizontal: 'center' };
         noDataRow.font = { italic: true };
+    } else {
+        // Group data by marketing name and apartment
+        const marketingData = {};
+
+        marketingCommissionByApartment.forEach(item => {
+            const csName = item.cs_name;
+            const location = item.location;
+            const bookingCount = parseInt(item.booking_count || 0);
+
+            if (!marketingData[csName]) {
+                marketingData[csName] = {};
+                apartmentOrder.forEach(apt => {
+                    marketingData[csName][apt] = 0;
+                });
+                marketingData[csName].total = 0;
+            }
+
+            // Map location to apartment name
+            if (marketingData[csName][location] !== undefined) {
+                marketingData[csName][location] += bookingCount;
+            }
+
+            marketingData[csName].total += bookingCount;
+        });
+
+        // Add data rows
+        Object.keys(marketingData).forEach(csName => {
+            const data = marketingData[csName];
+            const row = worksheet.addRow([
+                csName,
+                data['TREEPARK BSD'] || '',
+                data['SKY HOUSE BSD'] || '',
+                data['SPRINGWOOD'] || '',
+                data['EMERALD BINTARO'] || '',
+                data['TOKYO RIVERSIDE PIK2'] || '',
+                data['SERPONG GARDEN'] || '',
+                data['TRANSPARK BINTARO'] || '',
+                data.total
+            ]);
+
+            // Center align all cells
+            row.alignment = { horizontal: 'center', vertical: 'middle' };
+        });
     }
 }
 
