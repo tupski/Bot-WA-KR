@@ -161,22 +161,19 @@ class ExcelExporter {
             const normalizedCsName = this.normalizeMarketingName(rawCsName);
             const location = transaction.location || 'Unknown';
 
-            // Skip APK dan AMEL (bukan marketing)
-            if (normalizedCsName !== 'APK' && normalizedCsName !== 'Amel') {
-                const key = `${normalizedCsName}_${location}`;
+            const key = `${normalizedCsName}_${location}`;
 
-                if (!groupedData[key]) {
-                    groupedData[key] = {
-                        cs_name: normalizedCsName,
-                        location: location,
-                        booking_count: 0,
-                        total_commission: 0
-                    };
-                }
-
-                groupedData[key].booking_count += 1;
-                groupedData[key].total_commission += parseFloat(transaction.commission || 0);
+            if (!groupedData[key]) {
+                groupedData[key] = {
+                    cs_name: normalizedCsName,
+                    location: location,
+                    booking_count: 0,
+                    total_commission: 0
+                };
             }
+
+            groupedData[key].booking_count += 1;
+            groupedData[key].total_commission += parseFloat(transaction.commission || 0);
         });
 
         return Object.values(groupedData);

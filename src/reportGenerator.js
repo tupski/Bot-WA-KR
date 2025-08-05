@@ -523,21 +523,19 @@ ${commissionSection}`;
         // Komisi Marketing
         report += `💼 *KOMISI MARKETING*\n\n`;
 
-        // Group by marketing (berdasarkan CS yang bukan APK dan bukan AMEL)
+        // Group by marketing (semua CS termasuk APK dan Amel)
         const marketingStats = {};
         Object.entries(stats.csSummary).forEach(([csName, data]) => {
             const normalizedName = this.normalizeMarketingName(csName);
-            if (normalizedName !== 'APK' && normalizedName !== 'Amel') {
-                // Gabungkan data jika CS sudah ada (case-insensitive)
-                if (marketingStats[normalizedName]) {
-                    marketingStats[normalizedName].totalCS += data.count;
-                    marketingStats[normalizedName].totalKomisi += data.commission;
-                } else {
-                    marketingStats[normalizedName] = {
-                        totalCS: data.count,
-                        totalKomisi: data.commission
-                    };
-                }
+            // Gabungkan data jika CS sudah ada (case-insensitive)
+            if (marketingStats[normalizedName]) {
+                marketingStats[normalizedName].totalCS += data.count;
+                marketingStats[normalizedName].totalKomisi += data.commission;
+            } else {
+                marketingStats[normalizedName] = {
+                    totalCS: data.count,
+                    totalKomisi: data.commission
+                };
             }
         });
 
