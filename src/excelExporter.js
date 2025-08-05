@@ -130,19 +130,21 @@ class ExcelExporter {
         const csSummary = {};
 
         transactions.forEach(transaction => {
-            const csName = transaction.cs_name || 'Unknown';
-            if (!csSummary[csName]) {
-                csSummary[csName] = {
-                    cs_name: csName,
+            const rawCsName = transaction.cs_name || 'Unknown';
+            const normalizedCsName = this.normalizeMarketingName(rawCsName);
+
+            if (!csSummary[normalizedCsName]) {
+                csSummary[normalizedCsName] = {
+                    cs_name: normalizedCsName,
                     total_bookings: 0,
                     total_amount: 0,
                     total_commission: 0
                 };
             }
 
-            csSummary[csName].total_bookings += 1;
-            csSummary[csName].total_amount += parseFloat(transaction.amount || 0);
-            csSummary[csName].total_commission += parseFloat(transaction.commission || 0);
+            csSummary[normalizedCsName].total_bookings += 1;
+            csSummary[normalizedCsName].total_amount += parseFloat(transaction.amount || 0);
+            csSummary[normalizedCsName].total_commission += parseFloat(transaction.commission || 0);
         });
 
         return Object.values(csSummary);
@@ -757,11 +759,7 @@ class ExcelExporter {
             totalRow.getCell(4).numFmt = 'Rp #,##0';
             totalRow.getCell(5).numFmt = 'Rp #,##0';
             totalRow.getCell(6).numFmt = 'Rp #,##0';
-            totalRow.fill = {
-                type: 'pattern',
-                pattern: 'solid',
-                fgColor: { argb: 'F2F2F2' }
-            };
+            // No background for total row
         } else {
             worksheet.addRow(['', 'Tidak ada data CS pada tanggal ini']);
             worksheet.mergeCells(`A${currentRow + 1}:F${currentRow + 1}`);

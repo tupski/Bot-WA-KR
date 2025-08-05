@@ -2040,19 +2040,21 @@ function calculateCSSummaryFromTransactions(transactions) {
     const csSummary = {};
 
     transactions.forEach(transaction => {
-        const csName = transaction.cs_name || 'Unknown';
-        if (!csSummary[csName]) {
-            csSummary[csName] = {
-                cs_name: csName,
+        const rawCsName = transaction.cs_name || 'Unknown';
+        const normalizedCsName = normalizeMarketingName(rawCsName);
+
+        if (!csSummary[normalizedCsName]) {
+            csSummary[normalizedCsName] = {
+                cs_name: normalizedCsName,
                 total_bookings: 0,
                 total_amount: 0,
                 total_commission: 0
             };
         }
 
-        csSummary[csName].total_bookings += 1;
-        csSummary[csName].total_amount += parseFloat(transaction.amount || 0);
-        csSummary[csName].total_commission += parseFloat(transaction.commission || 0);
+        csSummary[normalizedCsName].total_bookings += 1;
+        csSummary[normalizedCsName].total_amount += parseFloat(transaction.amount || 0);
+        csSummary[normalizedCsName].total_commission += parseFloat(transaction.commission || 0);
     });
 
     return Object.values(csSummary);
@@ -2112,6 +2114,16 @@ async function createTransactionsSheetForExport(workbook, transactions, displayD
         pattern: 'solid',
         fgColor: { argb: 'FFE6E6FA' }
     };
+
+    // Add borders to header
+    headerRow.eachCell((cell) => {
+        cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+        };
+    });
 
     // Column widths
     worksheet.columns = [
@@ -2187,6 +2199,16 @@ async function createTransactionsSheetForExport(workbook, transactions, displayD
                         };
                     }
 
+                    // Add borders
+                    row.eachCell((cell) => {
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' }
+                        };
+                    });
+
                     currentRowNumber++;
                 });
                 apartmentIndex++;
@@ -2226,6 +2248,16 @@ async function createTransactionsSheetForExport(workbook, transactions, displayD
                         };
                     }
 
+                    // Add borders
+                    row.eachCell((cell) => {
+                        cell.border = {
+                            top: { style: 'thin' },
+                            left: { style: 'thin' },
+                            bottom: { style: 'thin' },
+                            right: { style: 'thin' }
+                        };
+                    });
+
                     currentRowNumber++;
                 });
                 apartmentIndex++;
@@ -2243,11 +2275,16 @@ async function createTransactionsSheetForExport(workbook, transactions, displayD
         totalRow.font = { bold: true };
         totalRow.getCell(9).numFmt = 'Rp #,##0';
         totalRow.getCell(11).numFmt = 'Rp #,##0';
-        totalRow.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: 'F2F2F2' }
-        };
+
+        // Add borders to total row (no background)
+        totalRow.eachCell((cell) => {
+            cell.border = {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' }
+            };
+        });
     } else {
         worksheet.addRow(['Tidak ada transaksi pada periode ini']);
         worksheet.mergeCells('A4:K4');
@@ -2415,6 +2452,16 @@ async function createCombinedSummarySheetForExport(workbook, csSummary, marketin
     };
     headerRow2.alignment = { horizontal: 'center', vertical: 'middle' };
 
+    // Add borders to header
+    headerRow2.eachCell((cell) => {
+        cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+        };
+    });
+
     currentRow += 1;
 
     // Add CS Summary data
@@ -2441,6 +2488,16 @@ async function createCombinedSummarySheetForExport(workbook, csSummary, marketin
                 };
             }
 
+            // Add borders
+            row.eachCell((cell) => {
+                cell.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+            });
+
             csRowIndex++;
             currentRow++;
         });
@@ -2456,11 +2513,16 @@ async function createCombinedSummarySheetForExport(workbook, csSummary, marketin
         totalRow.font = { bold: true };
         totalRow.getCell(3).numFmt = 'Rp #,##0';
         totalRow.getCell(4).numFmt = 'Rp #,##0';
-        totalRow.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: 'F2F2F2' }
-        };
+
+        // Add borders to total row (no background)
+        totalRow.eachCell((cell) => {
+            cell.border = {
+                top: { style: 'thin' },
+                left: { style: 'thin' },
+                bottom: { style: 'thin' },
+                right: { style: 'thin' }
+            };
+        });
     } else {
         worksheet.addRow(['Tidak ada data CS pada periode ini']);
         worksheet.mergeCells(`A${currentRow + 1}:D${currentRow + 1}`);
