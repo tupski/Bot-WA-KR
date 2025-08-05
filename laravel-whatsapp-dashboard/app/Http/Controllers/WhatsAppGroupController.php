@@ -84,7 +84,7 @@ class WhatsAppGroupController extends Controller
 
     public function show(WhatsAppGroup $whatsappGroup)
     {
-        $this->authorize('view whatsapp groups');
+        $this->authorize('view-whatsapp-groups');
 
         $group = $whatsappGroup->load('apartment', 'transactions');
 
@@ -110,7 +110,7 @@ class WhatsAppGroupController extends Controller
      */
     public function edit(WhatsAppGroup $whatsappGroup)
     {
-        $this->authorize('edit whatsapp groups');
+        $this->authorize('manage-whatsapp-groups');
 
         $group = $whatsappGroup;
         $apartments = Apartment::active()->get();
@@ -120,7 +120,7 @@ class WhatsAppGroupController extends Controller
 
     public function update(Request $request, WhatsAppGroup $whatsappGroup)
     {
-        $this->authorize('edit whatsapp groups');
+        $this->authorize('manage-whatsapp-groups');
 
         $validated = $request->validate([
             'group_name' => 'required|string|max:255',
@@ -149,7 +149,7 @@ class WhatsAppGroupController extends Controller
 
     public function destroy(WhatsAppGroup $whatsappGroup)
     {
-        $this->authorize('delete whatsapp groups');
+        $this->authorize('manage-whatsapp-groups');
 
         $hasTransactions = $whatsappGroup->transactions()->exists();
 
