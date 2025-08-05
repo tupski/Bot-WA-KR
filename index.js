@@ -2296,7 +2296,7 @@ async function createCombinedSummarySheetForExport(workbook, csSummary, marketin
     worksheet.addRow([]);
 
     // Headers for CS Summary
-    const headerRow2 = worksheet.addRow(['CS Name', 'Total Booking', 'Total Amount', 'Total Komisi']);
+    const headerRow2 = worksheet.addRow(['CS Name', 'Total Booking', 'Total Komisi']);
     headerRow2.font = { bold: true, color: { argb: 'FFFFFF' } };
     headerRow2.fill = {
         type: 'pattern',
@@ -2318,7 +2318,7 @@ async function createCombinedSummarySheetForExport(workbook, csSummary, marketin
             ]);
 
             // Format currency columns
-            row.getCell(3).numFmt = 'Rp #,##0'; // Total Amount
+            // row.getCell(3).numFmt = 'Rp #,##0'; // Total Amount
             row.getCell(4).numFmt = 'Rp #,##0'; // Total Komisi
             currentRow++;
         });
