@@ -49,11 +49,15 @@ class ReportController extends Controller
         $date = $request->get('date', Carbon::today()->format('Y-m-d'));
         $selectedDate = Carbon::parse($date);
 
-        // Daily summary
+        // Use bot logic: business day from 12:00 yesterday to 11:59 today
+        $startDateTime = $selectedDate->copy()->subDay()->setTime(12, 0, 0);
+        $endDateTime = $selectedDate->copy()->setTime(11, 59, 59);
+
+        // Daily summary (keep using date_only for compatibility)
         $dailySummary = DailySummary::byDate($selectedDate)->first();
 
-        // Transactions for the day
-        $transactions = Transaction::byDate($selectedDate)
+        // Transactions using bot business day logic
+        $transactions = Transaction::whereBetween('created_at', [$startDateTime, $endDateTime])
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -62,8 +66,8 @@ class ReportController extends Controller
             ->orderBy('total_commission', 'desc')
             ->get();
 
-        // Apartment performance
-        $apartmentPerformance = Transaction::byDate($selectedDate)
+        // Apartment performance using bot business day logic
+        $apartmentPerformance = Transaction::whereBetween('created_at', [$startDateTime, $endDateTime])
             ->selectRaw('
                 location,
                 COUNT(*) as booking_count,
@@ -75,8 +79,8 @@ class ReportController extends Controller
             ->orderBy('total_revenue', 'desc')
             ->get();
 
-        // Hourly breakdown
-        $hourlyBreakdown = Transaction::byDate($selectedDate)
+        // Hourly breakdown using bot business day logic
+        $hourlyBreakdown = Transaction::whereBetween('created_at', [$startDateTime, $endDateTime])
             ->selectRaw('
                 HOUR(created_at) as hour,
                 COUNT(*) as booking_count,

@@ -6,7 +6,15 @@
 <div class="row mb-4">
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center">
-            <h2>Laporan Harian - {{ $selectedDate->format('d F Y') }}</h2>
+            <div>
+                <h2>Laporan Harian - {{ $selectedDate->format('d F Y') }}</h2>
+                <small class="text-muted">
+                    <i class="fas fa-info-circle"></i>
+                    Business Day: {{ $selectedDate->copy()->subDay()->format('d/m/Y') }} 12:00 - {{ $selectedDate->format('d/m/Y') }} 11:59 WIB
+                    <br>
+                    <em>Mengikuti logika bot WhatsApp untuk konsistensi data</em>
+                </small>
+            </div>
             <div>
                 <a href="{{ route('reports.index') }}" class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-left"></i> Kembali
