@@ -259,16 +259,31 @@ Menampilkan daftar perintah yang tersedia
 ### Perintah untuk Owner (pesan pribadi)
 
 #### !export
-Menghasilkan laporan Excel harian dengan 3 sheet:
-1. **Transaksi** - Semua transaksi
+Menghasilkan laporan Excel dengan 3 sheet:
+1. **Transaksi** - Semua transaksi dengan multiple header per apartemen
 2. **Laporan Cash** - Hanya transaksi pembayaran cash/tunai
-3. **Marketing** - Ringkasan komisi marketing
+3. **Komisi Marketing** - Ringkasan komisi marketing dan CS
 
+**Format Perintah:**
 ```
-!export                    # Business day kemarin
-!export 06082025          # Tanggal tertentu (DDMMYYYY)
-!export apartemen 06082025 # Filter apartemen + tanggal
+!export                      # Business day kemarin (semua apartemen)
+!export 7                    # 7 hari terakhir (1-31 hari)
+!export 06082025            # Tanggal tertentu (DDMMYYYY)
+!export 01-08082025         # Range tanggal (DD-DDMMYYYY)
+!export juli                # Bulan Juli tahun ini
+!export sky                 # SKY HOUSE business day kemarin
+!export sky 7               # SKY HOUSE 7 hari terakhir
+!export tokyo 06082025      # TOKYO PIK2 tanggal tertentu
 ```
+
+**Apartemen yang didukung:**
+- `sky` = SKY HOUSE BSD
+- `treepark` = TREEPARK BSD
+- `emerald` = EMERALD BINTARO
+- `springwood` = SPRINGWOOD
+- `serpong` = SERPONG GARDEN
+- `tokyo` = TOKYO RIVERSIDE PIK2
+- `transpark` = TRANSPARK BINTARO
 
 **Catatan**: Command ini hanya bisa digunakan melalui pesan pribadi untuk keamanan.
 

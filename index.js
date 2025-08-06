@@ -655,7 +655,7 @@ async function handleCommand(message, apartmentName) {
                 const emailService = require('./src/emailService');
                 const moment = require('moment-timezone');
 
-                // Parse command: !export [apartemen] [DDMMYYYY]
+                // Parse command dengan berbagai format
                 const parts = message.body.trim().split(' ');
                 let targetDate = null;
                 let startDate, endDate, displayDate;
@@ -671,8 +671,99 @@ async function handleCommand(message, apartmentName) {
                     displayDate = businessDay.format('DD/MM/YYYY');
                     targetDate = businessDay.format('YYYY-MM-DD');
                 } else if (parts.length === 2) {
-                    // !export DDMMYYYY atau !export apartemen
                     const param = parts[1];
+
+                    // Check if it's a number (days)
+                    if (/^\d+$/.test(param)) {
+                        const days = parseInt(param);
+                        if (days >= 1 && days <= 31) {
+                            // !export <angka> - Export X hari terakhir
+                            const now = moment().tz('Asia/Jakarta');
+                            const endMoment = now.clone();
+                            const startMoment = now.clone().subtract(days - 1, 'days');
+
+                            startDate = startMoment.format('YYYY-MM-DD') + ' 00:00:00';
+                            endDate = endMoment.format('YYYY-MM-DD') + ' 23:59:59';
+                            displayDate = `${startMoment.format('DD/MM/YYYY')} - ${endMoment.format('DD/MM/YYYY')} (${days} hari)`;
+                            targetDate = startMoment.format('YYYY-MM-DD');
+                        } else {
+                            await bot.sendMessage(message.from, '❌ Jumlah hari harus antara 1-31.');
+                            return;
+                        }
+                    }
+                    // Check if it's a date range (DD-DDMMYYYY)
+                    else if (/^\d{2}-\d{8}$/.test(param)) {
+                        // !export 01-08082025 - Export dari tanggal 1 sampai 8 Agustus 2025
+                        const [startDay, endDateStr] = param.split('-');
+                        const endDay = endDateStr.substring(0, 2);
+                        const month = endDateStr.substring(2, 4);
+                        const year = endDateStr.substring(4, 8);
+
+                        const startMoment = moment(`${startDay}${month}${year}`, 'DDMMYYYY').tz('Asia/Jakarta');
+                        const endMoment = moment(`${endDay}${month}${year}`, 'DDMMYYYY').tz('Asia/Jakarta');
+
+                        if (!startMoment.isValid() || !endMoment.isValid() || startMoment.isAfter(endMoment)) {
+                            await bot.sendMessage(message.from, '❌ Format tanggal tidak valid. Gunakan: DD-DDMMYYYY (contoh: 01-08082025)');
+                            return;
+                        }
+
+                        startDate = startMoment.format('YYYY-MM-DD') + ' 00:00:00';
+                        endDate = endMoment.format('YYYY-MM-DD') + ' 23:59:59';
+                        displayDate = `${startMoment.format('DD/MM/YYYY')} - ${endMoment.format('DD/MM/YYYY')}`;
+                        targetDate = startMoment.format('YYYY-MM-DD');
+                    }
+                    // Check if it's a month name
+                    else if (isMonthName(param)) {
+                        // !export juli - Export laporan bulan juli
+                        const monthResult = parseMonthName(param);
+                        if (!monthResult) {
+                            await bot.sendMessage(message.from, '❌ Nama bulan tidak valid. Gunakan: januari, februari, maret, april, mei, juni, juli, agustus, september, oktober, november, desember');
+                            return;
+                        }
+
+                        const { month, year } = monthResult;
+                        const startMoment = moment(`01${month.toString().padStart(2, '0')}${year}`, 'DDMMYYYY').tz('Asia/Jakarta');
+                        const endMoment = startMoment.clone().endOf('month');
+
+                        startDate = startMoment.format('YYYY-MM-DD') + ' 00:00:00';
+                        endDate = endMoment.format('YYYY-MM-DD') + ' 23:59:59';
+                        displayDate = `${startMoment.format('MMMM YYYY')}`;
+                        targetDate = startMoment.format('YYYY-MM-DD');
+                    }
+                    // Check if it's a date (DDMMYYYY)
+                    else if (/^\d{8}$/.test(param)) {
+                        // !export DDMMYYYY - Export tanggal tertentu
+                        const parsedDate = moment(param, 'DDMMYYYY').tz('Asia/Jakarta');
+                        if (!parsedDate.isValid()) {
+                            await bot.sendMessage(message.from, '❌ Format tanggal tidak valid. Gunakan DDMMYYYY (contoh: 01082025)');
+                            return;
+                        }
+
+                        const businessDay = parsedDate.clone();
+                        const nextDay = businessDay.clone().add(1, 'day');
+
+                        startDate = businessDay.format('YYYY-MM-DD') + ' 12:00:00';
+                        endDate = nextDay.format('YYYY-MM-DD') + ' 11:59:59';
+                        displayDate = businessDay.format('DD/MM/YYYY');
+                        targetDate = businessDay.format('YYYY-MM-DD');
+                    }
+                    // Check if it's an apartment name
+                    else {
+                        // !export apartemen - Default business day untuk apartemen tertentu
+                        apartmentName = findApartmentByPartialName(param);
+                        if (!apartmentName) {
+                            await bot.sendMessage(message.from, `❌ Parameter "${param}" tidak dikenali. Gunakan:\n- Angka 1-31 untuk hari terakhir\n- DDMMYYYY untuk tanggal\n- DD-DDMMYYYY untuk range tanggal\n- Nama bulan untuk laporan bulanan\n- Nama apartemen`);
+                            return;
+                        }
+
+                        const now = moment().tz('Asia/Jakarta');
+                        const businessDay = now.clone().subtract(1, 'day');
+
+                        startDate = businessDay.format('YYYY-MM-DD') + ' 12:00:00';
+                        endDate = now.format('YYYY-MM-DD') + ' 11:59:59';
+                        displayDate = businessDay.format('DD/MM/YYYY');
+                        targetDate = businessDay.format('YYYY-MM-DD');
+                    }
 
                     if (param.length === 8 && /^\d{8}$/.test(param)) {
                         // Format tanggal DDMMYYYY
@@ -712,9 +803,8 @@ async function handleCommand(message, apartmentName) {
                         targetDate = businessDay.format('YYYY-MM-DD');
                     }
                 } else if (parts.length === 3) {
-                    // !export apartemen DDMMYYYY
                     const apartmentParam = parts[1];
-                    const dateParam = parts[2];
+                    const secondParam = parts[2];
 
                     // Validasi apartemen
                     apartmentName = findApartmentByPartialName(apartmentParam);
@@ -723,33 +813,45 @@ async function handleCommand(message, apartmentName) {
                         return;
                     }
 
-                    // Validasi tanggal
-                    if (dateParam.length !== 8 || !/^\d{8}$/.test(dateParam)) {
-                        await bot.sendMessage(message.from, '❌ Format tanggal tidak valid. Gunakan format DDMMYYYY (contoh: 01082025)');
+                    // Check if second parameter is a number (days) or date
+                    if (/^\d+$/.test(secondParam)) {
+                        // !export <apartemen> <angka> - Export apartemen X hari terakhir
+                        const days = parseInt(secondParam);
+                        if (days >= 1 && days <= 31) {
+                            const now = moment().tz('Asia/Jakarta');
+                            const endMoment = now.clone();
+                            const startMoment = now.clone().subtract(days - 1, 'days');
+
+                            startDate = startMoment.format('YYYY-MM-DD') + ' 00:00:00';
+                            endDate = endMoment.format('YYYY-MM-DD') + ' 23:59:59';
+                            displayDate = `${startMoment.format('DD/MM/YYYY')} - ${endMoment.format('DD/MM/YYYY')} (${days} hari)`;
+                            targetDate = startMoment.format('YYYY-MM-DD');
+                        } else {
+                            await bot.sendMessage(message.from, '❌ Jumlah hari harus antara 1-31.');
+                            return;
+                        }
+                    } else if (secondParam.length === 8 && /^\d{8}$/.test(secondParam)) {
+                        // !export <apartemen> DDMMYYYY - Export apartemen tanggal tertentu
+                        const parsedDate = moment(secondParam, 'DDMMYYYY').tz('Asia/Jakarta');
+                        if (!parsedDate.isValid()) {
+                            await bot.sendMessage(message.from, '❌ Format tanggal tidak valid. Gunakan DDMMYYYY (contoh: 01082025)');
+                            return;
+                        }
+
+                        // Hitung business day range untuk tanggal yang diminta
+                        const businessDay = parsedDate.clone();
+                        const nextDay = businessDay.clone().add(1, 'day');
+
+                        startDate = businessDay.format('YYYY-MM-DD') + ' 12:00:00';
+                        endDate = nextDay.format('YYYY-MM-DD') + ' 11:59:59';
+                        displayDate = businessDay.format('DD/MM/YYYY');
+                        targetDate = businessDay.format('YYYY-MM-DD');
+                    } else {
+                        await bot.sendMessage(message.from, '❌ Parameter kedua harus berupa angka (1-31) atau tanggal DDMMYYYY');
                         return;
                     }
-
-                    const day = dateParam.substring(0, 2);
-                    const month = dateParam.substring(2, 4);
-                    const year = dateParam.substring(4, 8);
-                    targetDate = `${year}-${month}-${day}`;
-
-                    // Validasi tanggal
-                    const parsedDate = moment(targetDate, 'YYYY-MM-DD');
-                    if (!parsedDate.isValid()) {
-                        await bot.sendMessage(message.from, '❌ Format tanggal tidak valid. Gunakan format DDMMYYYY (contoh: 01082025)');
-                        return;
-                    }
-
-                    // Hitung business day range untuk tanggal yang diminta
-                    const businessDay = parsedDate.clone();
-                    const nextDay = businessDay.clone().add(1, 'day');
-
-                    startDate = businessDay.format('YYYY-MM-DD') + ' 12:00:00';
-                    endDate = nextDay.format('YYYY-MM-DD') + ' 11:59:59';
-                    displayDate = businessDay.format('DD/MM/YYYY');
                 } else {
-                    await bot.sendMessage(message.from, '❌ Format command tidak valid.\n\nGunakan:\n- `!export` (business day kemarin)\n- `!export DDMMYYYY` (tanggal tertentu)\n- `!export apartemen DDMMYYYY` (apartemen + tanggal)');
+                    await bot.sendMessage(message.from, '❌ Format command tidak valid.\n\nGunakan:\n- `!export` (business day kemarin)\n- `!export <angka>` (X hari terakhir)\n- `!export <tanggal>` (DDMMYYYY)\n- `!export <range>` (DD-DDMMYYYY)\n- `!export <bulan>` (nama bulan)\n- `!export <apartemen>` (apartemen business day kemarin)\n- `!export <apartemen> <angka>` (apartemen X hari terakhir)\n- `!export <apartemen> <tanggal>` (apartemen tanggal tertentu)');
                     return;
                 }
 
@@ -2088,15 +2190,41 @@ function calculateMarketingCommissionFromTransactions(transactions) {
 }
 
 /**
+ * Check if parameter is a month name
+ */
+function isMonthName(param) {
+    const monthNames = ['januari', 'februari', 'maret', 'april', 'mei', 'juni',
+                       'juli', 'agustus', 'september', 'oktober', 'november', 'desember'];
+    return monthNames.includes(param.toLowerCase());
+}
+
+/**
+ * Parse month name to month number and year
+ */
+function parseMonthName(param) {
+    const monthNames = {
+        'januari': 1, 'februari': 2, 'maret': 3, 'april': 4, 'mei': 5, 'juni': 6,
+        'juli': 7, 'agustus': 8, 'september': 9, 'oktober': 10, 'november': 11, 'desember': 12
+    };
+
+    const month = monthNames[param.toLowerCase()];
+    if (!month) return null;
+
+    // Default to current year
+    const currentYear = moment().tz('Asia/Jakarta').year();
+    return { month, year: currentYear };
+}
+
+/**
  * Get apartment color scheme
  */
 function getApartmentColors(apartmentName) {
     const colorSchemes = {
         'TREEPARK BSD': { bg: 'FFFF00', font: '000000' }, // Kuning 🟡
         'SKY HOUSE BSD': { bg: '00FF00', font: '000000' }, // Hijau 🟢
-        'SPRINGWOOD': { bg: 'FFFFFF', font: '000000' }, // Putih ⚪
+        'SPRINGWOOD': { bg: '87CEEB', font: '000000' }, // Biru Muda 🔵
         'EMERALD BINTARO': { bg: '000000', font: 'FFFFFF' }, // Hitam ⚫
-        'TOKYO RIVERSIDE PIK2': { bg: 'A0522D', font: 'FFFFFF' }, // Coklat 🟤
+        'TOKYO RIVERSIDE PIK2': { bg: 'D2691E', font: 'FFFFFF' }, // Coklat 🟤
         'TRANSPARK BINTARO': { bg: '800080', font: 'FFFFFF' }, // Ungu 🟣
         'SERPONG GARDEN': { bg: 'FFA500', font: '000000' } // Oranye 🟠
     };

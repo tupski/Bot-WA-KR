@@ -14,9 +14,9 @@ function getApartmentColors(apartmentName) {
     const colorSchemes = {
         'TREEPARK BSD': { bg: 'FFFF00', font: '000000' }, // Kuning 🟡
         'SKY HOUSE BSD': { bg: '00FF00', font: '000000' }, // Hijau 🟢
-        'SPRINGWOOD': { bg: 'FFFFFF', font: '000000' }, // Putih ⚪
+        'SPRINGWOOD': { bg: '87CEEB', font: '000000' }, // Biru Muda 🔵
         'EMERALD BINTARO': { bg: '000000', font: 'FFFFFF' }, // Hitam ⚫
-        'TOKYO RIVERSIDE PIK2': { bg: 'A0522D', font: 'FFFFFF' }, // Coklat 🟤
+        'TOKYO RIVERSIDE PIK2': { bg: 'D2691E', font: 'FFFFFF' }, // Coklat 🟤
         'TRANSPARK BINTARO': { bg: '800080', font: 'FFFFFF' }, // Ungu 🟣
         'SERPONG GARDEN': { bg: 'FFA500', font: '000000' } // Oranye 🟠
     };
