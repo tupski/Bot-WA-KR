@@ -2098,7 +2098,7 @@ function getApartmentColors(apartmentName) {
         'EMERALD BINTARO': { bg: '000000', font: 'FFFFFF' }, // Hitam ⚫
         'TOKYO RIVERSIDE PIK2': { bg: 'A0522D', font: 'FFFFFF' }, // Coklat 🟤
         'TRANSPARK BINTARO': { bg: '800080', font: 'FFFFFF' }, // Ungu 🟣
-        'SERPONG GARDEN': { bg: '808080', font: 'FFFFFF' } // Abu-abu (default)
+        'SERPONG GARDEN': { bg: 'FFA500', font: '000000' } // Oranye 🟠
     };
 
     return colorSchemes[apartmentName] || { bg: '366092', font: 'FFFFFF' }; // Default blue
@@ -2175,8 +2175,31 @@ async function createTransactionsSheetForExport(workbook, transactions, displayD
             if (apartmentGroups[apartmentName]) {
                 const apartmentTransactions = apartmentGroups[apartmentName];
 
-                // Add apartment header
+                // Add apartment name header first
                 const colors = getApartmentColors(apartmentName);
+                const apartmentNameRow = worksheet.addRow([apartmentName]);
+                worksheet.mergeCells(`A${currentRow}:K${currentRow}`);
+                apartmentNameRow.font = { bold: true, color: { argb: colors.font } };
+                apartmentNameRow.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: colors.bg }
+                };
+                apartmentNameRow.alignment = { horizontal: 'center', vertical: 'middle' };
+
+                // Add borders to apartment name row
+                apartmentNameRow.eachCell((cell) => {
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' }
+                    };
+                });
+
+                currentRow++;
+
+                // Add column headers
                 const apartmentHeaderRow = worksheet.addRow([
                     'No', 'Tanggal', 'Waktu', 'Apartemen', 'Unit', 'Check Out', 'Durasi', 'Pembayaran', 'Jumlah', 'CS', 'Komisi'
                 ]);
@@ -2190,29 +2213,6 @@ async function createTransactionsSheetForExport(workbook, transactions, displayD
 
                 // Add borders to apartment header
                 apartmentHeaderRow.eachCell((cell) => {
-                    cell.border = {
-                        top: { style: 'thin' },
-                        left: { style: 'thin' },
-                        bottom: { style: 'thin' },
-                        right: { style: 'thin' }
-                    };
-                });
-
-                currentRow++;
-
-                // Add apartment header with name
-                const apartmentNameRow = worksheet.addRow([apartmentName]);
-                worksheet.mergeCells(`A${currentRow}:K${currentRow}`);
-                apartmentNameRow.font = { bold: true, color: { argb: colors.font } };
-                apartmentNameRow.fill = {
-                    type: 'pattern',
-                    pattern: 'solid',
-                    fgColor: { argb: colors.bg }
-                };
-                apartmentNameRow.alignment = { horizontal: 'center', vertical: 'middle' };
-
-                // Add borders to apartment name row
-                apartmentNameRow.eachCell((cell) => {
                     cell.border = {
                         top: { style: 'thin' },
                         left: { style: 'thin' },
@@ -2307,8 +2307,31 @@ async function createTransactionsSheetForExport(workbook, transactions, displayD
             if (!apartmentOrder.includes(apartmentName)) {
                 const apartmentTransactions = apartmentGroups[apartmentName];
 
-                // Add apartment header
+                // Add apartment name header first
                 const colors = getApartmentColors(apartmentName);
+                const apartmentNameRow = worksheet.addRow([apartmentName]);
+                worksheet.mergeCells(`A${currentRow}:K${currentRow}`);
+                apartmentNameRow.font = { bold: true, color: { argb: colors.font } };
+                apartmentNameRow.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: colors.bg }
+                };
+                apartmentNameRow.alignment = { horizontal: 'center', vertical: 'middle' };
+
+                // Add borders to apartment name row
+                apartmentNameRow.eachCell((cell) => {
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' }
+                    };
+                });
+
+                currentRow++;
+
+                // Add column headers
                 const apartmentHeaderRow = worksheet.addRow([
                     'No', 'Tanggal', 'Waktu', 'Apartemen', 'Unit', 'Check Out', 'Durasi', 'Pembayaran', 'Jumlah', 'CS', 'Komisi'
                 ]);
@@ -2322,29 +2345,6 @@ async function createTransactionsSheetForExport(workbook, transactions, displayD
 
                 // Add borders to apartment header
                 apartmentHeaderRow.eachCell((cell) => {
-                    cell.border = {
-                        top: { style: 'thin' },
-                        left: { style: 'thin' },
-                        bottom: { style: 'thin' },
-                        right: { style: 'thin' }
-                    };
-                });
-
-                currentRow++;
-
-                // Add apartment header with name
-                const apartmentNameRow = worksheet.addRow([apartmentName]);
-                worksheet.mergeCells(`A${currentRow}:K${currentRow}`);
-                apartmentNameRow.font = { bold: true, color: { argb: colors.font } };
-                apartmentNameRow.fill = {
-                    type: 'pattern',
-                    pattern: 'solid',
-                    fgColor: { argb: colors.bg }
-                };
-                apartmentNameRow.alignment = { horizontal: 'center', vertical: 'middle' };
-
-                // Add borders to apartment name row
-                apartmentNameRow.eachCell((cell) => {
                     cell.border = {
                         top: { style: 'thin' },
                         left: { style: 'thin' },
@@ -2491,7 +2491,7 @@ async function createTransactionsSheetForExport(workbook, transactions, displayD
 }
 
 async function createCombinedSummarySheetForExport(workbook, csSummary, marketingCommissionByApartment, displayDate, apartmentName) {
-    const worksheet = workbook.addWorksheet('Ringkasan');
+    const worksheet = workbook.addWorksheet('Komisi Marketing');
 
     // Define apartment order
     const apartmentOrder = [
@@ -2532,6 +2532,16 @@ async function createCombinedSummarySheetForExport(workbook, csSummary, marketin
         fgColor: { argb: '366092' }
     };
     headerRow1.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    // Add borders to header
+    headerRow1.eachCell((cell) => {
+        cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+        };
+    });
 
     // Set column widths for table format
     worksheet.columns = [
@@ -2582,6 +2592,7 @@ async function createCombinedSummarySheetForExport(workbook, csSummary, marketin
 
         // Add data rows for marketing commission
         let marketingRowIndex = 0;
+        let totalBookings = 0;
         Object.keys(marketingData).forEach(csName => {
             const data = marketingData[csName];
             const row = worksheet.addRow([
@@ -2608,9 +2619,44 @@ async function createCombinedSummarySheetForExport(workbook, csSummary, marketin
                 };
             }
 
+            // Add borders
+            row.eachCell((cell) => {
+                cell.border = {
+                    top: { style: 'thin' },
+                    left: { style: 'thin' },
+                    bottom: { style: 'thin' },
+                    right: { style: 'thin' }
+                };
+            });
+
+            totalBookings += data.total;
             marketingRowIndex++;
             currentRow++;
         });
+
+        // Add total row for Marketing Commission
+        const totalMarketingRow = worksheet.addRow([
+            '', '', '', '', '', '', '', 'TOTAL:', totalBookings
+        ]);
+        totalMarketingRow.font = { bold: true };
+        totalMarketingRow.alignment = { horizontal: 'center', vertical: 'middle' };
+        totalMarketingRow.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'E6E6E6' }
+        };
+
+        // Add borders to total row
+        totalMarketingRow.eachCell((cell) => {
+            cell.border = {
+                top: { style: 'thick' },
+                left: { style: 'thin' },
+                bottom: { style: 'thick' },
+                right: { style: 'thin' }
+            };
+        });
+
+        currentRow++;
     }
 
     // Add spacing between sections
@@ -2922,34 +2968,55 @@ async function createCashReportSheetForExport(workbook, transactions, displayDat
         // Process apartments in order
         apartmentOrder.forEach(apartmentName => {
             if (apartmentGroups[apartmentName]) {
-                // Add apartment header if there are multiple apartments
-                const apartmentCount = Object.keys(apartmentGroups).length;
-                if (apartmentCount > 1) {
-                    // Add apartment header
-                    worksheet.addRow([apartmentName]);
-                    worksheet.mergeCells(`A${currentRow}:K${currentRow}`);
-                    const apartmentHeader = worksheet.getRow(currentRow);
-                    apartmentHeader.font = { bold: true, size: 12 };
-                    apartmentHeader.alignment = { horizontal: 'center' };
-                    apartmentHeader.fill = {
-                        type: 'pattern',
-                        pattern: 'solid',
-                        fgColor: { argb: 'D9E1F2' }
-                    };
-                    currentRow++;
+                const apartmentTransactions = apartmentGroups[apartmentName];
 
-                    // Add sub-header for this apartment
-                    worksheet.addRow(['No', 'Tanggal', 'Waktu', 'Apartemen', 'Unit', 'Check Out', 'Durasi', 'Pembayaran', 'Jumlah', 'CS', 'Komisi']);
-                    const subHeader = worksheet.getRow(currentRow);
-                    subHeader.font = { bold: true, color: { argb: 'FFFFFF' } };
-                    subHeader.fill = {
-                        type: 'pattern',
-                        pattern: 'solid',
-                        fgColor: { argb: '366092' }
+                // Add apartment name header
+                const colors = getApartmentColors(apartmentName);
+                const apartmentNameRow = worksheet.addRow([apartmentName]);
+                worksheet.mergeCells(`A${currentRow}:K${currentRow}`);
+                apartmentNameRow.font = { bold: true, color: { argb: colors.font } };
+                apartmentNameRow.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: colors.bg }
+                };
+                apartmentNameRow.alignment = { horizontal: 'center', vertical: 'middle' };
+
+                // Add borders to apartment name row
+                apartmentNameRow.eachCell((cell) => {
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' }
                     };
-                    subHeader.alignment = { horizontal: 'center', vertical: 'middle' };
-                    currentRow++;
-                }
+                });
+
+                currentRow++;
+
+                // Add column headers
+                const apartmentHeaderRow = worksheet.addRow([
+                    'No', 'Tanggal', 'Waktu', 'Apartemen', 'Unit', 'Check Out', 'Durasi', 'Pembayaran', 'Jumlah', 'CS', 'Komisi'
+                ]);
+                apartmentHeaderRow.font = { bold: true, color: { argb: colors.font } };
+                apartmentHeaderRow.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: colors.bg }
+                };
+                apartmentHeaderRow.alignment = { horizontal: 'center', vertical: 'middle' };
+
+                // Add borders to apartment header
+                apartmentHeaderRow.eachCell((cell) => {
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' }
+                    };
+                });
+
+                currentRow++;
 
                 apartmentGroups[apartmentName].forEach((transaction) => {
                     const moment = require('moment-timezone');
@@ -3009,40 +3076,65 @@ async function createCashReportSheetForExport(workbook, transactions, displayDat
                     currentRowNumber++;
                     currentRow++;
                 });
+
+                // Add empty row between apartments
+                worksheet.addRow([]);
+                currentRow++;
             }
         });
 
         // Process any remaining apartments not in the predefined order
         Object.keys(apartmentGroups).forEach(apartmentName => {
             if (!apartmentOrder.includes(apartmentName)) {
-                // Add apartment header if there are multiple apartments
-                const apartmentCount = Object.keys(apartmentGroups).length;
-                if (apartmentCount > 1) {
-                    // Add apartment header
-                    worksheet.addRow([apartmentName]);
-                    worksheet.mergeCells(`A${currentRow}:K${currentRow}`);
-                    const apartmentHeader = worksheet.getRow(currentRow);
-                    apartmentHeader.font = { bold: true, size: 12 };
-                    apartmentHeader.alignment = { horizontal: 'center' };
-                    apartmentHeader.fill = {
-                        type: 'pattern',
-                        pattern: 'solid',
-                        fgColor: { argb: 'D9E1F2' }
-                    };
-                    currentRow++;
+                const apartmentTransactions = apartmentGroups[apartmentName];
 
-                    // Add sub-header for this apartment
-                    worksheet.addRow(['No', 'Tanggal', 'Waktu', 'Apartemen', 'Unit', 'Check Out', 'Durasi', 'Pembayaran', 'Jumlah', 'CS', 'Komisi']);
-                    const subHeader = worksheet.getRow(currentRow);
-                    subHeader.font = { bold: true, color: { argb: 'FFFFFF' } };
-                    subHeader.fill = {
-                        type: 'pattern',
-                        pattern: 'solid',
-                        fgColor: { argb: '366092' }
+                // Add apartment name header
+                const colors = getApartmentColors(apartmentName);
+                const apartmentNameRow = worksheet.addRow([apartmentName]);
+                worksheet.mergeCells(`A${currentRow}:K${currentRow}`);
+                apartmentNameRow.font = { bold: true, color: { argb: colors.font } };
+                apartmentNameRow.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: colors.bg }
+                };
+                apartmentNameRow.alignment = { horizontal: 'center', vertical: 'middle' };
+
+                // Add borders to apartment name row
+                apartmentNameRow.eachCell((cell) => {
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' }
                     };
-                    subHeader.alignment = { horizontal: 'center', vertical: 'middle' };
-                    currentRow++;
-                }
+                });
+
+                currentRow++;
+
+                // Add column headers
+                const apartmentHeaderRow = worksheet.addRow([
+                    'No', 'Tanggal', 'Waktu', 'Apartemen', 'Unit', 'Check Out', 'Durasi', 'Pembayaran', 'Jumlah', 'CS', 'Komisi'
+                ]);
+                apartmentHeaderRow.font = { bold: true, color: { argb: colors.font } };
+                apartmentHeaderRow.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: colors.bg }
+                };
+                apartmentHeaderRow.alignment = { horizontal: 'center', vertical: 'middle' };
+
+                // Add borders to apartment header
+                apartmentHeaderRow.eachCell((cell) => {
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' }
+                    };
+                });
+
+                currentRow++;
 
                 apartmentGroups[apartmentName].forEach((transaction) => {
                     const moment = require('moment-timezone');
@@ -3102,6 +3194,10 @@ async function createCashReportSheetForExport(workbook, transactions, displayDat
                     currentRowNumber++;
                     currentRow++;
                 });
+
+                // Add empty row between apartments
+                worksheet.addRow([]);
+                currentRow++;
             }
         });
 
