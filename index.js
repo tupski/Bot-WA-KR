@@ -2527,52 +2527,33 @@ async function createTransactionsSheetForExport(workbook, transactions, displayD
 
         // Add grand total row
         if (transactions.length > 0) {
+            worksheet.addRow([]); // Empty row before total
             const grandTotalRow = worksheet.addRow([
-                '', '', '', 'TOTAL KESELURUHAN', '', '', '', '',
+                '', '', '', 'TOTAL:', '', '', '', '',
                 grandTotalAmount, '', grandTotalCommission
             ]);
             grandTotalRow.font = { bold: true, size: 12 };
             grandTotalRow.fill = {
                 type: 'pattern',
                 pattern: 'solid',
-                fgColor: { argb: '366092' }
+                fgColor: { argb: 'D4E6F1' }
             };
-            grandTotalRow.font = { bold: true, color: { argb: 'FFFFFF' } };
+            grandTotalRow.font = { bold: true, color: { argb: '000000' } };
             grandTotalRow.getCell(9).numFmt = 'Rp #,##0';  // Amount
             grandTotalRow.getCell(11).numFmt = 'Rp #,##0'; // Komisi
 
             // Add borders to grand total row
-            grandTotalRow.eachCell((cell) => {
-                cell.border = {
-                    top: { style: 'thick' },
-                    left: { style: 'thin' },
-                    bottom: { style: 'thick' },
-                    right: { style: 'thin' }
-                };
+            grandTotalRow.eachCell((cell, colNumber) => {
+                if (colNumber >= 8 && colNumber <= 11) {
+                    cell.border = {
+                        top: { style: 'thick' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thick' },
+                        right: { style: 'thin' }
+                    };
+                }
             });
         }
-
-        // Add totals row
-        const totalRow = worksheet.addRow([
-            '', '', '', '', '', '', '', 'TOTAL:',
-            { formula: `SUM(I4:I${3 + transactions.length})` },
-            '',
-            { formula: `SUM(K4:K${3 + transactions.length})` }
-        ]);
-
-        totalRow.font = { bold: true };
-        totalRow.getCell(9).numFmt = 'Rp #,##0';
-        totalRow.getCell(11).numFmt = 'Rp #,##0';
-
-        // Add borders to total row (no background)
-        totalRow.eachCell((cell) => {
-            cell.border = {
-                top: { style: 'thin' },
-                left: { style: 'thin' },
-                bottom: { style: 'thin' },
-                right: { style: 'thin' }
-            };
-        });
     } else {
         worksheet.addRow(['Tidak ada transaksi pada periode ini']);
         worksheet.mergeCells('A4:K4');
