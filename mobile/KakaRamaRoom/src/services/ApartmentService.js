@@ -1,0 +1,390 @@
+import DatabaseManager from '../config/database';
+import ActivityLogService from './ActivityLogService';
+import { ACTIVITY_ACTIONS } from '../config/constants';
+
+class ApartmentService {
+  // Get all apartments
+  async getAllApartments() {
+    try {
+      const db = DatabaseManager.getDatabase();
+      const result = await db.executeSql(
+        'SELECT * FROM apartments ORDER BY name ASC'
+      );
+
+      const apartments = [];
+      for (let i = 0; i < result[0].rows.length; i++) {
+        apartments.push(result[0].rows.item(i));
+      }
+
+      return {
+        success: true,
+        data: apartments,
+      };
+    } catch (error) {
+      console.error('Error getting apartments:', error);
+      return {
+        success: false,
+        message: 'Gagal mengambil data apartemen',
+      };
+    }
+  }
+
+  // Get active apartments
+  async getActiveApartments() {
+    try {
+      const db = DatabaseManager.getDatabase();
+      const result = await db.executeSql(
+        "SELECT * FROM apartments WHERE status = 'active' ORDER BY name ASC"
+      );
+
+      const apartments = [];
+      for (let i = 0; i < result[0].rows.length; i++) {
+        apartments.push(result[0].rows.item(i));
+      }
+
+      return {
+        success: true,
+        data: apartments,
+      };
+    } catch (error) {
+      console.error('Error getting active apartments:', error);
+      return {
+        success: false,
+        message: 'Gagal mengambil data apartemen aktif',
+      };
+    }
+  }
+
+  // Get apartment by ID
+  async getApartmentById(id) {
+    try {
+      const db = DatabaseManager.getDatabase();
+      const result = await db.executeSql(
+        'SELECT * FROM apartments WHERE id = ?',
+        [id]
+      );
+
+      if (result[0].rows.length > 0) {
+        return {
+          success: true,
+          data: result[0].rows.item(0),
+        };
+      } else {
+        return {
+          success: false,
+          message: 'Apartemen tidak ditemukan',
+        };
+      }
+    } catch (error) {
+      console.error('Error getting apartment by ID:', error);
+      return {
+        success: false,
+        message: 'Gagal mengambil data apartemen',
+      };
+    }
+  }
+
+  // Get apartments by IDs (untuk field team)
+  async getApartmentsByIds(ids) {
+    try {
+      if (!ids || ids.length === 0) {
+        return {
+          success: true,
+          data: [],
+        };
+      }
+
+      const db = DatabaseManager.getDatabase();
+      const placeholders = ids.map(() => '?').join(',');
+      const result = await db.executeSql(
+        `SELECT * FROM apartments WHERE id IN (${placeholders}) AND status = 'active' ORDER BY name ASC`,
+        ids
+      );
+
+      const apartments = [];
+      for (let i = 0; i < result[0].rows.length; i++) {
+        apartments.push(result[0].rows.item(i));
+      }
+
+      return {
+        success: true,
+        data: apartments,
+      };
+    } catch (error) {
+      console.error('Error getting apartments by IDs:', error);
+      return {
+        success: false,
+        message: 'Gagal mengambil data apartemen',
+      };
+    }
+  }
+
+  // Create apartment
+  async createApartment(apartmentData, userId) {
+    try {
+      const { name, code, whatsappGroupId, address, description } = apartmentData;
+
+      // Check if code already exists
+      const db = DatabaseManager.getDatabase();
+      const existingResult = await db.executeSql(
+        'SELECT id FROM apartments WHERE code = ?',
+        [code]
+      );
+
+      if (existingResult[0].rows.length > 0) {
+        return {
+          success: false,
+          message: 'Kode apartemen sudah digunakan',
+        };
+      }
+
+      // Insert new apartment
+      const result = await db.executeSql(
+        `INSERT INTO apartments (name, code, whatsapp_group_id, address, description, status, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+        [name, code, whatsappGroupId, address, description]
+      );
+
+      const apartmentId = result[0].insertId;
+
+      // Log activity
+      await ActivityLogService.logActivity(
+        userId,
+        'admin',
+        ACTIVITY_ACTIONS.CREATE_APARTMENT,
+        `Membuat apartemen baru: ${name} (${code})`,
+        'apartments',
+        apartmentId
+      );
+
+      return {
+        success: true,
+        data: { id: apartmentId, ...apartmentData },
+        message: 'Apartemen berhasil dibuat',
+      };
+    } catch (error) {
+      console.error('Error creating apartment:', error);
+      return {
+        success: false,
+        message: 'Gagal membuat apartemen',
+      };
+    }
+  }
+
+  // Update apartment
+  async updateApartment(id, apartmentData, userId) {
+    try {
+      const { name, code, whatsappGroupId, address, description, status } = apartmentData;
+
+      // Check if code already exists (exclude current apartment)
+      const db = DatabaseManager.getDatabase();
+      const existingResult = await db.executeSql(
+        'SELECT id FROM apartments WHERE code = ? AND id != ?',
+        [code, id]
+      );
+
+      if (existingResult[0].rows.length > 0) {
+        return {
+          success: false,
+          message: 'Kode apartemen sudah digunakan',
+        };
+      }
+
+      // Update apartment
+      const result = await db.executeSql(
+        `UPDATE apartments 
+         SET name = ?, code = ?, whatsapp_group_id = ?, address = ?, description = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [name, code, whatsappGroupId, address, description, status, id]
+      );
+
+      if (result[0].rowsAffected > 0) {
+        // Log activity
+        await ActivityLogService.logActivity(
+          userId,
+          'admin',
+          ACTIVITY_ACTIONS.UPDATE_APARTMENT,
+          `Memperbarui apartemen: ${name} (${code})`,
+          'apartments',
+          id
+        );
+
+        return {
+          success: true,
+          message: 'Apartemen berhasil diperbarui',
+        };
+      } else {
+        return {
+          success: false,
+          message: 'Apartemen tidak ditemukan',
+        };
+      }
+    } catch (error) {
+      console.error('Error updating apartment:', error);
+      return {
+        success: false,
+        message: 'Gagal memperbarui apartemen',
+      };
+    }
+  }
+
+  // Delete apartment
+  async deleteApartment(id, userId) {
+    try {
+      const db = DatabaseManager.getDatabase();
+
+      // Check if apartment has units
+      const unitsResult = await db.executeSql(
+        'SELECT COUNT(*) as count FROM units WHERE apartment_id = ?',
+        [id]
+      );
+
+      if (unitsResult[0].rows.item(0).count > 0) {
+        return {
+          success: false,
+          message: 'Tidak dapat menghapus apartemen yang masih memiliki unit',
+        };
+      }
+
+      // Check if apartment has team assignments
+      const assignmentsResult = await db.executeSql(
+        'SELECT COUNT(*) as count FROM team_apartment_assignments WHERE apartment_id = ?',
+        [id]
+      );
+
+      if (assignmentsResult[0].rows.item(0).count > 0) {
+        return {
+          success: false,
+          message: 'Tidak dapat menghapus apartemen yang masih memiliki assignment tim',
+        };
+      }
+
+      // Get apartment name for logging
+      const apartmentResult = await db.executeSql(
+        'SELECT name, code FROM apartments WHERE id = ?',
+        [id]
+      );
+
+      if (apartmentResult[0].rows.length === 0) {
+        return {
+          success: false,
+          message: 'Apartemen tidak ditemukan',
+        };
+      }
+
+      const apartment = apartmentResult[0].rows.item(0);
+
+      // Delete apartment
+      const result = await db.executeSql(
+        'DELETE FROM apartments WHERE id = ?',
+        [id]
+      );
+
+      if (result[0].rowsAffected > 0) {
+        // Log activity
+        await ActivityLogService.logActivity(
+          userId,
+          'admin',
+          ACTIVITY_ACTIONS.DELETE_APARTMENT,
+          `Menghapus apartemen: ${apartment.name} (${apartment.code})`,
+          'apartments',
+          id
+        );
+
+        return {
+          success: true,
+          message: 'Apartemen berhasil dihapus',
+        };
+      } else {
+        return {
+          success: false,
+          message: 'Apartemen tidak ditemukan',
+        };
+      }
+    } catch (error) {
+      console.error('Error deleting apartment:', error);
+      return {
+        success: false,
+        message: 'Gagal menghapus apartemen',
+      };
+    }
+  }
+
+  // Get apartment statistics
+  async getApartmentStatistics() {
+    try {
+      const db = DatabaseManager.getDatabase();
+      
+      // Get total apartments
+      const totalResult = await db.executeSql(
+        'SELECT COUNT(*) as total FROM apartments'
+      );
+
+      // Get active apartments
+      const activeResult = await db.executeSql(
+        "SELECT COUNT(*) as active FROM apartments WHERE status = 'active'"
+      );
+
+      // Get apartments with units
+      const withUnitsResult = await db.executeSql(
+        `SELECT COUNT(DISTINCT a.id) as with_units 
+         FROM apartments a 
+         INNER JOIN units u ON a.id = u.apartment_id`
+      );
+
+      // Get apartments with team assignments
+      const withTeamsResult = await db.executeSql(
+        `SELECT COUNT(DISTINCT a.id) as with_teams 
+         FROM apartments a 
+         INNER JOIN team_apartment_assignments taa ON a.id = taa.apartment_id`
+      );
+
+      return {
+        success: true,
+        data: {
+          total: totalResult[0].rows.item(0).total,
+          active: activeResult[0].rows.item(0).active,
+          withUnits: withUnitsResult[0].rows.item(0).with_units,
+          withTeams: withTeamsResult[0].rows.item(0).with_teams,
+        },
+      };
+    } catch (error) {
+      console.error('Error getting apartment statistics:', error);
+      return {
+        success: false,
+        message: 'Gagal mengambil statistik apartemen',
+      };
+    }
+  }
+
+  // Search apartments
+  async searchApartments(searchTerm) {
+    try {
+      const db = DatabaseManager.getDatabase();
+      const result = await db.executeSql(
+        `SELECT * FROM apartments 
+         WHERE name LIKE ? OR code LIKE ? OR address LIKE ?
+         ORDER BY name ASC`,
+        [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`]
+      );
+
+      const apartments = [];
+      for (let i = 0; i < result[0].rows.length; i++) {
+        apartments.push(result[0].rows.item(i));
+      }
+
+      return {
+        success: true,
+        data: apartments,
+      };
+    } catch (error) {
+      console.error('Error searching apartments:', error);
+      return {
+        success: false,
+        message: 'Gagal mencari apartemen',
+      };
+    }
+  }
+}
+
+export default new ApartmentService();
