@@ -190,9 +190,9 @@ class MessageParser {
                 cs: null
             };
         } else if (value === 'apk') {
-            // Khusus untuk APK tanpa nominal
+            // Khusus untuk APK tanpa nominal - ubah ke Transfer
             return {
-                method: 'Cash',
+                method: 'Transfer',
                 amount: 0,
                 cs: 'APK'
             };

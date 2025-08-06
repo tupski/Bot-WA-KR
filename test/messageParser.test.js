@@ -68,6 +68,28 @@ Komisi: 0`,
             commission: 0,
             skipFinancial: true
         }
+    },
+    {
+        input: `🔵SKY HOUSE BSD
+Unit      :C3/25N
+Cek out: 18:00
+Untuk   : 5 jam
+Cash/Tf: apk
+Cs    : apk
+Komisi: 0`,
+        groupName: 'SKY HOUSE BSD',
+        expected: {
+            location: 'SKY HOUSE BSD',
+            groupPrefix: 'SKY HOUSE BSD',
+            unit: 'C3/25N',
+            checkoutTime: '18:00',
+            duration: '5 jam',
+            paymentMethod: 'Transfer',
+            csName: 'apk',
+            amount: 0,
+            commission: 0,
+            skipFinancial: true
+        }
     }
 ];
 

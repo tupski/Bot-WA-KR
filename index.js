@@ -2625,7 +2625,7 @@ async function createCashReportSheetForExport(workbook, transactions, displayDat
 
     // Headers
     const headerRow = worksheet.addRow([
-        'No', 'Tanggal', 'Waktu', 'Apartemen', 'Unit', 'Check Out', 'Durasi', 'Payment', 'Jumlah', 'CS', 'Komisi'
+        'No', 'Tanggal', 'Waktu', 'Apartemen', 'Unit', 'Check Out', 'Durasi', 'Pembayaran', 'Jumlah', 'CS', 'Komisi'
     ]);
     headerRow.font = { bold: true, color: { argb: 'FFFFFF' } };
     headerRow.fill = {
@@ -2640,7 +2640,7 @@ async function createCashReportSheetForExport(workbook, transactions, displayDat
         { width: 5 },  // No
         { width: 12 }, // Tanggal
         { width: 8 },  // Waktu
-        { width: 18 }, // Apartemen
+        { width: 23 }, // Apartemen
         { width: 8 },  // Unit
         { width: 10 }, // Check Out
         { width: 10 }, // Durasi
@@ -2707,10 +2707,40 @@ async function createCashReportSheetForExport(workbook, transactions, displayDat
         let currentRowNumber = 1;
         let totalAmount = 0;
         let totalCommission = 0;
+        let currentRow = 4; // Start after main header
 
         // Process apartments in order
         apartmentOrder.forEach(apartmentName => {
             if (apartmentGroups[apartmentName]) {
+                // Add apartment header if there are multiple apartments
+                const apartmentCount = Object.keys(apartmentGroups).length;
+                if (apartmentCount > 1) {
+                    // Add apartment header
+                    worksheet.addRow([apartmentName]);
+                    worksheet.mergeCells(`A${currentRow}:K${currentRow}`);
+                    const apartmentHeader = worksheet.getRow(currentRow);
+                    apartmentHeader.font = { bold: true, size: 12 };
+                    apartmentHeader.alignment = { horizontal: 'center' };
+                    apartmentHeader.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: 'D9E1F2' }
+                    };
+                    currentRow++;
+
+                    // Add sub-header for this apartment
+                    worksheet.addRow(['No', 'Tanggal', 'Waktu', 'Apartemen', 'Unit', 'Check Out', 'Durasi', 'Pembayaran', 'Jumlah', 'CS', 'Komisi']);
+                    const subHeader = worksheet.getRow(currentRow);
+                    subHeader.font = { bold: true, color: { argb: 'FFFFFF' } };
+                    subHeader.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: '366092' }
+                    };
+                    subHeader.alignment = { horizontal: 'center', vertical: 'middle' };
+                    currentRow++;
+                }
+
                 apartmentGroups[apartmentName].forEach((transaction) => {
                     const moment = require('moment-timezone');
                     const createdAt = moment(transaction.created_at).tz('Asia/Jakarta');
@@ -2767,6 +2797,7 @@ async function createCashReportSheetForExport(workbook, transactions, displayDat
                     totalAmount += amount;
                     totalCommission += commission;
                     currentRowNumber++;
+                    currentRow++;
                 });
             }
         });
@@ -2774,6 +2805,35 @@ async function createCashReportSheetForExport(workbook, transactions, displayDat
         // Process any remaining apartments not in the predefined order
         Object.keys(apartmentGroups).forEach(apartmentName => {
             if (!apartmentOrder.includes(apartmentName)) {
+                // Add apartment header if there are multiple apartments
+                const apartmentCount = Object.keys(apartmentGroups).length;
+                if (apartmentCount > 1) {
+                    // Add apartment header
+                    worksheet.addRow([apartmentName]);
+                    worksheet.mergeCells(`A${currentRow}:K${currentRow}`);
+                    const apartmentHeader = worksheet.getRow(currentRow);
+                    apartmentHeader.font = { bold: true, size: 12 };
+                    apartmentHeader.alignment = { horizontal: 'center' };
+                    apartmentHeader.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: 'D9E1F2' }
+                    };
+                    currentRow++;
+
+                    // Add sub-header for this apartment
+                    worksheet.addRow(['No', 'Tanggal', 'Waktu', 'Apartemen', 'Unit', 'Check Out', 'Durasi', 'Pembayaran', 'Jumlah', 'CS', 'Komisi']);
+                    const subHeader = worksheet.getRow(currentRow);
+                    subHeader.font = { bold: true, color: { argb: 'FFFFFF' } };
+                    subHeader.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: '366092' }
+                    };
+                    subHeader.alignment = { horizontal: 'center', vertical: 'middle' };
+                    currentRow++;
+                }
+
                 apartmentGroups[apartmentName].forEach((transaction) => {
                     const moment = require('moment-timezone');
                     const createdAt = moment(transaction.created_at).tz('Asia/Jakarta');
@@ -2830,6 +2890,7 @@ async function createCashReportSheetForExport(workbook, transactions, displayDat
                     totalAmount += amount;
                     totalCommission += commission;
                     currentRowNumber++;
+                    currentRow++;
                 });
             }
         });
