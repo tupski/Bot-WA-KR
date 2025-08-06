@@ -7,6 +7,23 @@ const config = require('../config/config.js');
 const database = require('./database');
 const logger = require('./logger');
 
+/**
+ * Get apartment color scheme
+ */
+function getApartmentColors(apartmentName) {
+    const colorSchemes = {
+        'TREEPARK BSD': { bg: 'FFFF00', font: '000000' }, // Kuning 🟡
+        'SKY HOUSE BSD': { bg: '00FF00', font: '000000' }, // Hijau 🟢
+        'SPRINGWOOD': { bg: 'FFFFFF', font: '000000' }, // Putih ⚪
+        'EMERALD BINTARO': { bg: '000000', font: 'FFFFFF' }, // Hitam ⚫
+        'TOKYO RIVERSIDE PIK2': { bg: 'A0522D', font: 'FFFFFF' }, // Coklat 🟤
+        'TRANSPARK BINTARO': { bg: '800080', font: 'FFFFFF' }, // Ungu 🟣
+        'SERPONG GARDEN': { bg: '808080', font: 'FFFFFF' } // Abu-abu (default)
+    };
+
+    return colorSchemes[apartmentName] || { bg: '366092', font: 'FFFFFF' }; // Default blue
+}
+
 class ExcelExporter {
     constructor() {
         this.timezone = config.report.timezone;
@@ -923,10 +940,19 @@ class ExcelExporter {
     async createCashReportSheet(workbook, transactions, date) {
         const worksheet = workbook.addWorksheet('Laporan Cash');
 
-        // Filter transactions for cash payments only
-        const cashTransactions = transactions.filter(transaction =>
-            transaction.payment_method && transaction.payment_method.toLowerCase() === 'cash'
-        );
+        // Filter transactions for cash payments only (case insensitive, exclude APK variants)
+        const cashTransactions = transactions.filter(transaction => {
+            if (!transaction.payment_method) return false;
+            const paymentMethod = transaction.payment_method.toLowerCase();
+            const csName = (transaction.cs_name || '').toLowerCase();
+
+            // Exclude if payment method or CS name contains 'apk' (case insensitive)
+            if (paymentMethod.includes('apk') || csName.includes('apk')) {
+                return false;
+            }
+
+            return paymentMethod === 'cash';
+        });
 
         // Set column widths
         worksheet.columns = [
@@ -968,7 +994,7 @@ class ExcelExporter {
         headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
 
         if (cashTransactions.length === 0) {
-            worksheet.addRow(['Tidak ada transaksi cash pada periode ini']);
+            worksheet.addRow(['Tidak ada transaksi tunai pada periode ini.']);
             worksheet.mergeCells('A4:J4');
             const noDataRow = worksheet.getRow(4);
             noDataRow.alignment = { horizontal: 'center' };
