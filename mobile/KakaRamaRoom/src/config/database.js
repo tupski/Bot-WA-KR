@@ -1,32 +1,45 @@
 import SQLite from 'react-native-sqlite-storage';
 
-// Enable promise for SQLite
+// Aktifkan promise untuk SQLite
 SQLite.enablePromise(true);
 
+/**
+ * Kelas untuk mengelola database SQLite aplikasi KakaRama Room
+ * Menangani inisialisasi database, pembuatan tabel, dan operasi dasar
+ */
 class DatabaseManager {
   constructor() {
     this.database = null;
   }
 
+  /**
+   * Inisialisasi database dan buat tabel-tabel yang diperlukan
+   * @returns {Promise<Database>} Instance database yang sudah diinisialisasi
+   */
   async initDatabase() {
     try {
+      // Buka koneksi database
       this.database = await SQLite.openDatabase({
         name: 'KakaRamaRoom.db',
         location: 'default',
       });
-      
+
+      // Buat tabel-tabel yang diperlukan
       await this.createTables();
-      console.log('Database initialized successfully');
+      console.log('Database berhasil diinisialisasi');
       return this.database;
     } catch (error) {
-      console.error('Database initialization failed:', error);
+      console.error('Gagal menginisialisasi database:', error);
       throw error;
     }
   }
 
+  /**
+   * Membuat semua tabel yang diperlukan untuk aplikasi
+   */
   async createTables() {
     const tables = [
-      // Tabel Admin
+      // Tabel Admin - untuk menyimpan data administrator
       `CREATE TABLE IF NOT EXISTS admins (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username VARCHAR(50) UNIQUE NOT NULL,
@@ -38,7 +51,7 @@ class DatabaseManager {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`,
 
-      // Tabel Apartemen
+      // Tabel Apartemen - untuk menyimpan data apartemen yang dikelola
       `CREATE TABLE IF NOT EXISTS apartments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name VARCHAR(100) NOT NULL,
