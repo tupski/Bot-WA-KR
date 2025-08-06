@@ -37,7 +37,8 @@ class ApartmentController extends Controller
 
     public function create()
     {
-        return view('apartments.create');
+        $whatsappGroups = WhatsAppGroup::orderBy('group_name')->get();
+        return view('apartments.create', compact('whatsappGroups'));
     }
 
     public function store(Request $request)
@@ -93,7 +94,8 @@ class ApartmentController extends Controller
 
     public function edit(Apartment $apartment)
     {
-        return view('apartments.edit', compact('apartment'));
+        $whatsappGroups = WhatsAppGroup::orderBy('group_name')->get();
+        return view('apartments.edit', compact('apartment', 'whatsappGroups'));
     }
 
     public function update(Request $request, Apartment $apartment)

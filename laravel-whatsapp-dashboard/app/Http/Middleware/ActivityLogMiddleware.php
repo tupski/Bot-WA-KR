@@ -87,7 +87,17 @@ class ActivityLogMiddleware
         // Try to get ID from route parameters
         foreach (['id', 'transaction', 'apartment', 'user', 'config'] as $param) {
             if ($route && $route->hasParameter($param)) {
-                return $route->parameter($param);
+                $parameter = $route->parameter($param);
+
+                // If parameter is a model object, get its ID
+                if (is_object($parameter) && method_exists($parameter, 'getKey')) {
+                    return $parameter->getKey();
+                }
+
+                // If parameter is already an ID (integer)
+                if (is_numeric($parameter)) {
+                    return (int) $parameter;
+                }
             }
         }
 

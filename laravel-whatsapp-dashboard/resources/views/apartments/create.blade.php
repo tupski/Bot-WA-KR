@@ -25,11 +25,11 @@
             <div class="card-body">
                 <form action="{{ route('apartments.store') }}" method="POST">
                     @csrf
-                    
+
                     <div class="row">
                         <div class="col-md-8 mb-3">
                             <label for="name" class="form-label">Nama Apartemen <span class="text-danger">*</span></label>
-                            <input type="text" name="name" id="name" class="form-control @error('name') is-invalid @enderror" 
+                            <input type="text" name="name" id="name" class="form-control @error('name') is-invalid @enderror"
                                    value="{{ old('name') }}" placeholder="Contoh: SKY HOUSE BSD" required>
                             @error('name')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -38,7 +38,7 @@
 
                         <div class="col-md-4 mb-3">
                             <label for="code" class="form-label">Kode <span class="text-danger">*</span></label>
-                            <input type="text" name="code" id="code" class="form-control @error('code') is-invalid @enderror" 
+                            <input type="text" name="code" id="code" class="form-control @error('code') is-invalid @enderror"
                                    value="{{ old('code') }}" placeholder="Contoh: SKY" required>
                             @error('code')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -48,23 +48,30 @@
                     </div>
 
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="whatsapp_group_id" class="form-label">WhatsApp Group ID</label>
-                            <input type="text" name="whatsapp_group_id" id="whatsapp_group_id" class="form-control @error('whatsapp_group_id') is-invalid @enderror" 
-                                   value="{{ old('whatsapp_group_id') }}" placeholder="120363317169602122@g.us">
+                        <div class="col-md-12 mb-3">
+                            <label for="whatsapp_group_id" class="form-label">WhatsApp Group</label>
+                            <select class="form-select @error('whatsapp_group_id') is-invalid @enderror"
+                                    id="whatsapp_group_id" name="whatsapp_group_id">
+                                <option value="">Pilih Grup WhatsApp</option>
+                                @foreach($whatsappGroups as $group)
+                                    <option value="{{ $group->group_id }}"
+                                            data-name="{{ $group->group_name }}"
+                                            {{ old('whatsapp_group_id') == $group->group_id ? 'selected' : '' }}>
+                                        {{ $group->group_name }} ({{ $group->participant_count ?? 0 }} anggota)
+                                    </option>
+                                @endforeach
+                            </select>
                             @error('whatsapp_group_id')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
-                            <small class="text-muted">ID grup WhatsApp untuk apartemen ini</small>
-                        </div>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle"></i>
+                                Pilih grup WhatsApp yang akan digunakan untuk monitoring transaksi apartemen ini
+                            </div>
 
-                        <div class="col-md-6 mb-3">
-                            <label for="whatsapp_group_name" class="form-label">Nama Grup WhatsApp</label>
-                            <input type="text" name="whatsapp_group_name" id="whatsapp_group_name" class="form-control @error('whatsapp_group_name') is-invalid @enderror" 
-                                   value="{{ old('whatsapp_group_name') }}" placeholder="Contoh: SKY HOUSE BSD - Booking">
-                            @error('whatsapp_group_name')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                            <!-- Hidden field for group name -->
+                            <input type="hidden" id="whatsapp_group_name" name="whatsapp_group_name"
+                                   value="{{ old('whatsapp_group_name') }}">
                         </div>
                     </div>
 
@@ -84,7 +91,7 @@
                     <div class="row">
                         <div class="col-12 mb-3">
                             <label for="description" class="form-label">Deskripsi</label>
-                            <textarea name="description" id="description" class="form-control @error('description') is-invalid @enderror" 
+                            <textarea name="description" id="description" class="form-control @error('description') is-invalid @enderror"
                                       rows="3" placeholder="Deskripsi apartemen, lokasi, fasilitas, dll...">{{ old('description') }}</textarea>
                             @error('description')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -177,20 +184,32 @@
 document.getElementById('name').addEventListener('blur', function() {
     const name = this.value;
     const codeField = document.getElementById('code');
-    
+
     if (name && !codeField.value) {
         // Extract first letters of each word
         const words = name.split(' ');
         let code = '';
-        
+
         words.forEach(word => {
             if (word.length > 0) {
                 code += word.charAt(0).toUpperCase();
             }
         });
-        
+
         // Limit to 10 characters
         codeField.value = code.substring(0, 10);
+    }
+});
+
+// Auto-fill group name when group is selected
+document.getElementById('whatsapp_group_id').addEventListener('change', function() {
+    const selectedOption = this.options[this.selectedIndex];
+    const groupNameField = document.getElementById('whatsapp_group_name');
+
+    if (selectedOption.value && selectedOption.dataset.name) {
+        groupNameField.value = selectedOption.dataset.name;
+    } else {
+        groupNameField.value = '';
     }
 });
 
