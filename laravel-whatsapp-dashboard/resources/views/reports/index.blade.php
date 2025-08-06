@@ -98,8 +98,8 @@
                     <div class="col-xl-2 col-md-4 mb-3">
                         <div class="card stat-card">
                             <div class="card-body text-center">
-                                <h4 class="text-white">{{ $currentMonthStats['unique_cs'] }}</h4>
-                                <small class="text-white-50">CS Aktif</small>
+                                <h4 class="text-white">{{ $currentMonthStats['unique_marketing'] }}</h4>
+                                <small class="text-white-50">Marketing Aktif</small>
                             </div>
                         </div>
                     </div>
@@ -163,29 +163,29 @@
 
 <!-- Performance Tables -->
 <div class="row">
-    <!-- Top CS Performance -->
+    <!-- Top Marketing Performance -->
     <div class="col-xl-6 col-lg-6 mb-4">
         <div class="card">
             <div class="card-header">
                 <h5 class="card-title mb-0">
-                    <i class="bi bi-trophy"></i> Top CS Performance Bulan Ini
+                    <i class="bi bi-trophy"></i> Top Marketing Performance Bulan Ini
                 </h5>
             </div>
             <div class="card-body">
-                @if($topCs->count() > 0)
+                @if($topMarketing->count() > 0)
                     <div class="table-responsive">
                         <table class="table table-hover">
                             <thead>
                                 <tr>
                                     <th>Rank</th>
-                                    <th>CS Name</th>
+                                    <th>Marketing</th>
                                     <th>Booking</th>
                                     <th>Revenue</th>
                                     <th>Komisi</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($topCs as $index => $cs)
+                                @foreach($topMarketing as $index => $cs)
                                     <tr>
                                         <td>
                                             @if($index == 0)
@@ -208,7 +208,7 @@
                         </table>
                     </div>
                 @else
-                    <p class="text-muted text-center">Belum ada data CS bulan ini</p>
+                    <p class="text-muted text-center">Belum ada data marketing bulan ini</p>
                 @endif
             </div>
         </div>

@@ -111,12 +111,12 @@
 @endif
 
 <div class="row">
-    <!-- CS Performance -->
+    <!-- Marketing Performance -->
     <div class="col-xl-6 col-lg-6 mb-4">
         <div class="card">
             <div class="card-header">
                 <h5 class="card-title mb-0">
-                    <i class="bi bi-people"></i> Performance CS
+                    <i class="bi bi-people"></i> Performance Marketing
                 </h5>
             </div>
             <div class="card-body">
@@ -125,7 +125,7 @@
                         <table class="table table-hover">
                             <thead>
                                 <tr>
-                                    <th>CS Name</th>
+                                    <th>Marketing</th>
                                     <th>Booking</th>
                                     <th>Cash</th>
                                     <th>Transfer</th>
@@ -146,7 +146,7 @@
                         </table>
                     </div>
                 @else
-                    <p class="text-muted text-center">Tidak ada data CS untuk tanggal ini</p>
+                    <p class="text-muted text-center">Tidak ada data marketing untuk tanggal ini</p>
                 @endif
             </div>
         </div>
@@ -230,7 +230,7 @@
                                     <th>Apartemen</th>
                                     <th>Checkout</th>
                                     <th>Durasi</th>
-                                    <th>CS</th>
+                                    <th>Marketing</th>
                                     <th>Amount</th>
                                     <th>Komisi</th>
                                     <th>Payment</th>

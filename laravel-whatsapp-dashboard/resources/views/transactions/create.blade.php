@@ -193,7 +193,7 @@
                     <li><strong>Checkout Time:</strong> Format waktu (contoh: 14:00)</li>
                     <li><strong>Durasi:</strong> Lama sewa (contoh: 3 jam)</li>
                     <li><strong>Amount:</strong> Total harga sewa</li>
-                    <li><strong>Komisi:</strong> Komisi untuk CS</li>
+                    <li><strong>Komisi:</strong> Komisi untuk marketing</li>
                 </ul>
 
                 <hr>
@@ -210,7 +210,7 @@
                 <ul class="small text-muted">
                     <li>Net Amount akan otomatis dihitung</li>
                     <li>Gunakan Skip Financial untuk transaksi khusus</li>
-                    <li>Pastikan data CS dan Apartemen sudah terdaftar</li>
+                    <li>Pastikan data marketing dan apartemen sudah terdaftar</li>
                 </ul>
             </div>
         </div>

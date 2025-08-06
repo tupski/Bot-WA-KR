@@ -28,7 +28,7 @@ class ReportController extends Controller
         $dailyTrend = $this->getDailyTrend($currentMonth);
 
         // Top performers
-        $topCs = $this->getTopCs($currentMonth);
+        $topMarketing = $this->getTopMarketing($currentMonth);
         $topApartments = $this->getTopApartments($currentMonth);
 
         // Payment method breakdown
@@ -38,7 +38,7 @@ class ReportController extends Controller
             'currentMonthStats',
             'lastMonthStats',
             'dailyTrend',
-            'topCs',
+            'topMarketing',
             'topApartments',
             'paymentBreakdown'
         ));
@@ -61,7 +61,7 @@ class ReportController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // CS performance for the day
+        // Marketing performance for the day
         $csPerformance = CsSummary::byDate($selectedDate)
             ->orderBy('total_commission', 'desc')
             ->get();
@@ -232,7 +232,7 @@ class ReportController extends Controller
             'total_cash' => $transactions->where('payment_method', 'Cash')->sum('amount'),
             'total_transfer' => $transactions->where('payment_method', 'TF')->sum('amount'),
             'avg_booking_value' => $transactions->avg('amount') ?? 0,
-            'unique_cs' => $transactions->pluck('customer_name')->unique()->count(),
+            'unique_marketing' => $transactions->pluck('customer_name')->unique()->count(),
             'unique_apartments' => $transactions->pluck('location')->unique()->count(),
         ];
     }
@@ -247,7 +247,7 @@ class ReportController extends Controller
             ->get();
     }
 
-    private function getTopCs($month)
+    private function getTopMarketing($month)
     {
         $start = $month->copy()->startOfMonth();
         $end = $month->copy()->endOfMonth();
@@ -310,7 +310,7 @@ class ReportController extends Controller
             'total_cash' => $transactions->where('payment_method', 'Cash')->sum('amount'),
             'total_transfer' => $transactions->where('payment_method', 'TF')->sum('amount'),
             'avg_booking_value' => $transactions->avg('amount') ?? 0,
-            'unique_cs' => $transactions->pluck('cs_name')->unique()->count(),
+            'unique_marketing' => $transactions->pluck('cs_name')->unique()->count(),
             'unique_apartments' => $transactions->pluck('location')->unique()->count(),
             'days_count' => $start->diffInDays($end) + 1,
         ];

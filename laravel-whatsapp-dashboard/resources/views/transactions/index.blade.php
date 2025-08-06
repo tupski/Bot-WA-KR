@@ -124,7 +124,7 @@
                 </div>
                 <div class="col-md-2">
                     <label class="form-label">Search</label>
-                    <input type="text" name="search" class="form-control" placeholder="Unit, Apartemen, CS..." value="{{ request('search') }}">
+                    <input type="text" name="search" class="form-control" placeholder="Unit, Apartemen, Marketing..." value="{{ request('search') }}">
                 </div>
             </div>
             <div class="row mt-3">
@@ -166,7 +166,7 @@
                             <th>Apartemen</th>
                             <th>Checkout</th>
                             <th>Durasi</th>
-                            <th>CS</th>
+                            <th>Marketing</th>
                             <th>
                                 <a href="{{ request()->fullUrlWithQuery(['sort_by' => 'amount', 'sort_order' => request('sort_order') == 'asc' ? 'desc' : 'asc']) }}" class="text-decoration-none text-white">
                                     Amount
