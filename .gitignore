@@ -44,3 +44,6 @@ Thumbs.db
 # Temporary files
 tmp/
 temp/
+
+# Laravel project directory (should only exist in laravel branch)
+laravel-whatsapp-dashboard/

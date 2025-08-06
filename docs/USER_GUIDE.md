@@ -170,8 +170,13 @@ Di halaman WhatsApp Groups, Anda dapat melihat:
 2. Pilih format export:
    - **CSV**: Untuk Excel/spreadsheet
    - **PDF**: Untuk dokumen cetak
-   - **Excel**: Format Excel native
+   - **Excel**: Format Excel native dengan multiple sheets
 3. File akan otomatis terdownload
+
+#### Sheet dalam Excel Export
+- **Transaksi**: Semua data transaksi lengkap
+- **Laporan Cash**: Khusus transaksi pembayaran cash/tunai saja
+- **Marketing**: Ringkasan komisi dan performa marketing
 
 ### Chart dan Visualisasi
 - **Booking Trends**: Grafik tren booking harian/mingguan
@@ -250,6 +255,22 @@ Menampilkan daftar perintah yang tersedia
 ```
 !help
 ```
+
+### Perintah untuk Owner (pesan pribadi)
+
+#### !export
+Menghasilkan laporan Excel harian dengan 3 sheet:
+1. **Transaksi** - Semua transaksi
+2. **Laporan Cash** - Hanya transaksi pembayaran cash/tunai
+3. **Marketing** - Ringkasan komisi marketing
+
+```
+!export                    # Business day kemarin
+!export 06082025          # Tanggal tertentu (DDMMYYYY)
+!export apartemen 06082025 # Filter apartemen + tanggal
+```
+
+**Catatan**: Command ini hanya bisa digunakan melalui pesan pribadi untuk keamanan.
 
 ### Format Pesan Booking
 Bot akan otomatis mendeteksi pesan booking dengan format:

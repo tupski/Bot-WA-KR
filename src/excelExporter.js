@@ -49,6 +49,7 @@ class ExcelExporter {
 
                 // Create sheets
                 await this.createTransactionsSheet(workbook, transactions, displayDate);
+                await this.createCashReportSheet(workbook, transactions, displayDate);
                 await this.createCombinedSummarySheet(workbook, csSummary, marketingCommissionByApartment, displayDate);
 
                 // Save file
@@ -89,6 +90,7 @@ class ExcelExporter {
 
                 // Create sheets dengan data yang sudah dihitung
                 await this.createTransactionsSheet(workbook, transactions, `${displayDate} (Business Day Range)`);
+                await this.createCashReportSheet(workbook, transactions, `${displayDate} (Business Day Range)`);
                 await this.createCombinedSummarySheet(workbook, csSummary, marketingCommission, `${displayDate} (Business Day Range)`);
 
                 // Save file
@@ -913,6 +915,195 @@ class ExcelExporter {
             logger.error('Error membersihkan file Excel lama:', error);
             return 0;
         }
+    }
+
+    /**
+     * Create Cash Report sheet - contains only cash payment transactions
+     */
+    async createCashReportSheet(workbook, transactions, date) {
+        const worksheet = workbook.addWorksheet('Laporan Cash');
+
+        // Filter transactions for cash payments only
+        const cashTransactions = transactions.filter(transaction =>
+            transaction.payment_method && transaction.payment_method.toLowerCase() === 'cash'
+        );
+
+        // Set column widths
+        worksheet.columns = [
+            { header: 'No', key: 'no', width: 5 },
+            { header: 'Waktu', key: 'time', width: 20 },
+            { header: 'Lokasi', key: 'location', width: 15 },
+            { header: 'Unit', key: 'unit', width: 10 },
+            { header: 'Check Out', key: 'checkout', width: 12 },
+            { header: 'Durasi', key: 'duration', width: 10 },
+            { header: 'Pembayaran', key: 'payment', width: 12 },
+            { header: 'CS', key: 'cs', width: 10 },
+            { header: 'Jumlah', key: 'amount', width: 15 },
+            { header: 'Komisi', key: 'commission', width: 15 }
+        ];
+
+        // Add title
+        worksheet.addRow([`Laporan Cash - ${date}`]);
+        worksheet.mergeCells('A1:J1');
+        const titleRow = worksheet.getRow(1);
+        titleRow.font = { bold: true, size: 16 };
+        titleRow.alignment = { horizontal: 'center' };
+        titleRow.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'E7E6E6' }
+        };
+
+        worksheet.addRow([]);
+
+        // Add headers
+        const headerRow = worksheet.getRow(3);
+        headerRow.values = ['No', 'Waktu', 'Lokasi', 'Unit', 'Check Out', 'Durasi', 'Pembayaran', 'CS', 'Jumlah', 'Komisi'];
+        headerRow.font = { bold: true, color: { argb: 'FFFFFF' } };
+        headerRow.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: '366092' }
+        };
+        headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
+
+        if (cashTransactions.length === 0) {
+            worksheet.addRow(['Tidak ada transaksi cash pada periode ini']);
+            worksheet.mergeCells('A4:J4');
+            const noDataRow = worksheet.getRow(4);
+            noDataRow.alignment = { horizontal: 'center' };
+            noDataRow.font = { italic: true };
+        } else {
+            // Define apartment order for consistent sorting
+            const apartmentOrder = [
+                'TREEPARK BSD',
+                'SKY HOUSE BSD',
+                'SPRINGWOOD',
+                'EMERALD BINTARO',
+                'TOKYO RIVERSIDE PIK2',
+                'SERPONG GARDEN',
+                'TRANSPARK BINTARO'
+            ];
+
+            // Group transactions by apartment
+            const apartmentGroups = {};
+            cashTransactions.forEach(transaction => {
+                const location = transaction.location || 'Unknown';
+                if (!apartmentGroups[location]) {
+                    apartmentGroups[location] = [];
+                }
+                apartmentGroups[location].push(transaction);
+            });
+
+            // Sort transactions within each apartment by created_at
+            Object.keys(apartmentGroups).forEach(apartmentName => {
+                apartmentGroups[apartmentName].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+            });
+
+            let currentRowNumber = 1;
+            let totalAmount = 0;
+            let totalCommission = 0;
+
+            // Process apartments in order
+            apartmentOrder.forEach(apartmentName => {
+                if (apartmentGroups[apartmentName]) {
+                    apartmentGroups[apartmentName].forEach((transaction) => {
+                        const amount = parseFloat(transaction.amount || 0);
+                        const commission = parseFloat(transaction.commission || 0);
+
+                        const row = worksheet.addRow({
+                            no: currentRowNumber,
+                            time: moment(transaction.created_at).tz(this.timezone).format('DD/MM/YYYY HH:mm'),
+                            location: transaction.location || '-',
+                            unit: transaction.unit || '-',
+                            checkout: transaction.checkout_time || '-',
+                            duration: transaction.duration || '-',
+                            payment: transaction.payment_method || '-',
+                            cs: transaction.cs_name || '-',
+                            amount: amount,
+                            commission: commission
+                        });
+
+                        // Format currency columns
+                        row.getCell(9).numFmt = 'Rp #,##0';
+                        row.getCell(10).numFmt = 'Rp #,##0';
+
+                        // Add zebra stripe
+                        if (currentRowNumber % 2 === 0) {
+                            row.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'F8F9FA' }
+                            };
+                        }
+
+                        totalAmount += amount;
+                        totalCommission += commission;
+                        currentRowNumber++;
+                    });
+                }
+            });
+
+            // Process any remaining apartments not in the predefined order
+            Object.keys(apartmentGroups).forEach(apartmentName => {
+                if (!apartmentOrder.includes(apartmentName)) {
+                    apartmentGroups[apartmentName].forEach((transaction) => {
+                        const amount = parseFloat(transaction.amount || 0);
+                        const commission = parseFloat(transaction.commission || 0);
+
+                        const row = worksheet.addRow({
+                            no: currentRowNumber,
+                            time: moment(transaction.created_at).tz(this.timezone).format('DD/MM/YYYY HH:mm'),
+                            location: transaction.location || '-',
+                            unit: transaction.unit || '-',
+                            checkout: transaction.checkout_time || '-',
+                            duration: transaction.duration || '-',
+                            payment: transaction.payment_method || '-',
+                            cs: transaction.cs_name || '-',
+                            amount: amount,
+                            commission: commission
+                        });
+
+                        // Format currency columns
+                        row.getCell(9).numFmt = 'Rp #,##0';
+                        row.getCell(10).numFmt = 'Rp #,##0';
+
+                        // Add zebra stripe
+                        if (currentRowNumber % 2 === 0) {
+                            row.fill = {
+                                type: 'pattern',
+                                pattern: 'solid',
+                                fgColor: { argb: 'F8F9FA' }
+                            };
+                        }
+
+                        totalAmount += amount;
+                        totalCommission += commission;
+                        currentRowNumber++;
+                    });
+                }
+            });
+
+            // Add summary row
+            worksheet.addRow([]);
+            const summaryRow = worksheet.addRow([
+                '', '', '', '', '', '', '', 'TOTAL:', totalAmount, totalCommission
+            ]);
+
+            summaryRow.font = { bold: true };
+            summaryRow.getCell(8).alignment = { horizontal: 'center' };
+            summaryRow.getCell(9).numFmt = 'Rp #,##0';
+            summaryRow.getCell(10).numFmt = 'Rp #,##0';
+
+            summaryRow.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'D4E6F1' }
+            };
+        }
+
+        // Add borders to all cells
+        this.addBordersToSheet(worksheet);
     }
 }
 
