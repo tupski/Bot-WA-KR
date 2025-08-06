@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Apartment;
 use App\Models\Transaction;
 use App\Models\ActivityLog;
+use App\Models\WhatsAppGroup;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
