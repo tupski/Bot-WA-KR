@@ -356,7 +356,18 @@ class Database {
 
         query += ` ORDER BY location ASC, created_at ASC`;
 
-        return await this.executeQuery(query, params);
+        // Debug logging
+        logger.info(`Database query: ${query}`);
+        logger.info(`Query params: ${JSON.stringify(params)}`);
+
+        const result = await this.executeQuery(query, params);
+        logger.info(`Query result count: ${result.length}`);
+
+        if (result.length > 0) {
+            logger.info(`Sample result: ${JSON.stringify(result[0])}`);
+        }
+
+        return result;
     }
 
     async getCSPerformance(startDate, endDate) {
