@@ -8,7 +8,11 @@
     "dev": "nodemon index.js",
     "test": "node test/runTests.js",
     "test:health": "node test/runTests.js --health",
-    "test:parser": "node test/messageParser.test.js"
+    "test:parser": "node test/messageParser.test.js",
+    "android:init": "cd mobile && npx react-native init KakaRamaRoom",
+    "android:start": "cd mobile/KakaRamaRoom && npx react-native start",
+    "android:build": "cd mobile/KakaRamaRoom && npx react-native run-android",
+    "mobile:install": "cd mobile/KakaRamaRoom && npm install"
   },
   "repository": {
     "type": "git",
