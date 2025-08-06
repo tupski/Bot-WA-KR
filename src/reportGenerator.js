@@ -5,10 +5,42 @@ const database = require('./database');
 const numberFormatter = require('./numberFormatter');
 const logger = require('./logger');
 
+// Mapping bulan ke bahasa Indonesia
+const MONTH_NAMES_ID = {
+    'January': 'Januari',
+    'February': 'Februari',
+    'March': 'Maret',
+    'April': 'April',
+    'May': 'Mei',
+    'June': 'Juni',
+    'July': 'Juli',
+    'August': 'Agustus',
+    'September': 'September',
+    'October': 'Oktober',
+    'November': 'November',
+    'December': 'Desember'
+};
+
 class ReportGenerator {
     constructor() {
         this.timezone = config.report.timezone;
         this.companyName = config.report.companyName;
+    }
+
+    /**
+     * Convert date to Indonesian format
+     */
+    formatDateIndonesian(date, format = 'DD MMMM YYYY') {
+        const momentDate = moment(date);
+        const englishFormat = momentDate.format(format);
+        let indonesianFormat = englishFormat;
+
+        // Replace English month names with Indonesian
+        Object.keys(MONTH_NAMES_ID).forEach(englishMonth => {
+            indonesianFormat = indonesianFormat.replace(englishMonth, MONTH_NAMES_ID[englishMonth]);
+        });
+
+        return indonesianFormat;
     }
 
     /**
@@ -17,7 +49,7 @@ class ReportGenerator {
     async generateDailyReport(date = null) {
         try {
             const reportDate = date || moment().tz(this.timezone).format('YYYY-MM-DD');
-            const displayDate = moment(reportDate).tz(this.timezone).format('DD MMMM YYYY');
+            const displayDate = this.formatDateIndonesian(reportDate);
             const displayTime = moment().tz(this.timezone).format('HH:mm');
 
             logger.info(`Membuat laporan harian untuk ${reportDate}`);
@@ -269,7 +301,8 @@ ${commissionSection}`;
             const startDate = targetDate.clone().startOf('month').format('YYYY-MM-DD');
             const endDate = targetDate.clone().endOf('month').format('YYYY-MM-DD');
 
-            logger.info(`Membuat laporan bulanan untuk ${targetDate.format('MMMM YYYY')}`);
+            const monthYearIndonesian = this.formatDateIndonesian(targetDate.format('YYYY-MM-01'), 'MMMM YYYY');
+            logger.info(`Membuat laporan bulanan untuk ${monthYearIndonesian}`);
 
             const [transactions, csPerformance] = await Promise.all([
                 database.getTransactionsByDateRange(startDate, endDate),
@@ -277,7 +310,7 @@ ${commissionSection}`;
             ]);
 
             let report = `*Laporan Bulanan KAKARAMA ROOM*\n`;
-            report += `*Bulan: ${targetDate.format('MMMM YYYY')}*\n\n`;
+            report += `*Bulan: ${monthYearIndonesian}*\n\n`;
 
             // Monthly summary
             const totalBookings = transactions.length;
@@ -326,7 +359,9 @@ ${commissionSection}`;
             ]);
 
             let report = `*${title}*\n`;
-            report += `*Periode: ${moment(startDate).format('DD MMM YYYY')} - ${moment(endDate).format('DD MMM YYYY')}*\n\n`;
+            const startDateIndonesian = this.formatDateIndonesian(startDate, 'DD MMM YYYY');
+            const endDateIndonesian = this.formatDateIndonesian(endDate, 'DD MMM YYYY');
+            report += `*Periode: ${startDateIndonesian} - ${endDateIndonesian}*\n\n`;
 
             // Summary
             const totalBookings = transactions.length;

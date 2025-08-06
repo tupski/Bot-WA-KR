@@ -6,12 +6,61 @@ const fs = require('fs');
 const config = require('../config/config.js');
 const logger = require('./logger');
 
+// Mapping bulan ke bahasa Indonesia
+const MONTH_NAMES_ID = {
+    'January': 'Januari',
+    'February': 'Februari',
+    'March': 'Maret',
+    'April': 'April',
+    'May': 'Mei',
+    'June': 'Juni',
+    'July': 'Juli',
+    'August': 'Agustus',
+    'September': 'September',
+    'October': 'Oktober',
+    'November': 'November',
+    'December': 'Desember'
+};
+
 class EmailService {
     constructor() {
         this.timezone = config.report.timezone;
         this.companyName = config.report.companyName;
         this.transporter = null;
         this.initializeTransporter();
+    }
+
+    /**
+     * Convert date to Indonesian format
+     */
+    formatDateIndonesian(date) {
+        const momentDate = moment(date);
+        const englishFormat = momentDate.format('DD MMMM YYYY');
+        let indonesianFormat = englishFormat;
+
+        // Replace English month names with Indonesian
+        Object.keys(MONTH_NAMES_ID).forEach(englishMonth => {
+            indonesianFormat = indonesianFormat.replace(englishMonth, MONTH_NAMES_ID[englishMonth]);
+        });
+
+        return indonesianFormat;
+    }
+
+    /**
+     * Get dynamic greeting based on current time
+     */
+    getDynamicGreeting() {
+        const currentHour = moment().tz(this.timezone).hour();
+
+        if (currentHour >= 5 && currentHour < 11) {
+            return 'Selamat pagi';
+        } else if (currentHour >= 11 && currentHour < 15) {
+            return 'Selamat siang';
+        } else if (currentHour >= 15 && currentHour < 18) {
+            return 'Selamat sore';
+        } else {
+            return 'Selamat malam';
+        }
     }
 
     /**
@@ -80,7 +129,7 @@ class EmailService {
     /**
      * Send daily report with Excel attachment
      */
-    async sendDailyReport(excelFilePath, date = null, apartmentName = null) {
+    async sendDailyReport(excelFilePath, date = null, apartmentName = null, isExportCommand = false) {
         try {
             if (!this.transporter) {
                 throw new Error('Email transporter not initialized');
@@ -91,7 +140,7 @@ class EmailService {
             }
 
             const reportDate = date || moment().tz(this.timezone).format('YYYY-MM-DD');
-            const displayDate = moment(reportDate).format('DD MMMM YYYY');
+            const displayDate = this.formatDateIndonesian(reportDate);
             const currentTime = moment().tz(this.timezone).format('HH:mm');
 
             // Email content dengan format baru
@@ -100,19 +149,19 @@ class EmailService {
             if (apartmentName) {
                 // Format: Laporan <Nama Apartemen> <Tanggal> - KR WA Bot
                 subject = `Laporan ${apartmentName} ${displayDate} - KR WA Bot`;
-                htmlContent = this.generateDailyEmailHTML(displayDate, currentTime, apartmentName);
-                textContent = this.generateDailyEmailText(displayDate, currentTime, apartmentName);
+                htmlContent = this.generateDailyEmailHTML(displayDate, currentTime, apartmentName, isExportCommand);
+                textContent = this.generateDailyEmailText(displayDate, currentTime, apartmentName, isExportCommand);
             } else {
                 // Format lama untuk backward compatibility
                 subject = `Laporan Harian ${this.companyName} - ${displayDate}`;
-                htmlContent = this.generateDailyEmailHTML(displayDate, currentTime);
-                textContent = this.generateDailyEmailText(displayDate, currentTime);
+                htmlContent = this.generateDailyEmailHTML(displayDate, currentTime, null, isExportCommand);
+                textContent = this.generateDailyEmailText(displayDate, currentTime, null, isExportCommand);
             }
 
             // Email options
             const mailOptions = {
                 from: {
-                    name: 'Kakarama Bot',
+                    name: 'KakaRama Bot',
                     address: config.email.from
                 },
                 to: config.email.to,
@@ -145,7 +194,7 @@ class EmailService {
     /**
      * Generate HTML content for daily email
      */
-    generateDailyEmailHTML(displayDate, currentTime, apartmentName = null) {
+    generateDailyEmailHTML(displayDate, currentTime, apartmentName = null, isExportCommand = false) {
         return `
         <!DOCTYPE html>
         <html>
@@ -186,33 +235,45 @@ class EmailService {
                     border-left: 4px solid #366092;
                     margin: 10px 0;
                 }
+                .logo {
+                    text-align: center;
+                    margin: 20px 0;
+                }
+                .logo img {
+                    max-width: 150px;
+                    height: auto;
+                }
             </style>
         </head>
         <body>
+            <div class="logo">
+                <img src="https://kakaramaroom.com/wp-content/uploads/2025/05/logo-kr-transparent-square.png" alt="Kakarama Room Logo" />
+            </div>
+
             <div class="header">
-                <h1>Laporan Harian ${apartmentName || this.companyName}</h1>
+                <h1>${isExportCommand ? 'Laporan Export' : 'Laporan Harian'} ${apartmentName || this.companyName}</h1>
                 <p>${displayDate} - ${currentTime} WIB</p>
             </div>
 
             <div class="content">
-                <h2>Selamat siang!</h2>
+                <h2>${this.getDynamicGreeting()}!</h2>
 
-                <p>Berikut adalah laporan harian ${apartmentName || this.companyName} untuk tanggal <strong>${displayDate}</strong>.</p>
+                <p>Berikut adalah ${isExportCommand ? 'laporan export' : 'laporan harian'} ${apartmentName || this.companyName} untuk tanggal <strong>${displayDate}</strong>.</p>
                 
                 <div class="highlight">
                     <h3>📊 File Laporan Excel</h3>
                     <p>File Excel dengan detail lengkap telah dilampirkan dalam email ini, berisi:</p>
                     <ul>
-                        <li><strong>Sheet Transaksi:</strong> Detail semua transaksi hari ini</li>
-                        <li><strong>Sheet Ringkasan CS:</strong> Performa masing-masing CS</li>
-                        <li><strong>Sheet Komisi Marketing:</strong> Perhitungan komisi untuk setiap CS</li>
+                        <li><strong>Sheet Transaksi:</strong> Detail semua transaksi pada periode ini</li>
+                        <li><strong>Sheet Laporan Cash:</strong> Khusus transaksi pembayaran tunai</li>
+                        <li><strong>Sheet Ringkasan:</strong> Ringkasan CS dan komisi marketing</li>
                     </ul>
                 </div>
-                
-                <div class="highlight">
+
+                ${!isExportCommand ? `<div class="highlight">
                     <h3>📱 Laporan WhatsApp</h3>
                     <p>Ringkasan laporan juga telah dikirim ke grup WhatsApp pada pukul 12:00 WIB.</p>
-                </div>
+                </div>` : ''}
                 
                 <p>Jika ada pertanyaan atau memerlukan informasi tambahan, silakan hubungi Om Tupas ekekekke.</p>
                 
@@ -222,7 +283,8 @@ class EmailService {
             <div class="footer">
                 <p>Email ini dikirim secara otomatis oleh sistem WhatsApp Bot ${this.companyName}</p>
                 <p>Waktu pengiriman: ${moment().tz(this.timezone).format('DD/MM/YYYY HH:mm:ss')} WIB</p>
-                <p>Copyright &copy; 2025 - Kakarama Room.<a href="https://kakaramaroom.com" target="_blank">kakaramaroom.com</a></p>
+                <p>Copyright &copy; 2025 - Kakarama Room.</p>
+                <p><a href="https://kakaramaroom.com" target="_blank">www.kakaramaroom.com</a></p>
             </div>
         </body>
         </html>
@@ -232,26 +294,31 @@ class EmailService {
     /**
      * Generate text content for daily email
      */
-    generateDailyEmailText(displayDate, currentTime, apartmentName = null) {
+    generateDailyEmailText(displayDate, currentTime, apartmentName = null, isExportCommand = false) {
         const reportName = apartmentName || this.companyName;
+        const reportType = isExportCommand ? 'EXPORT' : 'HARIAN';
+        const greeting = this.getDynamicGreeting();
+
         return `
-LAPORAN HARIAN ${reportName.toUpperCase()}
+LAPORAN ${reportType} ${reportName.toUpperCase()}
 ${displayDate} - ${currentTime} WIB
 
-Selamat siang!
+${greeting}!
 
-Berikut adalah laporan harian ${reportName} untuk tanggal ${displayDate}.
+Berikut adalah laporan ${isExportCommand ? 'export' : 'harian'} ${reportName} untuk tanggal ${displayDate}.
 
 FILE LAPORAN EXCEL:
 File Excel dengan detail lengkap telah dilampirkan dalam email ini, berisi:
-- Sheet Transaksi: Detail semua transaksi hari ini
-- Sheet Ringkasan CS: Performa masing-masing CS  
-- Sheet Komisi Marketing: Perhitungan komisi untuk setiap CS
+- Sheet Transaksi: Detail semua transaksi pada periode ini
+- Sheet Laporan Cash: Khusus transaksi pembayaran tunai
+- Sheet Ringkasan: Ringkasan CS dan komisi marketing
 
-LAPORAN WHATSAPP:
+${!isExportCommand ? `LAPORAN WHATSAPP:
 Ringkasan laporan juga telah dikirim ke grup WhatsApp pada pukul 12:00 WIB.
 
-Jika ada pertanyaan atau memerlukan informasi tambahan, silakan hubungi administrator sistem.
+` : ''}
+
+Jika ada pertanyaan atau memerlukan informasi tambahan, silakan hubungi Om Tupas ekekekke.
 
 Terima kasih!
 
@@ -274,8 +341,8 @@ Waktu pengiriman: ${moment().tz(this.timezone).format('DD/MM/YYYY HH:mm:ss')} WI
                 throw new Error('Excel file not found or path is invalid');
             }
 
-            const displayStartDate = moment(startDate).format('DD MMMM YYYY');
-            const displayEndDate = moment(endDate).format('DD MMMM YYYY');
+            const displayStartDate = this.formatDateIndonesian(startDate);
+            const displayEndDate = this.formatDateIndonesian(endDate);
 
             const subject = `Laporan Mingguan ${this.companyName} - ${displayStartDate} s/d ${displayEndDate}`;
             const htmlContent = this.generateWeeklyEmailHTML(displayStartDate, displayEndDate);
@@ -354,7 +421,8 @@ Waktu pengiriman: ${moment().tz(this.timezone).format('DD/MM/YYYY HH:mm:ss')} WI
                 throw new Error('Excel file not found or path is invalid');
             }
 
-            const monthName = moment().month(month - 1).format('MMMM YYYY');
+            const monthDate = moment().year(year).month(month - 1);
+            const monthName = this.formatDateIndonesian(monthDate.format('YYYY-MM-01')).replace(/\d+ /, '');
             const subject = `Laporan Bulanan ${this.companyName} - ${monthName}`;
             const htmlContent = this.generateMonthlyEmailHTML(monthName);
 
