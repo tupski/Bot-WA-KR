@@ -749,58 +749,21 @@ async function handleCommand(message, apartmentName) {
                     }
                     // Check if it's an apartment name
                     else {
-                        // !export apartemen - Default business day untuk apartemen tertentu
+                        // Try apartment name first
                         apartmentName = findApartmentByPartialName(param);
-                        if (!apartmentName) {
+                        if (apartmentName) {
+                            // !export apartemen - Default business day untuk apartemen tertentu
+                            const now = moment().tz('Asia/Jakarta');
+                            const businessDay = now.clone().subtract(1, 'day');
+
+                            startDate = businessDay.format('YYYY-MM-DD') + ' 12:00:00';
+                            endDate = now.format('YYYY-MM-DD') + ' 11:59:59';
+                            displayDate = businessDay.format('DD/MM/YYYY');
+                            targetDate = businessDay.format('YYYY-MM-DD');
+                        } else {
                             await bot.sendMessage(message.from, `❌ Parameter "${param}" tidak dikenali. Gunakan:\n- Angka 1-31 untuk hari terakhir\n- DDMMYYYY untuk tanggal\n- DD-DDMMYYYY untuk range tanggal\n- Nama bulan untuk laporan bulanan\n- Nama apartemen`);
                             return;
                         }
-
-                        const now = moment().tz('Asia/Jakarta');
-                        const businessDay = now.clone().subtract(1, 'day');
-
-                        startDate = businessDay.format('YYYY-MM-DD') + ' 12:00:00';
-                        endDate = now.format('YYYY-MM-DD') + ' 11:59:59';
-                        displayDate = businessDay.format('DD/MM/YYYY');
-                        targetDate = businessDay.format('YYYY-MM-DD');
-                    }
-
-                    if (param.length === 8 && /^\d{8}$/.test(param)) {
-                        // Format tanggal DDMMYYYY
-                        const day = param.substring(0, 2);
-                        const month = param.substring(2, 4);
-                        const year = param.substring(4, 8);
-                        targetDate = `${year}-${month}-${day}`;
-
-                        // Validasi tanggal
-                        const parsedDate = moment(targetDate, 'YYYY-MM-DD');
-                        if (!parsedDate.isValid()) {
-                            await bot.sendMessage(message.from, '❌ Format tanggal tidak valid. Gunakan format DDMMYYYY (contoh: 01082025)');
-                            return;
-                        }
-
-                        // Hitung business day range untuk tanggal yang diminta
-                        const businessDay = parsedDate.clone();
-                        const nextDay = businessDay.clone().add(1, 'day');
-
-                        startDate = businessDay.format('YYYY-MM-DD') + ' 12:00:00';
-                        endDate = nextDay.format('YYYY-MM-DD') + ' 11:59:59';
-                        displayDate = businessDay.format('DD/MM/YYYY');
-                    } else {
-                        // Nama apartemen - gunakan business day kemarin
-                        apartmentName = findApartmentByPartialName(param);
-                        if (!apartmentName) {
-                            await bot.sendMessage(message.from, `❌ Apartemen "${param}" tidak ditemukan. Gunakan: sky, treepark, emerald, springwood, serpong, tokyo`);
-                            return;
-                        }
-
-                        const now = moment().tz('Asia/Jakarta');
-                        const businessDay = now.clone().subtract(1, 'day');
-
-                        startDate = businessDay.format('YYYY-MM-DD') + ' 12:00:00';
-                        endDate = now.format('YYYY-MM-DD') + ' 11:59:59';
-                        displayDate = businessDay.format('DD/MM/YYYY');
-                        targetDate = businessDay.format('YYYY-MM-DD');
                     }
                 } else if (parts.length === 3) {
                     const apartmentParam = parts[1];
