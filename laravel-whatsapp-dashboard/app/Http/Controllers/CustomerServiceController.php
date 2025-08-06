@@ -104,7 +104,7 @@ class CustomerServiceController extends Controller
         $lastMonthPerformance = $this->getCsPerformance($customerService, $lastMonth, $lastMonth->copy()->endOfMonth());
 
         // Recent transactions
-        $recentTransactions = Transaction::where('cs_name', $customerService->name)
+        $recentTransactions = Transaction::where('marketing_name', $customerService->name)
             ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get();
@@ -162,7 +162,7 @@ class CustomerServiceController extends Controller
     public function destroy(CustomerService $customerService)
     {
         // Check if CS has transactions
-        $hasTransactions = Transaction::where('cs_name', $customerService->name)->exists();
+        $hasTransactions = Transaction::where('marketing_name', $customerService->name)->exists();
 
         if ($hasTransactions) {
             return redirect()->route('customer-services.index')
@@ -191,13 +191,13 @@ class CustomerServiceController extends Controller
             $selectedMonth->endOfMonth()->copy()
         ])
         ->selectRaw('
-            cs_name,
+            marketing_name,
             COUNT(*) as total_bookings,
             SUM(amount) as total_revenue,
             SUM(commission) as total_commission,
             AVG(amount) as avg_amount
         ')
-        ->groupBy('cs_name')
+        ->groupBy('marketing_name')
         ->orderBy('total_commission', 'desc')
         ->get();
 
@@ -214,12 +214,12 @@ class CustomerServiceController extends Controller
 
         return Transaction::whereBetween('date_only', [$start, $end])
             ->selectRaw('
-                cs_name,
+                marketing_name,
                 COUNT(*) as total_bookings,
                 SUM(amount) as total_revenue,
                 SUM(commission) as total_commission
             ')
-            ->groupBy('cs_name')
+            ->groupBy('marketing_name')
             ->orderBy('total_commission', 'desc')
             ->get();
     }
@@ -229,7 +229,7 @@ class CustomerServiceController extends Controller
      */
     private function getCsPerformance($cs, $startDate, $endDate)
     {
-        $transactions = Transaction::where('cs_name', $cs->name)
+        $transactions = Transaction::where('marketing_name', $cs->name)
             ->whereBetween('date_only', [$startDate, $endDate])
             ->get();
 

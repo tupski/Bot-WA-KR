@@ -254,12 +254,12 @@ class ReportController extends Controller
 
         return Transaction::whereBetween('date_only', [$start, $end])
             ->selectRaw('
-                customer_name,
+                marketing_name,
                 COUNT(*) as total_bookings,
                 SUM(amount) as total_revenue,
                 SUM(commission) as total_commission
             ')
-            ->groupBy('customer_name')
+            ->groupBy('marketing_name')
             ->orderBy('total_commission', 'desc')
             ->limit(5)
             ->get();
@@ -310,7 +310,7 @@ class ReportController extends Controller
             'total_cash' => $transactions->where('payment_method', 'Cash')->sum('amount'),
             'total_transfer' => $transactions->where('payment_method', 'TF')->sum('amount'),
             'avg_booking_value' => $transactions->avg('amount') ?? 0,
-            'unique_marketing' => $transactions->pluck('cs_name')->unique()->count(),
+            'unique_marketing' => $transactions->pluck('marketing_name')->unique()->count(),
             'unique_apartments' => $transactions->pluck('location')->unique()->count(),
             'days_count' => $start->diffInDays($end) + 1,
         ];

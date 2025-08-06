@@ -97,7 +97,7 @@ class DashboardController extends Controller
             'total_bookings' => $transactions->count(),
             'total_revenue' => $transactions->sum('amount'),
             'total_commission' => $transactions->sum('commission'),
-            'unique_cs' => $transactions->pluck('cs_name')->unique()->count(),
+            'unique_cs' => $transactions->pluck('marketing_name')->unique()->count(),
             'active_apartments' => $transactions->pluck('location')->unique()->count(),
         ];
     }

@@ -17,7 +17,7 @@ class Transaction extends Model
         'checkout_time',
         'duration',
         'payment_method',
-        'customer_name', // Changed from cs_name to customer_name
+        'marketing_name', // Changed from cs_name to marketing_name
         'customer_phone',
         'commission',
         'amount',

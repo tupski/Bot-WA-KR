@@ -47,7 +47,7 @@ class TransactionController extends Controller
             $query->where(function($q) use ($search) {
                 $q->where('unit', 'like', "%{$search}%")
                   ->orWhere('location', 'like', "%{$search}%")
-                  ->orWhere('cs_name', 'like', "%{$search}%")
+                  ->orWhere('marketing_name', 'like', "%{$search}%")
                   ->orWhere('message_id', 'like', "%{$search}%");
             });
         }
@@ -210,7 +210,7 @@ class TransactionController extends Controller
         }
 
         if ($request->filled('cs_name')) {
-            $query->where('cs_name', $request->cs_name);
+            $query->where('marketing_name', $request->cs_name);
         }
 
         if ($request->filled('payment_method')) {
@@ -245,7 +245,7 @@ class TransactionController extends Controller
         }
 
         if ($request->filled('cs_name')) {
-            $query->where('cs_name', $request->cs_name);
+            $query->where('marketing_name', $request->cs_name);
         }
 
         if ($request->filled('payment_method')) {
