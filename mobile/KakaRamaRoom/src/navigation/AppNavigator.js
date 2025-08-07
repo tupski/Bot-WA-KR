@@ -311,7 +311,7 @@ const AppNavigator = () => {
               }}
             />
             <Stack.Screen
-              name="ProfileManagement"
+              name="AdminProfileManagement"
               component={ProfileManagementScreen}
               options={{
                 headerShown: false,
@@ -337,13 +337,6 @@ const AppNavigator = () => {
                 headerTintColor: COLORS.background,
               }}
             />
-            <Stack.Screen
-              name="ProfileManagement"
-              component={ProfileManagementScreen}
-              options={{
-                headerShown: false,
-              }}
-            />
           </>
         ) : (
           // Field Team Stack
@@ -357,6 +350,13 @@ const AppNavigator = () => {
                 title: 'Extend Check-in',
                 headerStyle: { backgroundColor: COLORS.primary },
                 headerTintColor: COLORS.background,
+              }}
+            />
+            <Stack.Screen
+              name="FieldProfileManagement"
+              component={ProfileManagementScreen}
+              options={{
+                headerShown: false,
               }}
             />
             <Stack.Screen
