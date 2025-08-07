@@ -42,7 +42,7 @@ echo.
 echo 1. Go to https://supabase.com/dashboard
 echo 2. Select your project
 echo 3. Go to SQL Editor
-echo 4. Copy and run the SQL from: create-simple-activity-logs.sql
+echo 4. Copy and run the SQL from: create-activity-logs-safe.sql
 echo.
 echo This will create the missing activity_logs table.
 echo.

@@ -36,10 +36,10 @@ ON activity_logs FOR SELECT
 TO service_role 
 USING (true);
 
--- Insert sample data for testing
+-- Insert sample data for testing (using valid enum values)
 INSERT INTO activity_logs (user_id, user_type, action, description) VALUES
-(gen_random_uuid(), 'admin', 'system_start', 'Sistem KakaRama Room dimulai'),
-(gen_random_uuid(), 'admin', 'table_created', 'Tabel activity_logs berhasil dibuat');
+(gen_random_uuid(), 'admin', 'login', 'Admin berhasil login ke sistem'),
+(gen_random_uuid(), 'admin', 'create', 'Tabel activity_logs berhasil dibuat');
 
 -- Verify table creation
 SELECT COUNT(*) as total_logs FROM activity_logs;
