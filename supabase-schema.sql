@@ -90,9 +90,9 @@ DECLARE
     r RECORD;
 BEGIN
     -- Drop all triggers on public schema tables
-    FOR r IN (SELECT schemaname, tablename, triggername FROM information_schema.triggers WHERE trigger_schema = 'public')
+    FOR r IN (SELECT trigger_schema, event_object_table, trigger_name FROM information_schema.triggers WHERE trigger_schema = 'public')
     LOOP
-        EXECUTE 'DROP TRIGGER IF EXISTS ' || r.triggername || ' ON ' || r.schemaname || '.' || r.tablename || ' CASCADE';
+        EXECUTE 'DROP TRIGGER IF EXISTS ' || r.trigger_name || ' ON ' || r.trigger_schema || '.' || r.event_object_table || ' CASCADE';
     END LOOP;
 END $$;
 
@@ -232,7 +232,9 @@ CREATE TABLE activity_logs (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create indexes for better performance
+SELECT '📊 Creating indexes for better performance...' as status;
+
+-- Create indexes for main tables
 CREATE INDEX idx_units_apartment_id ON units(apartment_id);
 CREATE INDEX idx_units_status ON units(status);
 CREATE INDEX idx_checkins_apartment_id ON checkins(apartment_id);
@@ -244,133 +246,6 @@ CREATE INDEX idx_checkins_created_at ON checkins(created_at);
 CREATE INDEX idx_activity_logs_user_id ON activity_logs(user_id);
 CREATE INDEX idx_activity_logs_action ON activity_logs(action);
 CREATE INDEX idx_activity_logs_created_at ON activity_logs(created_at);
-
--- Create updated_at trigger function
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$ language 'plpgsql';
-
--- Add updated_at triggers
-CREATE TRIGGER update_admins_updated_at BEFORE UPDATE ON admins FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_apartments_updated_at BEFORE UPDATE ON apartments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_field_teams_updated_at BEFORE UPDATE ON field_teams FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_units_updated_at BEFORE UPDATE ON units FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_checkins_updated_at BEFORE UPDATE ON checkins FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
--- Insert default admin user (password: admin123)
-INSERT INTO admins (username, password, full_name, email) VALUES
-('admin', 'admin123', 'Administrator', 'admin@kakarama.com');
-
--- Row Level Security (RLS) Policies
-ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
-ALTER TABLE apartments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE field_teams ENABLE ROW LEVEL SECURITY;
-ALTER TABLE units ENABLE ROW LEVEL SECURITY;
-ALTER TABLE team_apartment_assignments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE checkins ENABLE ROW LEVEL SECURITY;
-ALTER TABLE checkin_extensions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
-
--- Create policies (allow all for now, customize later based on requirements)
-CREATE POLICY "Allow all operations for authenticated users" ON admins FOR ALL USING (auth.role() = 'authenticated');
-CREATE POLICY "Allow all operations for authenticated users" ON apartments FOR ALL USING (auth.role() = 'authenticated');
-CREATE POLICY "Allow all operations for authenticated users" ON field_teams FOR ALL USING (auth.role() = 'authenticated');
-CREATE POLICY "Allow all operations for authenticated users" ON units FOR ALL USING (auth.role() = 'authenticated');
-CREATE POLICY "Allow all operations for authenticated users" ON team_apartment_assignments FOR ALL USING (auth.role() = 'authenticated');
-CREATE POLICY "Allow all operations for authenticated users" ON checkins FOR ALL USING (auth.role() = 'authenticated');
-CREATE POLICY "Allow all operations for authenticated users" ON checkin_extensions FOR ALL USING (auth.role() = 'authenticated');
-CREATE POLICY "Allow all operations for authenticated users" ON activity_logs FOR ALL USING (auth.role() = 'authenticated');
-
--- Create views for easier data access
-CREATE VIEW checkins_with_details AS
-SELECT 
-  c.*,
-  u.unit_number,
-  u.unit_type,
-  a.name as apartment_name,
-  a.code as apartment_code,
-  ft.full_name as team_name,
-  ft.phone as team_phone
-FROM checkins c
-JOIN units u ON c.unit_id = u.id
-JOIN apartments a ON c.apartment_id = a.id
-LEFT JOIN field_teams ft ON c.team_id = ft.id;
-
-CREATE VIEW units_with_apartment AS
-SELECT 
-  u.*,
-  a.name as apartment_name,
-  a.code as apartment_code
-FROM units u
-JOIN apartments a ON u.apartment_id = a.id;
-
--- Create functions for common operations
-CREATE OR REPLACE FUNCTION get_active_checkins()
-RETURNS TABLE (
-  id UUID,
-  unit_number VARCHAR,
-  apartment_name VARCHAR,
-  team_name VARCHAR,
-  checkout_time TIMESTAMP WITH TIME ZONE,
-  status checkin_status
-) AS $$
-BEGIN
-  RETURN QUERY
-  SELECT 
-    c.id,
-    u.unit_number,
-    a.name,
-    ft.full_name,
-    c.checkout_time,
-    c.status
-  FROM checkins c
-  JOIN units u ON c.unit_id = u.id
-  JOIN apartments a ON c.apartment_id = a.id
-  LEFT JOIN field_teams ft ON c.team_id = ft.id
-  WHERE c.status IN ('active', 'extended');
-END;
-$$ LANGUAGE plpgsql;
-
--- Create function for auto-checkout
-CREATE OR REPLACE FUNCTION process_auto_checkout()
-RETURNS TABLE (
-  checkin_id UUID,
-  unit_number VARCHAR,
-  apartment_name VARCHAR
-) AS $$
-BEGIN
-  -- Update expired checkins to completed
-  UPDATE checkins
-  SET status = 'completed', updated_at = NOW()
-  WHERE status IN ('active', 'extended')
-    AND checkout_time <= NOW();
-
-  -- Update unit status to cleaning
-  UPDATE units
-  SET status = 'cleaning', cleaning_started_at = NOW(), updated_at = NOW()
-  WHERE id IN (
-    SELECT unit_id FROM checkins
-    WHERE status = 'completed'
-      AND updated_at >= NOW() - INTERVAL '1 minute'
-  );
-
-  -- Return processed checkins
-  RETURN QUERY
-  SELECT
-    c.id,
-    u.unit_number,
-    a.name
-  FROM checkins c
-  JOIN units u ON c.unit_id = u.id
-  JOIN apartments a ON c.apartment_id = a.id
-  WHERE c.status = 'completed'
-    AND c.updated_at >= NOW() - INTERVAL '1 minute';
-END;
-$$ LANGUAGE plpgsql;
 
 SELECT '🤖 Creating WhatsApp Bot compatibility tables...' as status;
 
