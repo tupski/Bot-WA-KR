@@ -78,5 +78,4 @@ class DatabaseManager {
 const databaseManager = new DatabaseManager();
 export default databaseManager;
 
-// Export Supabase client untuk penggunaan langsung
-export { supabase };
+// supabase sudah di-export di line 12, tidak perlu export lagi

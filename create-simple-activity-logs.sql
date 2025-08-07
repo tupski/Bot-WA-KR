@@ -36,10 +36,14 @@ ON activity_logs FOR SELECT
 TO service_role 
 USING (true);
 
--- Insert sample data for testing (using valid enum values)
-INSERT INTO activity_logs (user_id, user_type, action, description) VALUES
-(gen_random_uuid(), 'admin', 'login', 'Admin berhasil login ke sistem'),
-(gen_random_uuid(), 'admin', 'create', 'Tabel activity_logs berhasil dibuat');
-
--- Verify table creation
+-- Check existing data (don't insert new data to avoid enum errors)
 SELECT COUNT(*) as total_logs FROM activity_logs;
+
+-- Show existing enum values for reference
+SELECT
+    t.typname as enum_name,
+    e.enumlabel as enum_value
+FROM pg_type t
+JOIN pg_enum e ON t.oid = e.enumtypid
+WHERE t.typname = 'activity_action'
+ORDER BY e.enumsortorder;

@@ -12,6 +12,8 @@ class AuthService {
   // Login untuk Admin
   async loginAdmin(username, password) {
     try {
+      console.log('AuthService: Attempting admin login for:', username);
+
       // Query ke Supabase untuk admin
       const { data, error } = await supabase
         .from('admins')
@@ -19,6 +21,8 @@ class AuthService {
         .eq('username', username)
         .eq('password', password) // Note: In production, use proper password hashing
         .single();
+
+      console.log('AuthService: Supabase query result:', { data, error });
 
       if (error) {
         if (error.code === 'PGRST116') {
@@ -69,8 +73,11 @@ class AuthService {
 
   // Default admin login (fallback)
   async loginDefaultAdmin(username, password) {
+    console.log('AuthService: Using default admin login for:', username);
+
     // Default admin credentials
     if (username === 'admin' && password === 'admin123') {
+      console.log('AuthService: Default admin credentials match');
       const userData = {
         id: 1,
         username: 'admin',
@@ -98,6 +105,7 @@ class AuthService {
       };
     }
 
+    console.log('AuthService: Default admin credentials do not match');
     return {
       success: false,
       message: 'Username atau password salah',

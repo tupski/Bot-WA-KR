@@ -14,14 +14,17 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AuthService from '../services/AuthService';
-import DatabaseManager from '../config/database';
+import DatabaseManager from '../config/supabase'; // Updated to use Supabase
 import { COLORS, SIZES, USER_ROLES } from '../config/constants';
 import RealtimeService from '../services/RealtimeService';
+
+// Import package.json untuk mendapatkan versi app
+const packageJson = require('../../package.json');
 
 const LoginScreen = ({ navigation }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [userType, setUserType] = useState(USER_ROLES.ADMIN); // 'admin' or 'field_team'
+  const [userType, setUserType] = useState(USER_ROLES.FIELD_TEAM); // Default ke Tim Lapangan
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
 
@@ -68,21 +71,30 @@ const LoginScreen = ({ navigation }) => {
     setLoading(true);
 
     try {
+      console.log('Attempting login:', { username: username.trim(), userType });
+
       let result;
       if (userType === USER_ROLES.ADMIN) {
+        console.log('Logging in as admin...');
         result = await AuthService.loginAdmin(username.trim(), password);
       } else {
+        console.log('Logging in as field team...');
         result = await AuthService.loginFieldTeam(username.trim(), password);
       }
 
-      if (result.success) {
+      console.log('Login result:', result);
+
+      if (result && result.success) {
+        console.log('Login successful, navigating...');
         navigateToHome(result.user);
       } else {
-        Alert.alert('Login Gagal', result.message);
+        const errorMessage = result?.message || 'Login gagal tanpa pesan error';
+        console.log('Login failed:', errorMessage);
+        Alert.alert('Login Gagal', errorMessage);
       }
     } catch (error) {
       console.error('Login error:', error);
-      Alert.alert('Error', 'Terjadi kesalahan saat login');
+      Alert.alert('Error', `Terjadi kesalahan saat login: ${error.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -203,17 +215,13 @@ const LoginScreen = ({ navigation }) => {
             )}
           </TouchableOpacity>
 
-          {/* Default Credentials Info */}
-          <View style={styles.infoContainer}>
-            <Text style={styles.infoTitle}>Default Login:</Text>
-            <Text style={styles.infoText}>Admin: admin / admin123</Text>
-            <Text style={styles.infoText}>Tim Lapangan: Hubungi admin untuk akun</Text>
-          </View>
+          {/* Informasi login dihapus untuk keamanan */}
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>© 2024 KakaRama Room</Text>
-          <Text style={styles.footerText}>kakaramaroom.com</Text>
+          <Text style={styles.footerText}>Hak Cipta © 2025 - Kakarama Room</Text>
+          <Text style={styles.footerText}>www.kakaramaroom.com</Text>
+          <Text style={styles.footerText}>App Version {packageJson.version}</Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
