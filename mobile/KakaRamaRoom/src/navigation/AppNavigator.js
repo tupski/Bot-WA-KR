@@ -31,6 +31,7 @@ import FieldUnitsScreen from '../screens/field/FieldUnitsScreen';
 
 // Shared Screens
 import ProfileScreen from '../screens/shared/ProfileScreen';
+import SettingsScreen from '../screens/shared/SettingsScreen';
 import AppSettingsScreen from '../screens/shared/AppSettingsScreen';
 import ProfileManagementScreen from '../screens/shared/ProfileManagementScreen';
 
@@ -228,9 +229,10 @@ const AppNavigator = () => {
   const checkAuthState = async () => {
     try {
       const user = await AuthService.loadUserFromStorage();
+      console.log('AppNavigator: Current user loaded:', user);
       setCurrentUser(user);
     } catch (error) {
-      console.error('Auth check error:', error);
+      console.error('AppNavigator: Auth check error:', error);
     } finally {
       setLoading(false);
     }
@@ -239,6 +241,8 @@ const AppNavigator = () => {
   if (loading) {
     return null; // Or loading screen
   }
+
+  console.log('AppNavigator: Rendering with currentUser:', currentUser);
 
   return (
     <NavigationContainer>
