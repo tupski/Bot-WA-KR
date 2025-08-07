@@ -348,22 +348,22 @@ class SupabaseDatabase {
     // Activity log methods
     async addActivityLog(logData) {
         try {
-            // Prepare log data without ip_address if column doesn't exist
+            // Prepare minimal log data for compatibility
             const logEntry = {
                 user_id: logData.user_id,
                 user_type: logData.user_type,
                 action: logData.action,
                 description: logData.description,
-                related_table: logData.related_table || null,
-                related_id: logData.related_id || null,
-                user_agent: logData.user_agent || null,
                 created_at: new Date().toISOString()
             };
 
-            // Only add ip_address if it's provided and table supports it
-            if (logData.ip_address) {
-                logEntry.ip_address = logData.ip_address;
-            }
+            // Add optional fields only if they exist in table
+            const optionalFields = ['related_table', 'related_id', 'user_agent', 'ip_address'];
+            optionalFields.forEach(field => {
+                if (logData[field]) {
+                    logEntry[field] = logData[field];
+                }
+            });
 
             const { data, error } = await this.supabase
                 .from('activity_logs')
