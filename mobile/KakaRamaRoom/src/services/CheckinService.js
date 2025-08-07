@@ -1,4 +1,4 @@
-import DatabaseManager from '../config/database';
+import { supabase } from '../config/supabase';
 import ActivityLogService from './ActivityLogService';
 import UnitService from './UnitService';
 import { ACTIVITY_ACTIONS, UNIT_STATUS, CHECKIN_STATUS } from '../config/constants';

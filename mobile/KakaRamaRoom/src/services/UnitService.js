@@ -1,4 +1,4 @@
-import DatabaseManager from '../config/database';
+import { supabase } from '../config/supabase';
 import ActivityLogService from './ActivityLogService';
 import { ACTIVITY_ACTIONS, UNIT_STATUS, TIME_CONSTANTS } from '../config/constants';
 
@@ -11,22 +11,34 @@ class UnitService {
   // Get all units
   async getAllUnits() {
     try {
-      const db = DatabaseManager.getDatabase();
-      const result = await db.executeSql(
-        `SELECT u.*, a.name as apartment_name, a.code as apartment_code
-         FROM units u
-         INNER JOIN apartments a ON u.apartment_id = a.id
-         ORDER BY a.name ASC, u.unit_number ASC`
-      );
+      const { data: units, error } = await supabase
+        .from('units')
+        .select(`
+          *,
+          apartments (
+            name,
+            code
+          )
+        `)
+        .order('unit_number', { ascending: true });
 
-      const units = [];
-      for (let i = 0; i < result[0].rows.length; i++) {
-        units.push(result[0].rows.item(i));
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return { success: true, data: [] };
+        }
+        throw error;
       }
+
+      // Transform data to match expected format
+      const transformedUnits = units?.map(unit => ({
+        ...unit,
+        apartment_name: unit.apartments?.name,
+        apartment_code: unit.apartments?.code,
+      })) || [];
 
       return {
         success: true,
-        data: units,
+        data: transformedUnits,
       };
     } catch (error) {
       console.error('Error getting all units:', error);

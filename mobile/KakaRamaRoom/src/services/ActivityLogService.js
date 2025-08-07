@@ -1,18 +1,32 @@
-import DatabaseManager from '../config/database';
+import { supabase } from '../config/supabase';
 import { ACTIVITY_ACTIONS } from '../config/constants';
 
 class ActivityLogService {
   // Log aktivitas user
   async logActivity(userId, userType, action, description, relatedTable = null, relatedId = null, ipAddress = null, userAgent = null) {
     try {
-      const db = DatabaseManager.getDatabase();
-      
-      await db.executeSql(
-        `INSERT INTO activity_logs 
-         (user_id, user_type, action, description, related_table, related_id, ip_address, user_agent, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
-        [userId, userType, action, description, relatedTable, relatedId, ipAddress, userAgent]
-      );
+      const { error } = await supabase
+        .from('activity_logs')
+        .insert({
+          user_id: userId,
+          user_type: userType,
+          action,
+          description,
+          related_table: relatedTable,
+          related_id: relatedId,
+          ip_address: ipAddress,
+          user_agent: userAgent,
+          created_at: new Date().toISOString(),
+        });
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // Table doesn't exist, just log to console
+          console.log(`Activity logged (local): ${userType} ${userId} - ${action}`);
+          return;
+        }
+        throw error;
+      }
 
       console.log(`Activity logged: ${userType} ${userId} - ${action}`);
     } catch (error) {
