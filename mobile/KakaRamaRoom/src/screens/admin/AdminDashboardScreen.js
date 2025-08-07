@@ -10,6 +10,8 @@ import {
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { COLORS, SIZES } from '../../config/constants';
 import AuthService from '../../services/AuthService';
+import SyncStatusIndicator from '../../components/SyncStatusIndicator';
+import { useAutoRefresh } from '../../hooks/useRealtime';
 
 const AdminDashboardScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
@@ -24,9 +26,12 @@ const AdminDashboardScreen = ({ navigation }) => {
     setCurrentUser(user);
   };
 
+  // Auto-refresh when real-time changes occur
+  const { isRefreshing } = useAutoRefresh(loadUserData);
+
   const onRefresh = async () => {
     setRefreshing(true);
-    // Refresh data here
+    loadUserData();
     setTimeout(() => {
       setRefreshing(false);
     }, 1000);
@@ -105,9 +110,12 @@ const AdminDashboardScreen = ({ navigation }) => {
           <Text style={styles.nameText}>{currentUser?.fullName || 'Admin'}</Text>
           <Text style={styles.roleText}>Administrator</Text>
         </View>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Icon name="logout" size={24} color={COLORS.background} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <SyncStatusIndicator />
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Icon name="logout" size={24} color={COLORS.background} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Quick Stats */}
@@ -167,6 +175,10 @@ const styles = StyleSheet.create({
   },
   headerContent: {
     flex: 1,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   welcomeText: {
     fontSize: SIZES.body,

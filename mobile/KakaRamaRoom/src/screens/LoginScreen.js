@@ -16,6 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import AuthService from '../services/AuthService';
 import DatabaseManager from '../config/database';
 import { COLORS, SIZES, USER_ROLES } from '../config/constants';
+import RealtimeService from '../services/RealtimeService';
 
 const LoginScreen = ({ navigation }) => {
   const [username, setUsername] = useState('');
@@ -32,7 +33,10 @@ const LoginScreen = ({ navigation }) => {
     try {
       // Initialize database
       await DatabaseManager.initDatabase();
-      
+
+      // Initialize real-time sync
+      await RealtimeService.initialize();
+
       // Check if user is already logged in
       const currentUser = await AuthService.loadUserFromStorage();
       if (currentUser) {

@@ -3,11 +3,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import 'react-native-url-polyfill/auto';
 
 // Supabase configuration - keys loaded from environment
-// For React Native, we'll use a config file approach
-import { SUPABASE_CONFIG } from './env-config';
+import Config from 'react-native-config';
 
-const supabaseUrl = SUPABASE_CONFIG.url;
-const supabaseAnonKey = SUPABASE_CONFIG.anonKey;
+const supabaseUrl = Config.SUPABASE_URL || 'https://rvcknyuinfssgpgkfetx.supabase.co';
+const supabaseAnonKey = Config.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2Y2tueXVpbmZzc2dwZ2tmZXR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MjE2OTgsImV4cCI6MjA3MDA5NzY5OH0.FXWPp9L4xZ3uw34Iob7QvlEsePTdBmGmgRufXBZZ34c';
 
 // Create Supabase client
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {

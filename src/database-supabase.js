@@ -269,6 +269,82 @@ class SupabaseDatabase {
         }
     }
 
+    // Bot-specific methods for WhatsApp message processing
+    async saveTransaction(transactionData) {
+        try {
+            const { data, error } = await this.supabase
+                .from('transactions')
+                .insert({
+                    ...transactionData,
+                    created_at: new Date().toISOString(),
+                    date_only: new Date().toISOString().split('T')[0]
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            logger.error('Error saving transaction:', error);
+            throw error;
+        }
+    }
+
+    async isMessageProcessed(messageId) {
+        try {
+            const { data, error } = await this.supabase
+                .from('processed_messages')
+                .select('id')
+                .eq('message_id', messageId)
+                .single();
+
+            if (error && error.code !== 'PGRST116') throw error;
+            return !!data;
+        } catch (error) {
+            logger.error('Error checking processed message:', error);
+            return false;
+        }
+    }
+
+    async markMessageProcessed(messageId, chatId) {
+        try {
+            const { data, error } = await this.supabase
+                .from('processed_messages')
+                .insert({
+                    message_id: messageId,
+                    chat_id: chatId,
+                    processed_at: new Date().toISOString()
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            logger.error('Error marking message as processed:', error);
+            return null;
+        }
+    }
+
+    async transactionExists(messageId, location, unit, checkoutTime) {
+        try {
+            const { data, error } = await this.supabase
+                .from('transactions')
+                .select('id')
+                .eq('message_id', messageId)
+                .eq('location', location)
+                .eq('unit', unit)
+                .eq('checkout_time', checkoutTime)
+                .single();
+
+            if (error && error.code !== 'PGRST116') throw error;
+            return !!data;
+        } catch (error) {
+            logger.error('Error checking transaction exists:', error);
+            return false;
+        }
+    }
+
     // Activity log methods
     async addActivityLog(logData) {
         try {
@@ -285,6 +361,82 @@ class SupabaseDatabase {
             return data;
         } catch (error) {
             logger.error('Error adding activity log:', error);
+            return null;
+        }
+    }
+
+    // Config methods
+    async getConfig(keyName) {
+        try {
+            const { data, error } = await this.supabase
+                .from('config')
+                .select('value')
+                .eq('key_name', keyName)
+                .single();
+
+            if (error && error.code !== 'PGRST116') throw error;
+            return data?.value || null;
+        } catch (error) {
+            logger.error('Error getting config:', error);
+            return null;
+        }
+    }
+
+    async setConfig(keyName, value) {
+        try {
+            const { data, error } = await this.supabase
+                .from('config')
+                .upsert({
+                    key_name: keyName,
+                    value: value,
+                    updated_at: new Date().toISOString()
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            logger.error('Error setting config:', error);
+            return null;
+        }
+    }
+
+    // Summary methods for bot reports
+    async saveDailySummary(summaryData) {
+        try {
+            const { data, error } = await this.supabase
+                .from('daily_summary')
+                .upsert({
+                    ...summaryData,
+                    updated_at: new Date().toISOString()
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            logger.error('Error saving daily summary:', error);
+            return null;
+        }
+    }
+
+    async saveCSSummary(summaryData) {
+        try {
+            const { data, error } = await this.supabase
+                .from('cs_summary')
+                .upsert({
+                    ...summaryData,
+                    updated_at: new Date().toISOString()
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            logger.error('Error saving CS summary:', error);
             return null;
         }
     }
