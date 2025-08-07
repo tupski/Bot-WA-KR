@@ -1,5 +1,5 @@
 /**
- * KakaRama Room - Aplikasi Manajemen Checkin
+ * KR App - Aplikasi Manajemen Checkin KakaRama Room
  * @format
  */
 

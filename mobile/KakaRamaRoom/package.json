@@ -1,5 +1,6 @@
 {
-  "name": "KakaRamaRoom",
+  "name": "kr-app",
+  "displayName": "KR App",
   "version": "0.0.1",
   "private": true,
   "scripts": {
