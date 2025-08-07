@@ -350,7 +350,7 @@ class SupabaseDatabase {
         try {
             // Prepare minimal log data for compatibility
             const logEntry = {
-                user_id: logData.user_id,
+                user_id: logData.user_id || 'gen_random_uuid()', // Handle UUID requirement
                 user_type: logData.user_type,
                 action: logData.action,
                 description: logData.description,

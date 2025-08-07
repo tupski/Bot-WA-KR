@@ -7,7 +7,7 @@
 -- Create activity_logs table with minimal required fields
 CREATE TABLE IF NOT EXISTS activity_logs (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id INTEGER NOT NULL,
+    user_id UUID NOT NULL,
     user_type VARCHAR(50) NOT NULL CHECK (user_type IN ('admin', 'field_team')),
     action VARCHAR(100) NOT NULL,
     description TEXT NOT NULL,
@@ -49,11 +49,12 @@ USING (true);
 -- Enable real-time (optional)
 -- ALTER PUBLICATION supabase_realtime ADD TABLE activity_logs;
 
--- Insert sample data for testing
+-- Insert sample data for testing (using UUID values)
+-- First, let's get some existing UUIDs from admins table, or use generated ones
 INSERT INTO activity_logs (user_id, user_type, action, description) VALUES
-(1, 'admin', 'login', 'Admin berhasil login ke sistem'),
-(1, 'admin', 'create_apartment', 'Membuat apartemen baru: Test Apartment'),
-(2, 'field_team', 'checkin', 'Tim lapangan melakukan checkin unit 101');
+(gen_random_uuid(), 'admin', 'login', 'Admin berhasil login ke sistem'),
+(gen_random_uuid(), 'admin', 'create_apartment', 'Membuat apartemen baru: Test Apartment'),
+(gen_random_uuid(), 'field_team', 'checkin', 'Tim lapangan melakukan checkin unit 101');
 
 -- Verify table creation
 SELECT 
