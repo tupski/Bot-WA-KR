@@ -11,84 +11,88 @@ class ReportService {
    */
   async getCheckinReport(filters = {}) {
     try {
-      const db = DatabaseManager.getDatabase();
-      let query = `
-        SELECT 
-          c.id,
-          c.created_at,
-          c.checkout_time,
-          c.duration_hours,
-          c.payment_method,
-          c.payment_amount,
-          c.marketing_name,
-          c.status,
-          u.unit_number,
-          a.name as apartment_name,
-          a.code as apartment_code,
-          ft.full_name as team_name
-        FROM checkins c
-        INNER JOIN units u ON c.unit_id = u.id
-        INNER JOIN apartments a ON c.apartment_id = a.id
-        INNER JOIN field_teams ft ON c.team_id = ft.id
-        WHERE 1=1
-      `;
-      
-      const params = [];
+      console.log('ReportService: Getting checkin report with filters:', filters);
+
+      let query = supabase
+        .from('checkins')
+        .select(`
+          id,
+          created_at,
+          checkout_time,
+          duration_hours,
+          payment_method,
+          payment_amount,
+          marketing_name,
+          status,
+          notes,
+          units!inner(
+            unit_number,
+            apartments!inner(
+              name,
+              code
+            )
+          ),
+          field_teams(
+            full_name
+          )
+        `);
 
       // Filter by apartment
       if (filters.apartmentId) {
-        query += ' AND c.apartment_id = ?';
-        params.push(filters.apartmentId);
+        query = query.eq('apartment_id', filters.apartmentId);
       }
 
       // Filter by status
       if (filters.status) {
-        query += ' AND c.status = ?';
-        params.push(filters.status);
+        query = query.eq('status', filters.status);
       }
 
       // Filter by date range
       if (filters.startDate) {
-        query += ' AND DATE(c.created_at) >= ?';
-        params.push(filters.startDate);
+        query = query.gte('created_at', filters.startDate + 'T00:00:00.000Z');
       }
 
       if (filters.endDate) {
-        query += ' AND DATE(c.created_at) <= ?';
-        params.push(filters.endDate);
+        query = query.lte('created_at', filters.endDate + 'T23:59:59.999Z');
       }
 
       // Filter by marketing
       if (filters.marketingName) {
-        query += ' AND c.marketing_name LIKE ?';
-        params.push(`%${filters.marketingName}%`);
+        query = query.ilike('marketing_name', `%${filters.marketingName}%`);
       }
 
-      // Order by created_at desc
-      query += ' ORDER BY c.created_at DESC';
+      // Order by created_at desc and apply limit
+      query = query.order('created_at', { ascending: false });
 
-      // Limit
       if (filters.limit) {
-        query += ' LIMIT ?';
-        params.push(filters.limit);
+        query = query.limit(filters.limit);
       }
 
-      const result = await db.executeSql(query, params);
-      const checkins = [];
+      const { data: checkins, error } = await query;
 
-      for (let i = 0; i < result[0].rows.length; i++) {
-        checkins.push(result[0].rows.item(i));
+      if (error) {
+        throw error;
       }
 
+      // Transform data to match expected format
+      const transformedCheckins = checkins?.map(checkin => ({
+        ...checkin,
+        apartment_name: checkin.units?.apartments?.name,
+        apartment_code: checkin.units?.apartments?.code,
+        unit_number: checkin.units?.unit_number,
+        team_name: checkin.field_teams?.full_name,
+      })) || [];
+
+      console.log(`ReportService: Found ${transformedCheckins.length} checkins`);
       return {
         success: true,
-        data: checkins,
+        data: transformedCheckins,
       };
     } catch (error) {
-      console.error('Error getting checkin report:', error);
+      console.error('ReportService: Error getting checkin report:', error);
       return {
         success: false,
-        message: 'Gagal mengambil laporan checkin',
+        message: 'Gagal mengambil laporan checkin: ' + error.message,
       };
     }
   }
@@ -99,63 +103,81 @@ class ReportService {
    */
   async getApartmentStatistics(filters = {}) {
     try {
-      const db = DatabaseManager.getDatabase();
-      let query = `
-        SELECT 
-          a.id,
-          a.name,
-          a.code,
-          COUNT(c.id) as total_checkins,
-          COUNT(CASE WHEN c.status = 'active' THEN 1 END) as active_checkins,
-          COUNT(CASE WHEN c.status = 'extended' THEN 1 END) as extended_checkins,
-          COUNT(CASE WHEN c.status = 'completed' THEN 1 END) as completed_checkins,
-          COUNT(CASE WHEN c.status = 'early_checkout' THEN 1 END) as early_checkouts,
-          SUM(c.payment_amount) as total_revenue,
-          AVG(c.duration_hours) as avg_duration
-        FROM apartments a
-        LEFT JOIN checkins c ON a.id = c.apartment_id
-      `;
+      console.log('ReportService: Getting apartment statistics with filters:', filters);
 
-      const params = [];
+      // Get all apartments first
+      const { data: apartments, error: apartmentError } = await supabase
+        .from('apartments')
+        .select('id, name, code')
+        .eq('status', 'active')
+        .order('name');
 
-      // Filter by date range
-      if (filters.startDate || filters.endDate) {
-        query += ' AND (';
-        if (filters.startDate) {
-          query += 'DATE(c.created_at) >= ?';
-          params.push(filters.startDate);
-        }
-        if (filters.endDate) {
-          if (filters.startDate) query += ' AND ';
-          query += 'DATE(c.created_at) <= ?';
-          params.push(filters.endDate);
-        }
-        query += ')';
+      if (apartmentError) {
+        throw apartmentError;
       }
 
-      query += ' GROUP BY a.id, a.name, a.code ORDER BY total_checkins DESC';
-
-      const result = await db.executeSql(query, params);
       const statistics = [];
 
-      for (let i = 0; i < result[0].rows.length; i++) {
-        const row = result[0].rows.item(i);
+      // For each apartment, get checkin statistics
+      for (const apartment of apartments || []) {
+        let checkinQuery = supabase
+          .from('checkins')
+          .select('id, status, payment_amount, duration_hours, created_at')
+          .eq('apartment_id', apartment.id);
+
+        // Apply date filters
+        if (filters.startDate) {
+          checkinQuery = checkinQuery.gte('created_at', filters.startDate + 'T00:00:00.000Z');
+        }
+        if (filters.endDate) {
+          checkinQuery = checkinQuery.lte('created_at', filters.endDate + 'T23:59:59.999Z');
+        }
+
+        const { data: checkins, error: checkinError } = await checkinQuery;
+
+        if (checkinError) {
+          console.error('Error getting checkins for apartment:', apartment.id, checkinError);
+          continue;
+        }
+
+        // Calculate statistics
+        const totalCheckins = checkins?.length || 0;
+        const activeCheckins = checkins?.filter(c => c.status === 'active').length || 0;
+        const extendedCheckins = checkins?.filter(c => c.status === 'extended').length || 0;
+        const completedCheckins = checkins?.filter(c => c.status === 'completed').length || 0;
+        const earlyCheckouts = checkins?.filter(c => c.status === 'early_checkout').length || 0;
+        const totalRevenue = checkins?.reduce((sum, c) => sum + (c.payment_amount || 0), 0) || 0;
+        const avgDuration = totalCheckins > 0
+          ? checkins.reduce((sum, c) => sum + (c.duration_hours || 0), 0) / totalCheckins
+          : 0;
+
         statistics.push({
-          ...row,
-          total_revenue: row.total_revenue || 0,
-          avg_duration: row.avg_duration || 0,
+          id: apartment.id,
+          name: apartment.name,
+          code: apartment.code,
+          total_checkins: totalCheckins,
+          active_checkins: activeCheckins,
+          extended_checkins: extendedCheckins,
+          completed_checkins: completedCheckins,
+          early_checkouts: earlyCheckouts,
+          total_revenue: totalRevenue,
+          avg_duration: avgDuration,
         });
       }
 
+      // Sort by total checkins descending
+      statistics.sort((a, b) => b.total_checkins - a.total_checkins);
+
+      console.log(`ReportService: Found statistics for ${statistics.length} apartments`);
       return {
         success: true,
         data: statistics,
       };
     } catch (error) {
-      console.error('Error getting apartment statistics:', error);
+      console.error('ReportService: Error getting apartment statistics:', error);
       return {
         success: false,
-        message: 'Gagal mengambil statistik apartemen',
+        message: 'Gagal mengambil statistik apartemen: ' + error.message,
       };
     }
   }
@@ -166,64 +188,148 @@ class ReportService {
    */
   async getTopMarketing(filters = {}) {
     try {
-      const db = DatabaseManager.getDatabase();
-      let query = `
-        SELECT 
-          c.marketing_name,
-          COUNT(c.id) as total_checkins,
-          SUM(c.payment_amount) as total_revenue,
-          COUNT(DISTINCT c.apartment_id) as apartments_served
-        FROM checkins c
-        WHERE c.marketing_name IS NOT NULL AND c.marketing_name != ''
-      `;
+      console.log('ReportService: Getting top marketing with filters:', filters);
 
-      const params = [];
+      let query = supabase
+        .from('checkins')
+        .select('marketing_name, payment_amount, apartment_id, created_at')
+        .not('marketing_name', 'is', null)
+        .neq('marketing_name', '');
 
       // Filter by date range
       if (filters.startDate) {
-        query += ' AND DATE(c.created_at) >= ?';
-        params.push(filters.startDate);
+        query = query.gte('created_at', filters.startDate + 'T00:00:00.000Z');
       }
 
       if (filters.endDate) {
-        query += ' AND DATE(c.created_at) <= ?';
-        params.push(filters.endDate);
+        query = query.lte('created_at', filters.endDate + 'T23:59:59.999Z');
       }
 
       // Filter by apartment
       if (filters.apartmentId) {
-        query += ' AND c.apartment_id = ?';
-        params.push(filters.apartmentId);
+        query = query.eq('apartment_id', filters.apartmentId);
       }
 
-      query += ' GROUP BY c.marketing_name ORDER BY total_checkins DESC';
+      const { data: checkins, error } = await query;
 
-      // Limit
-      if (filters.limit) {
-        query += ' LIMIT ?';
-        params.push(filters.limit);
+      if (error) {
+        throw error;
       }
 
-      const result = await db.executeSql(query, params);
-      const marketing = [];
+      // Group by marketing name and calculate statistics
+      const marketingStats = {};
 
-      for (let i = 0; i < result[0].rows.length; i++) {
-        const row = result[0].rows.item(i);
-        marketing.push({
-          ...row,
-          total_revenue: row.total_revenue || 0,
-        });
-      }
+      checkins?.forEach(checkin => {
+        const name = checkin.marketing_name;
+        if (!marketingStats[name]) {
+          marketingStats[name] = {
+            marketing_name: name,
+            total_checkins: 0,
+            total_revenue: 0,
+            apartments_served: new Set(),
+          };
+        }
 
+        marketingStats[name].total_checkins++;
+        marketingStats[name].total_revenue += checkin.payment_amount || 0;
+        marketingStats[name].apartments_served.add(checkin.apartment_id);
+      });
+
+      // Convert to array and transform
+      const marketing = Object.values(marketingStats).map(stat => ({
+        marketing_name: stat.marketing_name,
+        total_checkins: stat.total_checkins,
+        total_revenue: stat.total_revenue,
+        apartments_served: stat.apartments_served.size,
+      }));
+
+      // Sort by total checkins descending
+      marketing.sort((a, b) => b.total_checkins - a.total_checkins);
+
+      // Apply limit if specified
+      const limitedMarketing = filters.limit ? marketing.slice(0, filters.limit) : marketing;
+
+      console.log(`ReportService: Found ${limitedMarketing.length} marketing entries`);
       return {
         success: true,
-        data: marketing,
+        data: limitedMarketing,
       };
     } catch (error) {
-      console.error('Error getting top marketing:', error);
+      console.error('ReportService: Error getting top marketing:', error);
       return {
         success: false,
-        message: 'Gagal mengambil data top marketing',
+        message: 'Gagal mengambil data top marketing: ' + error.message,
+      };
+    }
+  }
+
+  /**
+   * Get summary statistics untuk dashboard
+   */
+  async getSummaryStatistics() {
+    try {
+      console.log('ReportService: Getting summary statistics');
+
+      const today = new Date().toISOString().split('T')[0];
+
+      // Get total checkins
+      const { count: totalCheckins, error: totalError } = await supabase
+        .from('checkins')
+        .select('*', { count: 'exact', head: true });
+
+      if (totalError) {
+        console.error('Error getting total checkins:', totalError);
+      }
+
+      // Get today's checkins
+      const { count: todayCheckins, error: todayError } = await supabase
+        .from('checkins')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', today + 'T00:00:00.000Z')
+        .lte('created_at', today + 'T23:59:59.999Z');
+
+      if (todayError) {
+        console.error('Error getting today checkins:', todayError);
+      }
+
+      // Get active checkins
+      const { count: activeCheckins, error: activeError } = await supabase
+        .from('checkins')
+        .select('*', { count: 'exact', head: true })
+        .in('status', ['active', 'extended']);
+
+      if (activeError) {
+        console.error('Error getting active checkins:', activeError);
+      }
+
+      // Get total revenue
+      const { data: revenueData, error: revenueError } = await supabase
+        .from('checkins')
+        .select('payment_amount');
+
+      if (revenueError) {
+        console.error('Error getting revenue:', revenueError);
+      }
+
+      const totalRevenue = revenueData?.reduce((sum, item) => sum + (item.payment_amount || 0), 0) || 0;
+
+      const summary = {
+        totalCheckins: totalCheckins || 0,
+        todayCheckins: todayCheckins || 0,
+        activeCheckins: activeCheckins || 0,
+        totalRevenue: totalRevenue,
+      };
+
+      console.log('ReportService: Summary statistics:', summary);
+      return {
+        success: true,
+        data: summary,
+      };
+    } catch (error) {
+      console.error('ReportService: Error getting summary statistics:', error);
+      return {
+        success: false,
+        message: 'Gagal mengambil statistik ringkasan: ' + error.message,
       };
     }
   }

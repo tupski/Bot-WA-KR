@@ -157,13 +157,18 @@ class UnitService {
       const { apartmentId, unitNumber, unitType } = unitData;
 
       // Check if unit number already exists in the apartment
-      const db = DatabaseManager.getDatabase();
-      const existingResult = await db.executeSql(
-        'SELECT id FROM units WHERE apartment_id = ? AND unit_number = ?',
-        [apartmentId, unitNumber]
-      );
+      const { data: existing, error: checkError } = await supabase
+        .from('units')
+        .select('id')
+        .eq('apartment_id', apartmentId)
+        .eq('unit_number', unitNumber)
+        .single();
 
-      if (existingResult[0].rows.length > 0) {
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      if (existing) {
         return {
           success: false,
           message: 'Nomor unit sudah ada di apartemen ini',
@@ -171,13 +176,22 @@ class UnitService {
       }
 
       // Insert new unit
-      const result = await db.executeSql(
-        `INSERT INTO units (apartment_id, unit_number, unit_type, status, created_at, updated_at)
-         VALUES (?, ?, ?, 'available', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-        [apartmentId, unitNumber, unitType]
-      );
+      const { data: newUnit, error: insertError } = await supabase
+        .from('units')
+        .insert([{
+          apartment_id: apartmentId,
+          unit_number: unitNumber,
+          unit_type: unitType,
+          status: 'available'
+        }])
+        .select()
+        .single();
 
-      const unitId = result[0].insertId;
+      if (insertError) {
+        throw insertError;
+      }
+
+      const unitId = newUnit.id;
 
       // Log activity
       await ActivityLogService.logActivity(
@@ -209,13 +223,19 @@ class UnitService {
       const { apartmentId, unitNumber, unitType, status } = unitData;
 
       // Check if unit number already exists in the apartment (exclude current unit)
-      const db = DatabaseManager.getDatabase();
-      const existingResult = await db.executeSql(
-        'SELECT id FROM units WHERE apartment_id = ? AND unit_number = ? AND id != ?',
-        [apartmentId, unitNumber, id]
-      );
+      const { data: existing, error: checkError } = await supabase
+        .from('units')
+        .select('id')
+        .eq('apartment_id', apartmentId)
+        .eq('unit_number', unitNumber)
+        .neq('id', id)
+        .single();
 
-      if (existingResult[0].rows.length > 0) {
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      if (existing) {
         return {
           success: false,
           message: 'Nomor unit sudah ada di apartemen ini',
@@ -223,14 +243,24 @@ class UnitService {
       }
 
       // Update unit
-      const result = await db.executeSql(
-        `UPDATE units 
-         SET apartment_id = ?, unit_number = ?, unit_type = ?, status = ?, updated_at = CURRENT_TIMESTAMP
-         WHERE id = ?`,
-        [apartmentId, unitNumber, unitType, status, id]
-      );
+      const { data: updatedUnit, error: updateError } = await supabase
+        .from('units')
+        .update({
+          apartment_id: apartmentId,
+          unit_number: unitNumber,
+          unit_type: unitType,
+          status,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single();
 
-      if (result[0].rowsAffected > 0) {
+      if (updateError) {
+        throw updateError;
+      }
+
+      if (updatedUnit) {
         // Log activity
         await ActivityLogService.logActivity(
           userId,
@@ -263,21 +293,27 @@ class UnitService {
   // Update unit status
   async updateUnitStatus(id, status, userId, userType = 'admin') {
     try {
-      const db = DatabaseManager.getDatabase();
-      
       let cleaningStartedAt = null;
       if (status === UNIT_STATUS.CLEANING) {
         cleaningStartedAt = new Date().toISOString();
       }
 
-      const result = await db.executeSql(
-        `UPDATE units 
-         SET status = ?, cleaning_started_at = ?, updated_at = CURRENT_TIMESTAMP
-         WHERE id = ?`,
-        [status, cleaningStartedAt, id]
-      );
+      const { data: updatedUnit, error } = await supabase
+        .from('units')
+        .update({
+          status,
+          cleaning_started_at: cleaningStartedAt,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select('unit_number')
+        .single();
 
-      if (result[0].rowsAffected > 0) {
+      if (error) {
+        throw error;
+      }
+
+      if (updatedUnit) {
         // Log activity
         await ActivityLogService.logActivity(
           userId,
@@ -310,15 +346,18 @@ class UnitService {
   // Delete unit
   async deleteUnit(id, userId) {
     try {
-      const db = DatabaseManager.getDatabase();
-
       // Check if unit has active checkins
-      const checkinsResult = await db.executeSql(
-        "SELECT COUNT(*) as count FROM checkins WHERE unit_id = ? AND status IN ('active', 'extended')",
-        [id]
-      );
+      const { count: activeCheckins, error: checkError } = await supabase
+        .from('checkins')
+        .select('*', { count: 'exact', head: true })
+        .eq('unit_id', id)
+        .in('status', ['active', 'extended']);
 
-      if (checkinsResult[0].rows.item(0).count > 0) {
+      if (checkError) {
+        throw checkError;
+      }
+
+      if (activeCheckins > 0) {
         return {
           success: false,
           message: 'Tidak dapat menghapus unit yang masih memiliki checkin aktif',
@@ -326,27 +365,28 @@ class UnitService {
       }
 
       // Get unit info for logging
-      const unitResult = await db.executeSql(
-        'SELECT unit_number FROM units WHERE id = ?',
-        [id]
-      );
+      const { data: unit, error: getError } = await supabase
+        .from('units')
+        .select('unit_number')
+        .eq('id', id)
+        .single();
 
-      if (unitResult[0].rows.length === 0) {
+      if (getError) {
         return {
           success: false,
           message: 'Unit tidak ditemukan',
         };
       }
 
-      const unit = unitResult[0].rows.item(0);
-
       // Delete unit
-      const result = await db.executeSql(
-        'DELETE FROM units WHERE id = ?',
-        [id]
-      );
+      const { error: deleteError } = await supabase
+        .from('units')
+        .delete()
+        .eq('id', id);
 
-      if (result[0].rowsAffected > 0) {
+      if (deleteError) {
+        throw deleteError;
+      }
         // Log activity
         await ActivityLogService.logActivity(
           userId,

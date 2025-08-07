@@ -60,8 +60,8 @@ DROP TABLE IF EXISTS field_teams CASCADE;
 DROP TABLE IF EXISTS apartments CASCADE;
 DROP TABLE IF EXISTS admins CASCADE;
 
--- Drop bot-specific tables
-SELECT '🤖 Dropping bot tables...' as status;
+-- Drop bot-specific tables (removed for standalone app)
+SELECT '🗑️ Dropping WhatsApp bot tables...' as status;
 DROP TABLE IF EXISTS config CASCADE;
 DROP TABLE IF EXISTS processed_messages CASCADE;
 DROP TABLE IF EXISTS daily_summary CASCADE;
@@ -157,9 +157,21 @@ CREATE TABLE apartments (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   code VARCHAR(20) UNIQUE NOT NULL,
-  whatsapp_group_id VARCHAR(255),
   address TEXT,
   description TEXT,
+  status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Users table (for admin authentication)
+CREATE TABLE users (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  username VARCHAR(50) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  full_name VARCHAR(100),
+  email VARCHAR(100),
+  role VARCHAR(20) DEFAULT 'admin' CHECK (role IN ('admin', 'super_admin')),
   status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -246,67 +258,8 @@ CREATE TABLE activity_logs (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-SELECT '🤖 Creating WhatsApp Bot compatibility tables...' as status;
-
--- Additional tables for WhatsApp Bot compatibility
--- Transactions table (from existing bot data)
-CREATE TABLE transactions (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  message_id VARCHAR(255),
-  location VARCHAR(100),
-  unit VARCHAR(50),
-  checkout_time VARCHAR(100),
-  duration VARCHAR(50),
-  payment_method VARCHAR(20),
-  cs_name VARCHAR(50),
-  commission DECIMAL(10,2),
-  amount DECIMAL(12,2),
-  net_amount DECIMAL(12,2),
-  skip_financial BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  date_only DATE
-);
-
--- CS Summary table
-CREATE TABLE cs_summary (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  date DATE,
-  cs_name VARCHAR(50),
-  total_bookings INTEGER DEFAULT 0,
-  total_cash DECIMAL(12,2) DEFAULT 0,
-  total_transfer DECIMAL(12,2) DEFAULT 0,
-  total_commission DECIMAL(12,2) DEFAULT 0,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Daily Summary table
-CREATE TABLE daily_summary (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  date DATE UNIQUE,
-  total_bookings INTEGER DEFAULT 0,
-  total_cash DECIMAL(12,2) DEFAULT 0,
-  total_transfer DECIMAL(12,2) DEFAULT 0,
-  total_gross DECIMAL(12,2) DEFAULT 0,
-  total_commission DECIMAL(12,2) DEFAULT 0,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Processed Messages table (untuk tracking pesan WhatsApp)
-CREATE TABLE processed_messages (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  message_id VARCHAR(255) UNIQUE,
-  chat_id VARCHAR(255),
-  processed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  status VARCHAR(50) DEFAULT 'processed'
-);
-
--- Config table (untuk konfigurasi bot)
-CREATE TABLE config (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  key_name VARCHAR(100) UNIQUE NOT NULL,
-  value TEXT,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- WhatsApp Bot tables removed for standalone application
+-- All bot-related functionality is now handled through the mobile app
 
 SELECT '📊 Creating indexes for better performance...' as status;
 
@@ -489,6 +442,42 @@ SELECT '👤 Inserting default admin user...' as status;
 -- Insert default admin user (password: admin123)
 INSERT INTO admins (username, password, full_name, email) VALUES
 ('admin', 'admin123', 'Administrator', 'admin@kakarama.com');
+
+-- Insert sample users (password: admin123 - hashed with bcrypt)
+INSERT INTO users (username, password_hash, full_name, email, role) VALUES
+('admin', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Administrator', 'admin@kakarama.com', 'admin'),
+('superadmin', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Super Administrator', 'superadmin@kakarama.com', 'super_admin');
+
+SELECT '🏢 Inserting sample apartments...' as status;
+
+-- Insert sample apartments
+INSERT INTO apartments (name, code, address, description) VALUES
+('TreePark Residence', 'TREEPARK', 'Jl. Raya TreePark No. 1', 'Apartemen TreePark dengan fasilitas lengkap'),
+('SkyHouse Apartment', 'SKYHOUSE', 'Jl. Raya SkyHouse No. 2', 'Apartemen SkyHouse dengan pemandangan kota'),
+('SpringWood Tower', 'SPRINGWOOD', 'Jl. Raya SpringWood No. 3', 'Apartemen SpringWood dengan suasana asri');
+
+SELECT '🏠 Inserting sample units...' as status;
+
+-- Insert sample units for each apartment
+INSERT INTO units (apartment_id, unit_number, unit_type, status) VALUES
+-- TreePark units
+((SELECT id FROM apartments WHERE code = 'TREEPARK'), '101', 'Studio', 'available'),
+((SELECT id FROM apartments WHERE code = 'TREEPARK'), '102', '1BR', 'available'),
+((SELECT id FROM apartments WHERE code = 'TREEPARK'), '103', '2BR', 'available'),
+-- SkyHouse units
+((SELECT id FROM apartments WHERE code = 'SKYHOUSE'), '201', 'Studio', 'available'),
+((SELECT id FROM apartments WHERE code = 'SKYHOUSE'), '202', '1BR', 'available'),
+-- SpringWood units
+((SELECT id FROM apartments WHERE code = 'SPRINGWOOD'), '301', 'Studio', 'available'),
+((SELECT id FROM apartments WHERE code = 'SPRINGWOOD'), '302', '2BR', 'available');
+
+SELECT '👥 Inserting sample field teams...' as status;
+
+-- Insert sample field teams (password: team123)
+INSERT INTO field_teams (username, password, full_name, phone, email) VALUES
+('team1', 'team123', 'Tim Lapangan 1', '+6281234567890', 'team1@kakarama.com'),
+('team2', 'team123', 'Tim Lapangan 2', '+6281234567891', 'team2@kakarama.com'),
+('marketing1', 'team123', 'Marketing Team 1', '+6281234567892', 'marketing1@kakarama.com');
 
 -- =====================================================
 -- COMPLETION STATUS

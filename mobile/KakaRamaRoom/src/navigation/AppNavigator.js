@@ -281,6 +281,16 @@ const AppNavigator = () => {
                 headerTintColor: COLORS.background,
               }}
             />
+            <Stack.Screen
+              name={SCREENS.ADMIN_UNITS}
+              component={AdminUnitsScreen}
+              options={{
+                headerShown: true,
+                title: 'Manajemen Unit',
+                headerStyle: { backgroundColor: COLORS.primary },
+                headerTintColor: COLORS.background,
+              }}
+            />
 
             <Stack.Screen
               name="AdminApartmentDetail"
