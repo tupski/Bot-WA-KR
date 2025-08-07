@@ -25,7 +25,16 @@ if exist "android\.gradle" rmdir /s /q android\.gradle
 echo ✅ Build cache cleaned
 echo.
 
-echo [4/6] Generate production bundle...
+echo [4/6] Setup environment for production...
+echo Copying environment variables for production build...
+if exist ".env" (
+    copy ".env" "android\app\src\main\assets\.env"
+    echo ✅ Environment variables copied
+) else (
+    echo ⚠️ No .env file found, using defaults
+)
+
+echo [5/6] Generate production bundle...
 echo Creating optimized JavaScript bundle...
 npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/
 
@@ -38,7 +47,7 @@ if %errorlevel% neq 0 (
 echo ✅ Production bundle created
 echo.
 
-echo [5/6] Build production APK...
+echo [6/6] Build production APK...
 echo Building release APK (this may take 10-15 minutes)...
 cd android
 
@@ -59,7 +68,7 @@ cd ..
 echo ✅ Production APK built successfully
 echo.
 
-echo [6/6] Locate APK file...
+echo [7/7] Locate APK file...
 set "APK_PATH=android\app\build\outputs\apk\release\app-release.apk"
 
 if exist "%APK_PATH%" (
