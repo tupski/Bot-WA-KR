@@ -4,7 +4,7 @@ export const APP_CONFIG = {
   version: '1.0.0',
   company: 'KakaRama Room',
   website: 'https://kakaramaroom.com',
-  logo: require('../assets/images/logo-kr.png'), // Placeholder
+  logo: require('../assets/images/logo-placeholder.png'), // Placeholder
 };
 
 // API Configuration

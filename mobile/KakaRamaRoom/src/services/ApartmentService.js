@@ -1,4 +1,4 @@
-import DatabaseManager from '../config/database';
+import { supabase } from '../config/supabase';
 import ActivityLogService from './ActivityLogService';
 import { ACTIVITY_ACTIONS } from '../config/constants';
 
@@ -6,19 +6,25 @@ class ApartmentService {
   // Get all apartments
   async getAllApartments() {
     try {
-      const db = DatabaseManager.getDatabase();
-      const result = await db.executeSql(
-        'SELECT * FROM apartments ORDER BY name ASC'
-      );
+      const { data: apartments, error } = await supabase
+        .from('apartments')
+        .select('*')
+        .order('name', { ascending: true });
 
-      const apartments = [];
-      for (let i = 0; i < result[0].rows.length; i++) {
-        apartments.push(result[0].rows.item(i));
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // Table doesn't exist, return empty array
+          return {
+            success: true,
+            data: [],
+          };
+        }
+        throw error;
       }
 
       return {
         success: true,
-        data: apartments,
+        data: apartments || [],
       };
     } catch (error) {
       console.error('Error getting apartments:', error);
@@ -32,19 +38,22 @@ class ApartmentService {
   // Get active apartments
   async getActiveApartments() {
     try {
-      const db = DatabaseManager.getDatabase();
-      const result = await db.executeSql(
-        "SELECT * FROM apartments WHERE status = 'active' ORDER BY name ASC"
-      );
+      const { data: apartments, error } = await supabase
+        .from('apartments')
+        .select('*')
+        .eq('status', 'active')
+        .order('name', { ascending: true });
 
-      const apartments = [];
-      for (let i = 0; i < result[0].rows.length; i++) {
-        apartments.push(result[0].rows.item(i));
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return { success: true, data: [] };
+        }
+        throw error;
       }
 
       return {
         success: true,
-        data: apartments,
+        data: apartments || [],
       };
     } catch (error) {
       console.error('Error getting active apartments:', error);
@@ -58,16 +67,23 @@ class ApartmentService {
   // Get apartment by ID
   async getApartmentById(id) {
     try {
-      const db = DatabaseManager.getDatabase();
-      const result = await db.executeSql(
-        'SELECT * FROM apartments WHERE id = ?',
-        [id]
-      );
+      const { data: apartment, error } = await supabase
+        .from('apartments')
+        .select('*')
+        .eq('id', id)
+        .single();
 
-      if (result[0].rows.length > 0) {
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return { success: false, message: 'Apartemen tidak ditemukan' };
+        }
+        throw error;
+      }
+
+      if (apartment) {
         return {
           success: true,
-          data: result[0].rows.item(0),
+          data: apartment,
         };
       } else {
         return {
