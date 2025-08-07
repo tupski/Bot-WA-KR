@@ -387,31 +387,26 @@ class UnitService {
       if (deleteError) {
         throw deleteError;
       }
-        // Log activity
-        await ActivityLogService.logActivity(
-          userId,
-          'admin',
-          ACTIVITY_ACTIONS.DELETE_UNIT,
-          `Menghapus unit: ${unit.unit_number}`,
-          'units',
-          id
-        );
 
-        return {
-          success: true,
-          message: 'Unit berhasil dihapus',
-        };
-      } else {
-        return {
-          success: false,
-          message: 'Unit tidak ditemukan',
-        };
-      }
+      // Log activity
+      await ActivityLogService.logActivity(
+        userId,
+        'admin',
+        ACTIVITY_ACTIONS.DELETE_UNIT || 'delete_unit',
+        `Menghapus unit: ${unit.unit_number}`,
+        'units',
+        id
+      );
+
+      return {
+        success: true,
+        message: 'Unit berhasil dihapus',
+      };
     } catch (error) {
-      console.error('Error deleting unit:', error);
+      console.error('UnitService: Error deleting unit:', error);
       return {
         success: false,
-        message: 'Gagal menghapus unit',
+        message: 'Gagal menghapus unit: ' + error.message,
       };
     }
   }
