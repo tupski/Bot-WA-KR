@@ -348,16 +348,44 @@ class SupabaseDatabase {
     // Activity log methods
     async addActivityLog(logData) {
         try {
+            // Prepare log data without ip_address if column doesn't exist
+            const logEntry = {
+                user_id: logData.user_id,
+                user_type: logData.user_type,
+                action: logData.action,
+                description: logData.description,
+                related_table: logData.related_table || null,
+                related_id: logData.related_id || null,
+                user_agent: logData.user_agent || null,
+                created_at: new Date().toISOString()
+            };
+
+            // Only add ip_address if it's provided and table supports it
+            if (logData.ip_address) {
+                logEntry.ip_address = logData.ip_address;
+            }
+
             const { data, error } = await this.supabase
                 .from('activity_logs')
-                .insert({
-                    ...logData,
-                    created_at: new Date().toISOString()
-                })
+                .insert(logEntry)
                 .select()
                 .single();
 
-            if (error && error.code !== 'PGRST116') throw error;
+            if (error && error.code !== 'PGRST116') {
+                // If ip_address column error, try without it
+                if (error.message.includes('ip_address')) {
+                    delete logEntry.ip_address;
+                    const { data: retryData, error: retryError } = await this.supabase
+                        .from('activity_logs')
+                        .insert(logEntry)
+                        .select()
+                        .single();
+
+                    if (retryError && retryError.code !== 'PGRST116') throw retryError;
+                    return retryData;
+                }
+                throw error;
+            }
             return data;
         } catch (error) {
             logger.error('Error adding activity log:', error);
