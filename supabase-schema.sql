@@ -40,7 +40,8 @@ SELECT '⚠️  WARNING: Dropping all existing tables in 1 second...' as status;
 SELECT pg_sleep(1);
 SELECT '🗑️  Starting table cleanup...' as status;
 
--- Drop views first (they depend on tables)
+-- Drop indexes first
+SELECT '📊 Dropping existing indexes...' as status;
 DROP VIEW IF EXISTS checkins_with_details CASCADE;
 DROP VIEW IF EXISTS units_with_apartment CASCADE;
 
@@ -60,11 +61,24 @@ DROP TABLE IF EXISTS apartments CASCADE;
 DROP TABLE IF EXISTS admins CASCADE;
 
 -- Drop bot-specific tables
+SELECT '🤖 Dropping bot tables...' as status;
 DROP TABLE IF EXISTS config CASCADE;
 DROP TABLE IF EXISTS processed_messages CASCADE;
 DROP TABLE IF EXISTS daily_summary CASCADE;
 DROP TABLE IF EXISTS cs_summary CASCADE;
 DROP TABLE IF EXISTS transactions CASCADE;
+
+-- Drop all indexes that start with idx_
+DO $$
+DECLARE
+    r RECORD;
+BEGIN
+    -- Drop all custom indexes
+    FOR r IN (SELECT indexname FROM pg_indexes WHERE schemaname = 'public' AND indexname LIKE 'idx_%')
+    LOOP
+        EXECUTE 'DROP INDEX IF EXISTS ' || r.indexname || ' CASCADE';
+    END LOOP;
+END $$;
 
 -- Drop custom types
 DROP TYPE IF EXISTS activity_action CASCADE;
@@ -232,21 +246,6 @@ CREATE TABLE activity_logs (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-SELECT '📊 Creating indexes for better performance...' as status;
-
--- Create indexes for main tables
-CREATE INDEX idx_units_apartment_id ON units(apartment_id);
-CREATE INDEX idx_units_status ON units(status);
-CREATE INDEX idx_checkins_apartment_id ON checkins(apartment_id);
-CREATE INDEX idx_checkins_unit_id ON checkins(unit_id);
-CREATE INDEX idx_checkins_team_id ON checkins(team_id);
-CREATE INDEX idx_checkins_status ON checkins(status);
-CREATE INDEX idx_checkins_checkout_time ON checkins(checkout_time);
-CREATE INDEX idx_checkins_created_at ON checkins(created_at);
-CREATE INDEX idx_activity_logs_user_id ON activity_logs(user_id);
-CREATE INDEX idx_activity_logs_action ON activity_logs(action);
-CREATE INDEX idx_activity_logs_created_at ON activity_logs(created_at);
-
 SELECT '🤖 Creating WhatsApp Bot compatibility tables...' as status;
 
 -- Additional tables for WhatsApp Bot compatibility
@@ -312,28 +311,28 @@ CREATE TABLE config (
 SELECT '📊 Creating indexes for better performance...' as status;
 
 -- Create indexes for main tables
-CREATE INDEX idx_units_apartment_id ON units(apartment_id);
-CREATE INDEX idx_units_status ON units(status);
-CREATE INDEX idx_checkins_apartment_id ON checkins(apartment_id);
-CREATE INDEX idx_checkins_unit_id ON checkins(unit_id);
-CREATE INDEX idx_checkins_team_id ON checkins(team_id);
-CREATE INDEX idx_checkins_status ON checkins(status);
-CREATE INDEX idx_checkins_checkout_time ON checkins(checkout_time);
-CREATE INDEX idx_checkins_created_at ON checkins(created_at);
-CREATE INDEX idx_activity_logs_user_id ON activity_logs(user_id);
-CREATE INDEX idx_activity_logs_action ON activity_logs(action);
-CREATE INDEX idx_activity_logs_created_at ON activity_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_units_apartment_id ON units(apartment_id);
+CREATE INDEX IF NOT EXISTS idx_units_status ON units(status);
+CREATE INDEX IF NOT EXISTS idx_checkins_apartment_id ON checkins(apartment_id);
+CREATE INDEX IF NOT EXISTS idx_checkins_unit_id ON checkins(unit_id);
+CREATE INDEX IF NOT EXISTS idx_checkins_team_id ON checkins(team_id);
+CREATE INDEX IF NOT EXISTS idx_checkins_status ON checkins(status);
+CREATE INDEX IF NOT EXISTS idx_checkins_checkout_time ON checkins(checkout_time);
+CREATE INDEX IF NOT EXISTS idx_checkins_created_at ON checkins(created_at);
+CREATE INDEX IF NOT EXISTS idx_activity_logs_user_id ON activity_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_activity_logs_action ON activity_logs(action);
+CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON activity_logs(created_at);
 
 -- Create indexes for bot tables
-CREATE INDEX idx_transactions_location ON transactions(location);
-CREATE INDEX idx_transactions_date_only ON transactions(date_only);
-CREATE INDEX idx_transactions_cs_name ON transactions(cs_name);
-CREATE INDEX idx_cs_summary_date ON cs_summary(date);
-CREATE INDEX idx_cs_summary_cs_name ON cs_summary(cs_name);
-CREATE INDEX idx_daily_summary_date ON daily_summary(date);
-CREATE INDEX idx_processed_messages_message_id ON processed_messages(message_id);
-CREATE INDEX idx_processed_messages_chat_id ON processed_messages(chat_id);
-CREATE INDEX idx_config_key_name ON config(key_name);
+CREATE INDEX IF NOT EXISTS idx_transactions_location ON transactions(location);
+CREATE INDEX IF NOT EXISTS idx_transactions_date_only ON transactions(date_only);
+CREATE INDEX IF NOT EXISTS idx_transactions_cs_name ON transactions(cs_name);
+CREATE INDEX IF NOT EXISTS idx_cs_summary_date ON cs_summary(date);
+CREATE INDEX IF NOT EXISTS idx_cs_summary_cs_name ON cs_summary(cs_name);
+CREATE INDEX IF NOT EXISTS idx_daily_summary_date ON daily_summary(date);
+CREATE INDEX IF NOT EXISTS idx_processed_messages_message_id ON processed_messages(message_id);
+CREATE INDEX IF NOT EXISTS idx_processed_messages_chat_id ON processed_messages(chat_id);
+CREATE INDEX IF NOT EXISTS idx_config_key_name ON config(key_name);
 
 SELECT '🔒 Setting up Row Level Security (RLS)...' as status;
 
