@@ -46,53 +46,40 @@ const AdminDashboardScreen = ({ navigation }) => {
 
   const menuItems = [
     {
-      title: 'Laporan Checkin',
-      subtitle: 'Lihat laporan data checkin per apartemen',
-      icon: 'assessment',
-      onPress: () => navigation.navigate('AdminReports'),
+      title: 'Checkin Manual',
+      icon: 'add-circle',
+      onPress: () => navigation.navigate('AdminCheckin'),
       color: COLORS.primary,
     },
     {
-      title: 'Manajemen Apartemen',
-      subtitle: 'Kelola data apartemen dan grup WhatsApp',
+      title: 'Laporan Checkin',
+      icon: 'assessment',
+      onPress: () => navigation.navigate('AdminReports'),
+      color: COLORS.info,
+    },
+    {
+      title: 'Apartemen',
       icon: 'apartment',
       onPress: () => navigation.navigate('AdminApartments'),
       color: COLORS.success,
     },
     {
-      title: 'Manajemen Tim Lapangan',
-      subtitle: 'Kelola tim lapangan dan assignment',
+      title: 'Tim Lapangan',
       icon: 'group',
       onPress: () => navigation.navigate('AdminTeams'),
       color: COLORS.warning,
     },
     {
-      title: 'Manajemen Unit',
-      subtitle: 'Kelola unit dan status unit',
+      title: 'Unit',
       icon: 'meeting-room',
       onPress: () => navigation.navigate('AdminUnits'),
-      color: COLORS.info,
-    },
-    {
-      title: 'Log Aktivitas',
-      subtitle: 'Lihat aktivitas tim lapangan',
-      icon: 'history',
-      onPress: () => navigation.navigate('AdminActivityLogs'),
       color: COLORS.secondary,
     },
     {
-      title: 'Auto-Checkout System',
-      subtitle: 'Monitor dan kontrol sistem auto-checkout',
-      icon: 'schedule',
-      onPress: () => navigation.navigate('AdminAutoCheckout'),
-      color: COLORS.warning,
-    },
-    {
-      title: 'Top Marketing',
-      subtitle: 'Lihat marketing terbaik',
-      icon: 'star',
-      onPress: () => navigation.navigate('AdminTopMarketing'),
-      color: COLORS.error,
+      title: 'Log Aktivitas',
+      icon: 'history',
+      onPress: () => navigation.navigate('AdminActivityLogs'),
+      color: '#9C27B0',
     },
   ];
 
@@ -137,25 +124,23 @@ const AdminDashboardScreen = ({ navigation }) => {
         </View>
       </View>
 
-      {/* Menu Items */}
+      {/* Menu Items - Grid Layout */}
       <View style={styles.menuContainer}>
         <Text style={styles.sectionTitle}>Menu Utama</Text>
-        {menuItems.map((item, index) => (
-          <TouchableOpacity
-            key={index}
-            style={styles.menuItem}
-            onPress={item.onPress}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: item.color }]}>
-              <Icon name={item.icon} size={24} color={COLORS.background} />
-            </View>
-            <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>{item.title}</Text>
-              <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
-            </View>
-            <Icon name="chevron-right" size={24} color={COLORS.gray400} />
-          </TouchableOpacity>
-        ))}
+        <View style={styles.menuGrid}>
+          {menuItems.map((item, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.menuGridItem}
+              onPress={item.onPress}
+            >
+              <View style={[styles.menuGridIcon, { backgroundColor: item.color }]}>
+                <Icon name={item.icon} size={32} color={COLORS.background} />
+              </View>
+              <Text style={styles.menuGridTitle}>{item.title}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
     </ScrollView>
   );
@@ -238,39 +223,40 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     marginBottom: SIZES.md,
   },
-  menuItem: {
+  menuGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  menuGridItem: {
     backgroundColor: COLORS.background,
     borderRadius: SIZES.radius,
     padding: SIZES.md,
-    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: SIZES.sm,
+    justifyContent: 'center',
+    width: '48%', // 2 columns with some spacing
+    marginBottom: SIZES.md,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    minHeight: 120,
   },
-  menuIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  menuGridIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: SIZES.radius,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: SIZES.md,
+    marginBottom: SIZES.sm,
   },
-  menuContent: {
-    flex: 1,
-  },
-  menuTitle: {
-    fontSize: SIZES.h6,
+  menuGridTitle: {
+    fontSize: SIZES.body,
     fontWeight: '600',
     color: COLORS.textPrimary,
-  },
-  menuSubtitle: {
-    fontSize: SIZES.caption,
-    color: COLORS.textSecondary,
-    marginTop: SIZES.xs / 2,
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });
 

@@ -67,14 +67,17 @@ const LoginScreen = ({ navigation }) => {
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
-      Alert.alert('Error', 'Username dan password harus diisi');
+      const usernameLabel = userType === USER_ROLES.ADMIN ? 'Username' : 'Username';
+      Alert.alert('Error', `${usernameLabel} dan password harus diisi`);
       return;
     }
 
     setLoading(true);
+    console.log('=== LOGIN DEBUG START ===');
 
     try {
       console.log('Attempting login:', { username: username.trim(), userType });
+      console.log('USER_ROLES:', USER_ROLES);
 
       let result;
       if (userType === USER_ROLES.ADMIN) {
@@ -85,11 +88,29 @@ const LoginScreen = ({ navigation }) => {
         result = await AuthService.loginFieldTeam(username.trim(), password);
       }
 
-      console.log('Login result:', result);
+      console.log('Login result:', JSON.stringify(result, null, 2));
 
       if (result && result.success) {
-        console.log('Login successful, navigating...');
-        navigateToHome(result.user);
+        console.log('Login successful, user data:', JSON.stringify(result.user, null, 2));
+
+        // Show success alert and navigate immediately
+        Alert.alert(
+          'Login Berhasil',
+          `Selamat datang, ${result.user.fullName || result.user.username}!`,
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                console.log('Navigating to home...');
+                // Use setTimeout to ensure alert is dismissed before navigation
+                setTimeout(() => {
+                  navigateToHome(result.user);
+                }, 100);
+              }
+            }
+          ],
+          { cancelable: false }
+        );
       } else {
         const errorMessage = result?.message || 'Login gagal tanpa pesan error';
         console.log('Login failed:', errorMessage);
@@ -100,6 +121,7 @@ const LoginScreen = ({ navigation }) => {
       Alert.alert('Error', `Terjadi kesalahan saat login: ${error.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
+      console.log('=== LOGIN DEBUG END ===');
     }
   };
 
@@ -118,7 +140,7 @@ const LoginScreen = ({ navigation }) => {
           resizeMode="contain"
         />
         <ActivityIndicator size="large" color={COLORS.primary} style={styles.loadingIndicator} />
-        <Text style={styles.loadingText}>Menginisialisasi aplikasi...</Text>
+        <Text style={styles.loadingText}>Memulai aplikasi...</Text>
       </View>
     );
   }
@@ -176,9 +198,11 @@ const LoginScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
-          {/* Username Input */}
+          {/* Username/Phone Input */}
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Username</Text>
+            <Text style={styles.inputLabel}>
+              Username
+            </Text>
             <TextInput
               style={styles.input}
               value={username}
@@ -187,6 +211,7 @@ const LoginScreen = ({ navigation }) => {
               placeholderTextColor={COLORS.gray400}
               autoCapitalize="none"
               autoCorrect={false}
+              keyboardType="default"
             />
           </View>
 

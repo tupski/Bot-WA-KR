@@ -15,7 +15,7 @@ import { COLORS, SIZES, APARTMENTS } from '../../config/constants';
 import ApartmentService from '../../services/ApartmentService';
 import AuthService from '../../services/AuthService';
 
-const AdminApartmentsScreen = () => {
+const AdminApartmentsScreen = ({ navigation }) => {
   const [apartments, setApartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -25,7 +25,6 @@ const AdminApartmentsScreen = () => {
   const [formData, setFormData] = useState({
     name: '',
     code: '',
-    whatsappGroupId: '',
     address: '',
     description: '',
     status: 'active',
@@ -37,15 +36,20 @@ const AdminApartmentsScreen = () => {
 
   const loadApartments = async () => {
     try {
+      console.log('AdminApartmentsScreen: Loading apartments...');
       const result = await ApartmentService.getAllApartments();
+      console.log('AdminApartmentsScreen: Service result:', result);
+
       if (result.success) {
+        console.log(`AdminApartmentsScreen: Setting ${result.data.length} apartments`);
         setApartments(result.data);
       } else {
+        console.error('AdminApartmentsScreen: Service error:', result.message);
         Alert.alert('Error', result.message);
       }
     } catch (error) {
-      console.error('Load apartments error:', error);
-      Alert.alert('Error', 'Gagal memuat data apartemen');
+      console.error('AdminApartmentsScreen: Load apartments error:', error);
+      Alert.alert('Error', 'Gagal memuat data apartemen: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -62,7 +66,6 @@ const AdminApartmentsScreen = () => {
     setFormData({
       name: '',
       code: '',
-      whatsappGroupId: '',
       address: '',
       description: '',
       status: 'active',
@@ -75,7 +78,6 @@ const AdminApartmentsScreen = () => {
     setFormData({
       name: apartment.name,
       code: apartment.code,
-      whatsappGroupId: apartment.whatsapp_group_id || '',
       address: apartment.address || '',
       description: apartment.description || '',
       status: apartment.status,
@@ -159,7 +161,10 @@ const AdminApartmentsScreen = () => {
   };
 
   const renderApartmentItem = ({ item }) => (
-    <View style={styles.apartmentCard}>
+    <TouchableOpacity
+      style={styles.apartmentCard}
+      onPress={() => navigation.navigate('AdminApartmentDetail', { apartmentId: item.id })}
+    >
       <View style={styles.apartmentHeader}>
         <View style={styles.apartmentInfo}>
           <View
@@ -171,11 +176,6 @@ const AdminApartmentsScreen = () => {
           <View style={styles.apartmentDetails}>
             <Text style={styles.apartmentName}>{item.name}</Text>
             <Text style={styles.apartmentCode}>Kode: {item.code}</Text>
-            {item.whatsapp_group_id && (
-              <Text style={styles.apartmentGroup}>
-                Group ID: {item.whatsapp_group_id}
-              </Text>
-            )}
           </View>
         </View>
         <View style={styles.apartmentActions}>
@@ -214,7 +214,7 @@ const AdminApartmentsScreen = () => {
       {item.description && (
         <Text style={styles.apartmentDescription}>{item.description}</Text>
       )}
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -291,16 +291,7 @@ const AdminApartmentsScreen = () => {
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>WhatsApp Group ID</Text>
-              <TextInput
-                style={styles.input}
-                value={formData.whatsappGroupId}
-                onChangeText={(text) => setFormData({ ...formData, whatsappGroupId: text })}
-                placeholder="Masukkan ID grup WhatsApp"
-                placeholderTextColor={COLORS.gray400}
-              />
-            </View>
+
 
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Alamat</Text>

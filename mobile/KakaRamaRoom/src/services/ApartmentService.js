@@ -6,14 +6,20 @@ class ApartmentService {
   // Get all apartments
   async getAllApartments() {
     try {
+      console.log('ApartmentService: Fetching all apartments...');
+
       const { data: apartments, error } = await supabase
         .from('apartments')
         .select('*')
         .order('name', { ascending: true });
 
+      console.log('ApartmentService: Supabase response:', { apartments, error });
+
       if (error) {
+        console.error('ApartmentService: Supabase error:', error);
         if (error.code === 'PGRST116') {
           // Table doesn't exist, return empty array
+          console.log('ApartmentService: Table not found, returning empty array');
           return {
             success: true,
             data: [],
@@ -22,15 +28,16 @@ class ApartmentService {
         throw error;
       }
 
+      console.log(`ApartmentService: Found ${apartments?.length || 0} apartments`);
       return {
         success: true,
         data: apartments || [],
       };
     } catch (error) {
-      console.error('Error getting apartments:', error);
+      console.error('ApartmentService: Error getting apartments:', error);
       return {
         success: false,
-        message: 'Gagal mengambil data apartemen',
+        message: 'Gagal mengambil data apartemen: ' + error.message,
       };
     }
   }
@@ -138,16 +145,20 @@ class ApartmentService {
   // Create apartment
   async createApartment(apartmentData, userId) {
     try {
-      const { name, code, whatsappGroupId, address, description } = apartmentData;
+      const { name, code, address, description } = apartmentData;
 
       // Check if code already exists
-      const db = DatabaseManager.getDatabase();
-      const existingResult = await db.executeSql(
-        'SELECT id FROM apartments WHERE code = ?',
-        [code]
-      );
+      const { data: existing, error: checkError } = await supabase
+        .from('apartments')
+        .select('id')
+        .eq('code', code)
+        .single();
 
-      if (existingResult[0].rows.length > 0) {
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      if (existing) {
         return {
           success: false,
           message: 'Kode apartemen sudah digunakan',
@@ -155,13 +166,23 @@ class ApartmentService {
       }
 
       // Insert new apartment
-      const result = await db.executeSql(
-        `INSERT INTO apartments (name, code, whatsapp_group_id, address, description, status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-        [name, code, whatsappGroupId, address, description]
-      );
+      const { data: newApartment, error: insertError } = await supabase
+        .from('apartments')
+        .insert([{
+          name,
+          code,
+          address,
+          description,
+          status: 'active'
+        }])
+        .select()
+        .single();
 
-      const apartmentId = result[0].insertId;
+      if (insertError) {
+        throw insertError;
+      }
+
+      const apartmentId = newApartment.id;
 
       // Log activity
       await ActivityLogService.logActivity(
@@ -190,16 +211,21 @@ class ApartmentService {
   // Update apartment
   async updateApartment(id, apartmentData, userId) {
     try {
-      const { name, code, whatsappGroupId, address, description, status } = apartmentData;
+      const { name, code, address, description, status } = apartmentData;
 
       // Check if code already exists (exclude current apartment)
-      const db = DatabaseManager.getDatabase();
-      const existingResult = await db.executeSql(
-        'SELECT id FROM apartments WHERE code = ? AND id != ?',
-        [code, id]
-      );
+      const { data: existing, error: checkError } = await supabase
+        .from('apartments')
+        .select('id')
+        .eq('code', code)
+        .neq('id', id)
+        .single();
 
-      if (existingResult[0].rows.length > 0) {
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      if (existing) {
         return {
           success: false,
           message: 'Kode apartemen sudah digunakan',
@@ -207,14 +233,25 @@ class ApartmentService {
       }
 
       // Update apartment
-      const result = await db.executeSql(
-        `UPDATE apartments 
-         SET name = ?, code = ?, whatsapp_group_id = ?, address = ?, description = ?, status = ?, updated_at = CURRENT_TIMESTAMP
-         WHERE id = ?`,
-        [name, code, whatsappGroupId, address, description, status, id]
-      );
+      const { data: updatedApartment, error: updateError } = await supabase
+        .from('apartments')
+        .update({
+          name,
+          code,
+          address,
+          description,
+          status,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single();
 
-      if (result[0].rowsAffected > 0) {
+      if (updateError) {
+        throw updateError;
+      }
+
+      if (updatedApartment) {
         // Log activity
         await ActivityLogService.logActivity(
           userId,

@@ -25,11 +25,14 @@ class AuthService {
       console.log('AuthService: Supabase query result:', { data, error });
 
       if (error) {
-        if (error.code === 'PGRST116') {
-          // Table doesn't exist, use default admin
+        console.log('AuthService: Supabase error:', error.code, error.message);
+        if (error.code === 'PGRST116' || error.code === 'PGRST301') {
+          // Table doesn't exist or no rows found, use default admin
           return await this.loginDefaultAdmin(username, password);
         }
-        throw error;
+        // Untuk error lain, coba fallback juga
+        console.log('AuthService: Unknown error, trying fallback...');
+        return await this.loginDefaultAdmin(username, password);
       }
 
       if (data) {
@@ -94,10 +97,9 @@ class AuthService {
           user: userData,
         };
       } else {
-        return {
-          success: false,
-          message: 'Username atau password salah',
-        };
+        // User tidak ditemukan di Supabase, coba fallback
+        console.log('AuthService: User not found in Supabase, trying fallback...');
+        return await this.loginDefaultAdmin(username, password);
       }
     } catch (error) {
       console.error('Login admin error:', error);
@@ -147,10 +149,12 @@ class AuthService {
     };
   }
 
-  // Login untuk Tim Lapangan
-  async loginFieldTeam(username, password) {
+  // Login untuk Tim Lapangan (menggunakan nomor WA)
+  async loginFieldTeam(phoneNumber, password) {
     try {
-      // Query ke Supabase untuk field team dengan assignments
+      console.log('AuthService: Attempting field team login for:', phoneNumber);
+
+      // Query ke Supabase untuk field team (ambil berdasarkan phone_number saja)
       const { data: fieldTeam, error: teamError } = await supabase
         .from('field_teams')
         .select(`
@@ -163,10 +167,11 @@ class AuthService {
             )
           )
         `)
-        .eq('username', username)
-        .eq('password', password)
-        .eq('status', 'active')
+        .eq('phone_number', phoneNumber)
+        .eq('is_active', true)
         .single();
+
+      console.log('AuthService: Field team query result:', { fieldTeam, teamError });
 
       if (teamError) {
         if (teamError.code === 'PGRST116') {
@@ -180,6 +185,41 @@ class AuthService {
       }
 
       if (fieldTeam) {
+        // Verify password dengan hash
+        let isPasswordValid = false;
+
+        try {
+          // Coba verify dengan bcrypt (React Native)
+          if (PasswordUtils.isPasswordHashed(fieldTeam.password)) {
+            isPasswordValid = await PasswordUtils.verifyPassword(password, fieldTeam.password);
+          } else {
+            // Fallback: cek dengan PostgreSQL crypt function
+            const { data: cryptResult, error: cryptError } = await supabase
+              .rpc('verify_password', {
+                input_password: password,
+                stored_hash: fieldTeam.password
+              });
+
+            if (!cryptError && cryptResult) {
+              isPasswordValid = cryptResult;
+            } else {
+              // Last fallback: plain text comparison (untuk development)
+              isPasswordValid = password === fieldTeam.password;
+            }
+          }
+        } catch (error) {
+          console.error('Field team password verification error:', error);
+          // Fallback ke plain text untuk development
+          isPasswordValid = password === fieldTeam.password;
+        }
+
+        if (!isPasswordValid) {
+          return {
+            success: false,
+            message: 'Nomor WhatsApp atau password salah',
+          };
+        }
+
         // Extract apartment data from Supabase result
         const apartmentIds = fieldTeam.team_apartment_assignments?.map(
           assignment => assignment.apartments?.id
@@ -191,10 +231,10 @@ class AuthService {
 
         const userData = {
           id: fieldTeam.id,
-          username: fieldTeam.username,
+          username: fieldTeam.phone_number, // Use phone number as username
           fullName: fieldTeam.full_name,
-          email: fieldTeam.email,
-          phone: fieldTeam.phone,
+          email: fieldTeam.email || null,
+          phone: fieldTeam.phone_number,
           role: USER_ROLES.FIELD_TEAM,
           apartmentIds,
           apartmentNames,
@@ -219,7 +259,7 @@ class AuthService {
       } else {
         return {
           success: false,
-          message: 'Username atau password salah, atau akun tidak aktif',
+          message: 'Nomor WhatsApp tidak ditemukan atau akun tidak aktif',
         };
       }
     } catch (error) {

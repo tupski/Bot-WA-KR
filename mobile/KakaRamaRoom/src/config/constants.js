@@ -7,13 +7,28 @@ export const APP_CONFIG = {
   logo: require('../assets/images/logo-placeholder.png'), // Placeholder
 };
 
-// API Configuration
+// API Configuration (for future integrations)
 export const API_CONFIG = {
-  baseURL: 'http://localhost:3000/api', // Sesuaikan dengan server bot WhatsApp
+  baseURL: 'http://localhost:3000/api', // For future API integrations
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },
+};
+
+// Function untuk load API config dari AsyncStorage
+export const loadApiConfig = async () => {
+  try {
+    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+    const savedConfig = await AsyncStorage.getItem('api_config');
+    if (savedConfig) {
+      const config = JSON.parse(savedConfig);
+      API_CONFIG.baseURL = config.baseURL;
+      API_CONFIG.timeout = config.timeout;
+    }
+  } catch (error) {
+    console.warn('Failed to load API config:', error);
+  }
 };
 
 // User Roles
@@ -190,10 +205,10 @@ export const COLORS = {
   textSecondary: '#757575',
   textDisabled: '#BDBDBD',
   
-  // Status colors for apartments (matching bot WhatsApp)
+  // Status colors for apartments
   apartment: {
     TREEPARK: '#4CAF50',
-    SKYHOUSE: '#2196F3', 
+    SKYHOUSE: '#2196F3',
     SPRINGWOOD: '#87CEEB',
     EMERALD: '#009688',
     TOKYO: '#D2691E',

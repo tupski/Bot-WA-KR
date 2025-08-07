@@ -11,42 +11,44 @@ class CheckinService {
   /**
    * Buat checkin baru
    * @param {Object} checkinData - Data checkin
-   * @param {number} userId - ID user yang membuat checkin
+   * @param {number} userId - ID user yang membuat checkin (optional for admin)
    * @param {string} userType - Tipe user (admin/field_team)
    */
-  async createCheckin(checkinData, userId, userType = 'field_team') {
+  async createCheckin(checkinData, userId = null, userType = 'admin') {
     try {
+      console.log('CheckinService: Creating checkin with data:', checkinData);
+
       const {
         apartmentId,
         unitId,
         durationHours,
+        checkoutTime,
         paymentMethod,
         paymentAmount,
         paymentProofPath,
         marketingName,
         notes,
+        createdBy,
       } = checkinData;
 
-      const db = DatabaseManager.getDatabase();
-
-      // Hitung waktu checkout
-      const now = new Date();
-      const checkoutTime = new Date(now.getTime() + (durationHours * 60 * 60 * 1000));
+      // Use createdBy from checkinData if provided, otherwise use userId
+      const finalUserId = createdBy || userId;
 
       // Cek apakah unit tersedia
-      const unitResult = await db.executeSql(
-        'SELECT status FROM units WHERE id = ?',
-        [unitId]
-      );
+      const { data: unit, error: unitError } = await supabase
+        .from('units')
+        .select('status')
+        .eq('id', unitId)
+        .single();
 
-      if (unitResult[0].rows.length === 0) {
+      if (unitError) {
+        console.error('CheckinService: Unit check error:', unitError);
         return {
           success: false,
           message: 'Unit tidak ditemukan',
         };
       }
 
-      const unit = unitResult[0].rows.item(0);
       if (unit.status !== UNIT_STATUS.AVAILABLE) {
         return {
           success: false,
@@ -54,53 +56,64 @@ class CheckinService {
         };
       }
 
-      // Insert checkin baru
-      const result = await db.executeSql(
-        `INSERT INTO checkins 
-         (apartment_id, unit_id, team_id, duration_hours, checkout_time, 
-          payment_method, payment_amount, payment_proof_path, marketing_name, 
-          notes, status, created_by, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-        [
-          apartmentId,
-          unitId,
-          userId, // team_id sama dengan created_by untuk field team
-          durationHours,
-          checkoutTime.toISOString(),
-          paymentMethod,
-          paymentAmount,
-          paymentProofPath,
-          marketingName,
-          notes,
-          userId,
-        ]
-      );
+      // Calculate checkout time if not provided
+      let finalCheckoutTime = checkoutTime;
+      if (!finalCheckoutTime) {
+        const now = new Date();
+        finalCheckoutTime = new Date(now.getTime() + (durationHours * 60 * 60 * 1000)).toISOString();
+      }
 
-      const checkinId = result[0].insertId;
+      // Insert checkin baru
+      const { data: newCheckin, error: insertError } = await supabase
+        .from('checkins')
+        .insert([{
+          apartment_id: apartmentId,
+          unit_id: unitId,
+          team_id: userType === 'field_team' ? finalUserId : null,
+          duration_hours: durationHours,
+          checkout_time: finalCheckoutTime,
+          payment_method: paymentMethod,
+          payment_amount: paymentAmount,
+          payment_proof_path: paymentProofPath,
+          marketing_name: marketingName,
+          notes: notes,
+          status: 'active',
+          created_by: finalUserId
+        }])
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('CheckinService: Insert error:', insertError);
+        throw insertError;
+      }
+
+      const checkinId = newCheckin.id;
 
       // Update status unit menjadi occupied
-      await UnitService.updateUnitStatus(unitId, UNIT_STATUS.OCCUPIED, userId, userType);
+      await UnitService.updateUnitStatus(unitId, UNIT_STATUS.OCCUPIED, finalUserId, userType);
 
       // Log aktivitas
       await ActivityLogService.logActivity(
-        userId,
+        finalUserId,
         userType,
-        ACTIVITY_ACTIONS.CREATE_CHECKIN,
+        ACTIVITY_ACTIONS.CREATE_CHECKIN || 'create_checkin',
         `Checkin baru untuk unit ${unitId}, durasi ${durationHours} jam`,
         'checkins',
         checkinId
       );
 
+      console.log('CheckinService: Checkin created successfully:', newCheckin);
       return {
         success: true,
-        data: { id: checkinId, ...checkinData, checkoutTime },
+        data: { ...newCheckin, checkoutTime: finalCheckoutTime },
         message: 'Checkin berhasil dibuat',
       };
     } catch (error) {
-      console.error('Error creating checkin:', error);
+      console.error('CheckinService: Error creating checkin:', error);
       return {
         success: false,
-        message: 'Gagal membuat checkin',
+        message: 'Gagal membuat checkin: ' + error.message,
       };
     }
   }

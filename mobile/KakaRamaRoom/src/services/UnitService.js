@@ -377,42 +377,50 @@ class UnitService {
   }
 
   // Get available units for checkin
-  async getAvailableUnits(apartmentIds = null) {
+  async getAvailableUnits(apartmentId = null) {
     try {
-      const db = DatabaseManager.getDatabase();
-      let query = `
-        SELECT u.*, a.name as apartment_name, a.code as apartment_code
-        FROM units u
-        INNER JOIN apartments a ON u.apartment_id = a.id
-        WHERE u.status = 'available'
-      `;
-      
-      const params = [];
+      console.log('UnitService: Getting available units for apartment:', apartmentId);
 
-      if (apartmentIds && apartmentIds.length > 0) {
-        const placeholders = apartmentIds.map(() => '?').join(',');
-        query += ` AND u.apartment_id IN (${placeholders})`;
-        params.push(...apartmentIds);
+      let query = supabase
+        .from('units')
+        .select(`
+          *,
+          apartments (
+            name,
+            code
+          )
+        `)
+        .eq('status', 'available');
+
+      // If apartmentId is provided, filter by it
+      if (apartmentId) {
+        query = query.eq('apartment_id', apartmentId);
       }
 
-      query += ' ORDER BY a.name ASC, u.unit_number ASC';
+      const { data: units, error } = await query
+        .order('unit_number', { ascending: true });
 
-      const result = await db.executeSql(query, params);
-      const units = [];
-
-      for (let i = 0; i < result[0].rows.length; i++) {
-        units.push(result[0].rows.item(i));
+      if (error) {
+        throw error;
       }
 
+      // Transform data to match expected format
+      const transformedUnits = units?.map(unit => ({
+        ...unit,
+        apartment_name: unit.apartments?.name,
+        apartment_code: unit.apartments?.code,
+      })) || [];
+
+      console.log(`UnitService: Found ${transformedUnits.length} available units`);
       return {
         success: true,
-        data: units,
+        data: transformedUnits,
       };
     } catch (error) {
-      console.error('Error getting available units:', error);
+      console.error('UnitService: Error getting available units:', error);
       return {
         success: false,
-        message: 'Gagal mengambil data unit tersedia',
+        message: 'Gagal mengambil data unit tersedia: ' + error.message,
       };
     }
   }

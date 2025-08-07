@@ -12,12 +12,16 @@ import LoginScreen from '../screens/LoginScreen';
 
 // Admin Screens
 import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
+import AdminCheckinScreen from '../screens/admin/AdminCheckinScreen';
 import AdminReportsScreen from '../screens/admin/AdminReportsScreen';
 import AdminApartmentsScreen from '../screens/admin/AdminApartmentsScreen';
 import AdminTeamsScreen from '../screens/admin/AdminTeamsScreen';
 import AdminUnitsScreen from '../screens/admin/AdminUnitsScreen';
 import AdminActivityLogsScreen from '../screens/admin/AdminActivityLogsScreen';
 import AdminTopMarketingScreen from '../screens/admin/AdminTopMarketingScreen';
+
+import AdminApartmentDetailScreen from '../screens/admin/AdminApartmentDetailScreen';
+import AdminFieldTeamManagementScreen from '../screens/admin/AdminFieldTeamManagementScreen';
 
 // Field Team Screens
 import FieldDashboardScreen from '../screens/field/FieldDashboardScreen';
@@ -27,7 +31,8 @@ import FieldUnitsScreen from '../screens/field/FieldUnitsScreen';
 
 // Shared Screens
 import ProfileScreen from '../screens/shared/ProfileScreen';
-import SettingsScreen from '../screens/shared/SettingsScreen';
+import AppSettingsScreen from '../screens/shared/AppSettingsScreen';
+import ProfileManagementScreen from '../screens/shared/ProfileManagementScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -53,8 +58,8 @@ const AdminTabNavigator = () => {
             case SCREENS.ADMIN_TEAMS:
               iconName = 'group';
               break;
-            case SCREENS.ADMIN_UNITS:
-              iconName = 'meeting-room';
+            case 'AppSettings':
+              iconName = 'settings';
               break;
             default:
               iconName = 'circle';
@@ -116,11 +121,11 @@ const AdminTabNavigator = () => {
         }}
       />
       <Tab.Screen
-        name={SCREENS.ADMIN_UNITS}
-        component={AdminUnitsScreen}
+        name="AppSettings"
+        component={AppSettingsScreen}
         options={{
-          title: 'Unit',
-          tabBarLabel: 'Unit',
+          title: 'Pengaturan',
+          tabBarLabel: 'Pengaturan',
         }}
       />
     </Tab.Navigator>
@@ -145,8 +150,8 @@ const FieldTabNavigator = () => {
             case SCREENS.FIELD_UNITS:
               iconName = 'meeting-room';
               break;
-            case SCREENS.PROFILE:
-              iconName = 'person';
+            case 'AppSettings':
+              iconName = 'settings';
               break;
             default:
               iconName = 'circle';
@@ -200,11 +205,11 @@ const FieldTabNavigator = () => {
         }}
       />
       <Tab.Screen
-        name={SCREENS.PROFILE}
-        component={ProfileScreen}
+        name="AppSettings"
+        component={AppSettingsScreen}
         options={{
-          title: 'Profil',
-          tabBarLabel: 'Profil',
+          title: 'Pengaturan',
+          tabBarLabel: 'Pengaturan',
         }}
       />
     </Tab.Navigator>
@@ -250,6 +255,13 @@ const AppNavigator = () => {
           <>
             <Stack.Screen name="AdminTabs" component={AdminTabNavigator} />
             <Stack.Screen
+              name="AdminCheckin"
+              component={AdminCheckinScreen}
+              options={{
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
               name={SCREENS.ADMIN_ACTIVITY_LOGS}
               component={AdminActivityLogsScreen}
               options={{
@@ -267,6 +279,28 @@ const AppNavigator = () => {
                 title: 'Top Marketing',
                 headerStyle: { backgroundColor: COLORS.primary },
                 headerTintColor: COLORS.background,
+              }}
+            />
+
+            <Stack.Screen
+              name="AdminApartmentDetail"
+              component={AdminApartmentDetailScreen}
+              options={{
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="AdminFieldTeamManagement"
+              component={AdminFieldTeamManagementScreen}
+              options={{
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="ProfileManagement"
+              component={ProfileManagementScreen}
+              options={{
+                headerShown: false,
               }}
             />
             <Stack.Screen
@@ -287,6 +321,13 @@ const AppNavigator = () => {
                 title: 'Pengaturan',
                 headerStyle: { backgroundColor: COLORS.primary },
                 headerTintColor: COLORS.background,
+              }}
+            />
+            <Stack.Screen
+              name="ProfileManagement"
+              component={ProfileManagementScreen}
+              options={{
+                headerShown: false,
               }}
             />
           </>
