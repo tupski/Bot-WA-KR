@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../config/supabase';
 import { USER_ROLES, TIME_CONSTANTS } from '../config/constants';
 import ActivityLogService from './ActivityLogService';
+import PasswordUtils from '../utils/PasswordUtils';
 
 class AuthService {
   constructor() {
@@ -14,12 +15,11 @@ class AuthService {
     try {
       console.log('AuthService: Attempting admin login for:', username);
 
-      // Query ke Supabase untuk admin
+      // Query ke Supabase untuk admin (ambil berdasarkan username saja)
       const { data, error } = await supabase
         .from('admins')
         .select('*')
         .eq('username', username)
-        .eq('password', password) // Note: In production, use proper password hashing
         .single();
 
       console.log('AuthService: Supabase query result:', { data, error });
@@ -33,6 +33,41 @@ class AuthService {
       }
 
       if (data) {
+        // Verify password dengan hash
+        let isPasswordValid = false;
+
+        try {
+          // Coba verify dengan bcrypt (React Native)
+          if (PasswordUtils.isPasswordHashed(data.password)) {
+            isPasswordValid = await PasswordUtils.verifyPassword(password, data.password);
+          } else {
+            // Fallback: cek dengan PostgreSQL crypt function
+            const { data: cryptResult, error: cryptError } = await supabase
+              .rpc('verify_password', {
+                input_password: password,
+                stored_hash: data.password
+              });
+
+            if (!cryptError && cryptResult) {
+              isPasswordValid = cryptResult;
+            } else {
+              // Last fallback: plain text comparison (untuk development)
+              isPasswordValid = password === data.password;
+            }
+          }
+        } catch (error) {
+          console.error('Password verification error:', error);
+          // Fallback ke plain text untuk development
+          isPasswordValid = password === data.password;
+        }
+
+        if (!isPasswordValid) {
+          return {
+            success: false,
+            message: 'Username atau password salah',
+          };
+        }
+
         const userData = {
           id: data.id,
           username: data.username,
@@ -75,9 +110,9 @@ class AuthService {
   async loginDefaultAdmin(username, password) {
     console.log('AuthService: Using default admin login for:', username);
 
-    // Default admin credentials
+    // Default admin credentials (untuk fallback)
     if (username === 'admin' && password === 'admin123') {
-      console.log('AuthService: Default admin credentials match');
+      console.log('AuthService: Default admin credentials match (fallback mode)');
       const userData = {
         id: 1,
         username: 'admin',

@@ -55,10 +55,13 @@ const LoginScreen = ({ navigation }) => {
   };
 
   const navigateToHome = (user) => {
+    console.log('Navigating to home for user role:', user.role);
     if (user.role === USER_ROLES.ADMIN) {
-      navigation.replace('AdminDashboard');
+      console.log('Navigating to AdminTabs');
+      navigation.replace('AdminTabs');
     } else {
-      navigation.replace('FieldDashboard');
+      console.log('Navigating to FieldTabs');
+      navigation.replace('FieldTabs');
     }
   };
 
