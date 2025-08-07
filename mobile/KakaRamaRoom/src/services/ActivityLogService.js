@@ -37,79 +37,73 @@ class ActivityLogService {
   // Get activity logs dengan filter
   async getActivityLogs(filters = {}) {
     try {
-      const db = DatabaseManager.getDatabase();
-      let query = `
-        SELECT al.*, 
-               CASE 
-                 WHEN al.user_type = 'admin' THEN a.full_name
-                 WHEN al.user_type = 'field_team' THEN ft.full_name
-               END as user_name,
-               CASE 
-                 WHEN al.user_type = 'admin' THEN a.username
-                 WHEN al.user_type = 'field_team' THEN ft.username
-               END as username
-        FROM activity_logs al
-        LEFT JOIN admins a ON al.user_type = 'admin' AND al.user_id = a.id
-        LEFT JOIN field_teams ft ON al.user_type = 'field_team' AND al.user_id = ft.id
-        WHERE 1=1
-      `;
-      
-      const params = [];
+      let query = supabase
+        .from('activity_logs')
+        .select(`
+          *,
+          admins!activity_logs_user_id_fkey (
+            full_name,
+            username
+          ),
+          field_teams!activity_logs_user_id_fkey (
+            full_name,
+            username
+          )
+        `)
+        .order('created_at', { ascending: false });
 
-      // Filter by user type
+      // Apply filters
       if (filters.userType) {
-        query += ' AND al.user_type = ?';
-        params.push(filters.userType);
+        query = query.eq('user_type', filters.userType);
       }
 
-      // Filter by user ID
       if (filters.userId) {
-        query += ' AND al.user_id = ?';
-        params.push(filters.userId);
+        query = query.eq('user_id', filters.userId);
       }
 
-      // Filter by action
       if (filters.action) {
-        query += ' AND al.action = ?';
-        params.push(filters.action);
+        query = query.eq('action', filters.action);
       }
 
-      // Filter by date range
       if (filters.startDate) {
-        query += ' AND DATE(al.created_at) >= ?';
-        params.push(filters.startDate);
+        query = query.gte('created_at', filters.startDate);
       }
 
       if (filters.endDate) {
-        query += ' AND DATE(al.created_at) <= ?';
-        params.push(filters.endDate);
+        query = query.lte('created_at', filters.endDate);
       }
 
-      // Filter by related table
-      if (filters.relatedTable) {
-        query += ' AND al.related_table = ?';
-        params.push(filters.relatedTable);
-      }
-
-      // Order by created_at desc
-      query += ' ORDER BY al.created_at DESC';
-
-      // Limit
       if (filters.limit) {
-        query += ' LIMIT ?';
-        params.push(filters.limit);
+        query = query.limit(filters.limit);
       }
 
-      const result = await db.executeSql(query, params);
-      const logs = [];
+      const { data: logs, error } = await query;
 
-      for (let i = 0; i < result[0].rows.length; i++) {
-        logs.push(result[0].rows.item(i));
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // Table doesn't exist, return empty array
+          return {
+            success: true,
+            data: [],
+          };
+        }
+        throw error;
       }
+
+      // Transform data to include user_name
+      const transformedLogs = logs?.map(log => ({
+        ...log,
+        user_name: log.user_type === 'admin'
+          ? log.admins?.full_name
+          : log.field_teams?.full_name,
+        username: log.user_type === 'admin'
+          ? log.admins?.username
+          : log.field_teams?.username,
+      })) || [];
 
       return {
         success: true,
-        data: logs,
+        data: transformedLogs,
       };
     } catch (error) {
       console.error('Error getting activity logs:', error);

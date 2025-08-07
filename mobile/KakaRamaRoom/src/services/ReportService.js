@@ -1,4 +1,4 @@
-import DatabaseManager from '../config/database';
+import { supabase } from '../config/supabase';
 
 /**
  * Service untuk mengelola laporan dan statistik
@@ -368,6 +368,112 @@ class ReportService {
       return {
         success: false,
         message: 'Gagal mengambil ringkasan statistik',
+      };
+    }
+  }
+
+  /**
+   * Get top marketing report berdasarkan jumlah checkin
+   * @param {string} period - Periode laporan (week, month, year, all)
+   */
+  async getTopMarketingReport(period = 'month') {
+    try {
+      let dateFilter = '';
+      const now = new Date();
+
+      switch (period) {
+        case 'week':
+          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          dateFilter = weekAgo.toISOString();
+          break;
+        case 'month':
+          const monthAgo = new Date(now.getFullYear(), now.getMonth(), 1);
+          dateFilter = monthAgo.toISOString();
+          break;
+        case 'year':
+          const yearAgo = new Date(now.getFullYear(), 0, 1);
+          dateFilter = yearAgo.toISOString();
+          break;
+        case 'all':
+        default:
+          dateFilter = null;
+          break;
+      }
+
+      let query = supabase
+        .from('checkins')
+        .select(`
+          marketing_name,
+          payment_amount,
+          created_at
+        `)
+        .not('marketing_name', 'is', null)
+        .neq('marketing_name', '');
+
+      if (dateFilter) {
+        query = query.gte('created_at', dateFilter);
+      }
+
+      const { data: checkins, error } = await query;
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return { success: true, data: [] };
+        }
+        throw error;
+      }
+
+      // Group by marketing name and calculate stats
+      const marketingStats = {};
+
+      checkins?.forEach(checkin => {
+        const marketingName = checkin.marketing_name;
+
+        if (!marketingStats[marketingName]) {
+          marketingStats[marketingName] = {
+            marketing_name: marketingName,
+            total_checkins: 0,
+            total_revenue: 0,
+            last_checkin: null,
+          };
+        }
+
+        marketingStats[marketingName].total_checkins += 1;
+        marketingStats[marketingName].total_revenue += checkin.payment_amount || 0;
+
+        // Update last checkin date
+        const checkinDate = new Date(checkin.created_at);
+        if (!marketingStats[marketingName].last_checkin ||
+            checkinDate > new Date(marketingStats[marketingName].last_checkin)) {
+          marketingStats[marketingName].last_checkin = checkin.created_at;
+        }
+      });
+
+      // Convert to array and calculate average revenue
+      const marketingArray = Object.values(marketingStats).map(marketing => ({
+        ...marketing,
+        avg_revenue: marketing.total_checkins > 0
+          ? Math.round(marketing.total_revenue / marketing.total_checkins)
+          : 0,
+      }));
+
+      // Sort by total checkins (descending), then by total revenue
+      marketingArray.sort((a, b) => {
+        if (b.total_checkins !== a.total_checkins) {
+          return b.total_checkins - a.total_checkins;
+        }
+        return b.total_revenue - a.total_revenue;
+      });
+
+      return {
+        success: true,
+        data: marketingArray,
+      };
+    } catch (error) {
+      console.error('Error getting top marketing report:', error);
+      return {
+        success: false,
+        message: 'Gagal mengambil laporan top marketing',
       };
     }
   }

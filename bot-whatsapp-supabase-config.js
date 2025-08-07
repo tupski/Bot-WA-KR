@@ -3,9 +3,9 @@
 
 const { createClient } = require('@supabase/supabase-js');
 
-// Supabase credentials
-const supabaseUrl = 'https://rvcknyuinfssgpgkfetx.supabase.co';
-const supabaseServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2Y2tueXVpbmZzc2dwZ2tmZXR4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NDUyMTY5OCwiZXhwIjoyMDcwMDk3Njk4fQ.c-TsCsWk7rG-l-Z-BvFc111oCpAsJ8wXKTqydj9sWIc';
+// SECURITY: Keys moved to environment variables
+const supabaseUrl = process.env.SUPABASE_URL || 'YOUR_SUPABASE_URL';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || 'YOUR_SUPABASE_SERVICE_KEY';
 
 if (!supabaseUrl || !supabaseServiceKey) {
   throw new Error('Missing Supabase environment variables');
