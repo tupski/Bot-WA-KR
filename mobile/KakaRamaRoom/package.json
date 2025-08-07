@@ -1,7 +1,7 @@
 {
-  "name": "kr-app",
-  "displayName": "KR App",
-  "version": "1.1.0",
+  "name": "kakarama-room",
+  "displayName": "Kakarama Room",
+  "version": "1.2.2",
   "private": true,
   "scripts": {
     "android": "react-native run-android",

@@ -1,8 +1,8 @@
 // App Constants
 export const APP_CONFIG = {
-  name: 'KakaRama Room',
-  version: '1.1.0',
-  company: 'KakaRama Room',
+  name: 'Kakarama Room',
+  version: '1.2.2',
+  company: 'Kakarama Room',
   website: 'https://kakaramaroom.com',
   logo: require('../assets/images/logo-placeholder.png'), // Placeholder
 };

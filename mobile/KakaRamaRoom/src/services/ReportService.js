@@ -340,49 +340,71 @@ class ReportService {
    */
   async getDailyStatistics(filters = {}) {
     try {
-      const db = DatabaseManager.getDatabase();
-      let query = `
-        SELECT 
-          DATE(c.created_at) as date,
-          COUNT(c.id) as total_checkins,
-          SUM(c.payment_amount) as total_revenue,
-          COUNT(CASE WHEN c.status = 'completed' THEN 1 END) as completed_checkins,
-          COUNT(CASE WHEN c.status = 'early_checkout' THEN 1 END) as early_checkouts
-        FROM checkins c
-        WHERE 1=1
-      `;
+      console.log('ReportService: Getting daily statistics with filters:', filters);
 
-      const params = [];
-
-      // Filter by date range
+      // Build date filter
+      let dateFilter = null;
       if (filters.startDate) {
-        query += ' AND DATE(c.created_at) >= ?';
-        params.push(filters.startDate);
+        dateFilter = filters.startDate;
+      }
+
+      let query = supabase
+        .from('checkins')
+        .select(`
+          created_at,
+          payment_amount,
+          status
+        `);
+
+      // Apply filters
+      if (dateFilter) {
+        query = query.gte('created_at', dateFilter);
       }
 
       if (filters.endDate) {
-        query += ' AND DATE(c.created_at) <= ?';
-        params.push(filters.endDate);
+        query = query.lte('created_at', filters.endDate);
       }
 
-      // Filter by apartment
       if (filters.apartmentId) {
-        query += ' AND c.apartment_id = ?';
-        params.push(filters.apartmentId);
+        query = query.eq('apartment_id', filters.apartmentId);
       }
 
-      query += ' GROUP BY DATE(c.created_at) ORDER BY date DESC';
+      const { data: checkins, error } = await query;
 
-      const result = await db.executeSql(query, params);
-      const statistics = [];
-
-      for (let i = 0; i < result[0].rows.length; i++) {
-        const row = result[0].rows.item(i);
-        statistics.push({
-          ...row,
-          total_revenue: row.total_revenue || 0,
-        });
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return { success: true, data: [] };
+        }
+        throw error;
       }
+
+      // Group by date and calculate statistics
+      const dailyStats = {};
+
+      checkins?.forEach(checkin => {
+        const date = checkin.created_at.split('T')[0];
+
+        if (!dailyStats[date]) {
+          dailyStats[date] = {
+            date,
+            total_checkins: 0,
+            total_revenue: 0,
+            completed_checkins: 0,
+            early_checkouts: 0,
+          };
+        }
+
+        dailyStats[date].total_checkins++;
+        dailyStats[date].total_revenue += checkin.payment_amount || 0;
+
+        if (checkin.status === 'completed') {
+          dailyStats[date].completed_checkins++;
+        } else if (checkin.status === 'early_checkout') {
+          dailyStats[date].early_checkouts++;
+        }
+      });
+
+      const statistics = Object.values(dailyStats).sort((a, b) => b.date.localeCompare(a.date));
 
       return {
         success: true,
@@ -403,70 +425,84 @@ class ReportService {
    */
   async getSummaryStatistics(filters = {}) {
     try {
-      const db = DatabaseManager.getDatabase();
-      
+      console.log('ReportService: Getting summary statistics with filters:', filters);
+
+      // Build date filter for Supabase
+      let dateFilter = null;
+      if (filters.startDate) {
+        dateFilter = filters.startDate;
+      }
+
       // Get total checkins
-      let totalQuery = 'SELECT COUNT(*) as total FROM checkins WHERE 1=1';
-      const totalParams = [];
+      let totalQuery = supabase
+        .from('checkins')
+        .select('*', { count: 'exact', head: true });
+
+      if (dateFilter) {
+        totalQuery = totalQuery.gte('created_at', dateFilter);
+      }
+      if (filters.endDate) {
+        totalQuery = totalQuery.lte('created_at', filters.endDate);
+      }
+      if (filters.apartmentId) {
+        totalQuery = totalQuery.eq('apartment_id', filters.apartmentId);
+      }
 
       // Get today's checkins
-      let todayQuery = 'SELECT COUNT(*) as today FROM checkins WHERE DATE(created_at) = DATE("now") AND 1=1';
-      const todayParams = [];
+      const today = new Date().toISOString().split('T')[0];
+      let todayQuery = supabase
+        .from('checkins')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', today);
+
+      if (filters.apartmentId) {
+        todayQuery = todayQuery.eq('apartment_id', filters.apartmentId);
+      }
 
       // Get active checkins
-      let activeQuery = 'SELECT COUNT(*) as active FROM checkins WHERE status IN ("active", "extended")';
-      const activeParams = [];
+      let activeQuery = supabase
+        .from('checkins')
+        .select('*', { count: 'exact', head: true })
+        .in('status', ['active', 'extended']);
+
+      if (filters.apartmentId) {
+        activeQuery = activeQuery.eq('apartment_id', filters.apartmentId);
+      }
 
       // Get total revenue
-      let revenueQuery = 'SELECT SUM(payment_amount) as revenue FROM checkins WHERE payment_amount IS NOT NULL AND 1=1';
-      const revenueParams = [];
+      let revenueQuery = supabase
+        .from('checkins')
+        .select('payment_amount')
+        .not('payment_amount', 'is', null);
 
-      // Apply date filters
-      if (filters.startDate) {
-        totalQuery += ' AND DATE(created_at) >= ?';
-        totalParams.push(filters.startDate);
-        todayQuery += ' AND DATE(created_at) >= ?';
-        todayParams.push(filters.startDate);
-        revenueQuery += ' AND DATE(created_at) >= ?';
-        revenueParams.push(filters.startDate);
+      if (dateFilter) {
+        revenueQuery = revenueQuery.gte('created_at', dateFilter);
       }
-
       if (filters.endDate) {
-        totalQuery += ' AND DATE(created_at) <= ?';
-        totalParams.push(filters.endDate);
-        todayQuery += ' AND DATE(created_at) <= ?';
-        todayParams.push(filters.endDate);
-        revenueQuery += ' AND DATE(created_at) <= ?';
-        revenueParams.push(filters.endDate);
+        revenueQuery = revenueQuery.lte('created_at', filters.endDate);
       }
-
-      // Apply apartment filter
       if (filters.apartmentId) {
-        totalQuery += ' AND apartment_id = ?';
-        totalParams.push(filters.apartmentId);
-        todayQuery += ' AND apartment_id = ?';
-        todayParams.push(filters.apartmentId);
-        activeQuery += ' AND apartment_id = ?';
-        activeParams.push(filters.apartmentId);
-        revenueQuery += ' AND apartment_id = ?';
-        revenueParams.push(filters.apartmentId);
+        revenueQuery = revenueQuery.eq('apartment_id', filters.apartmentId);
       }
 
       // Execute queries
       const [totalResult, todayResult, activeResult, revenueResult] = await Promise.all([
-        db.executeSql(totalQuery, totalParams),
-        db.executeSql(todayQuery, todayParams),
-        db.executeSql(activeQuery, activeParams),
-        db.executeSql(revenueQuery, revenueParams),
+        totalQuery,
+        todayQuery,
+        activeQuery,
+        revenueQuery,
       ]);
+
+      // Calculate total revenue
+      const totalRevenue = revenueResult.data?.reduce((sum, item) => sum + (item.payment_amount || 0), 0) || 0;
 
       return {
         success: true,
         data: {
-          totalCheckins: totalResult[0].rows.item(0).total,
-          todayCheckins: todayResult[0].rows.item(0).today,
-          activeCheckins: activeResult[0].rows.item(0).active,
-          totalRevenue: revenueResult[0].rows.item(0).revenue || 0,
+          totalCheckins: totalResult.count || 0,
+          todayCheckins: todayResult.count || 0,
+          activeCheckins: activeResult.count || 0,
+          totalRevenue: totalRevenue,
         },
       };
     } catch (error) {

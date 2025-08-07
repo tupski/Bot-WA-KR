@@ -52,24 +52,35 @@ class UnitService {
   // Get units by apartment ID
   async getUnitsByApartmentId(apartmentId) {
     try {
-      const db = DatabaseManager.getDatabase();
-      const result = await db.executeSql(
-        `SELECT u.*, a.name as apartment_name, a.code as apartment_code
-         FROM units u
-         INNER JOIN apartments a ON u.apartment_id = a.id
-         WHERE u.apartment_id = ?
-         ORDER BY u.unit_number ASC`,
-        [apartmentId]
-      );
+      const { data: units, error } = await supabase
+        .from('units')
+        .select(`
+          *,
+          apartments (
+            name,
+            code
+          )
+        `)
+        .eq('apartment_id', apartmentId)
+        .order('unit_number', { ascending: true });
 
-      const units = [];
-      for (let i = 0; i < result[0].rows.length; i++) {
-        units.push(result[0].rows.item(i));
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return { success: true, data: [] };
+        }
+        throw error;
       }
+
+      // Transform data to match expected format
+      const transformedUnits = units?.map(unit => ({
+        ...unit,
+        apartment_name: unit.apartments?.name,
+        apartment_code: unit.apartments?.code,
+      })) || [];
 
       return {
         success: true,
-        data: units,
+        data: transformedUnits,
       };
     } catch (error) {
       console.error('Error getting units by apartment ID:', error);
@@ -90,25 +101,35 @@ class UnitService {
         };
       }
 
-      const db = DatabaseManager.getDatabase();
-      const placeholders = apartmentIds.map(() => '?').join(',');
-      const result = await db.executeSql(
-        `SELECT u.*, a.name as apartment_name, a.code as apartment_code
-         FROM units u
-         INNER JOIN apartments a ON u.apartment_id = a.id
-         WHERE u.apartment_id IN (${placeholders})
-         ORDER BY a.name ASC, u.unit_number ASC`,
-        apartmentIds
-      );
+      const { data: units, error } = await supabase
+        .from('units')
+        .select(`
+          *,
+          apartments (
+            name,
+            code
+          )
+        `)
+        .in('apartment_id', apartmentIds)
+        .order('unit_number', { ascending: true });
 
-      const units = [];
-      for (let i = 0; i < result[0].rows.length; i++) {
-        units.push(result[0].rows.item(i));
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return { success: true, data: [] };
+        }
+        throw error;
       }
+
+      // Transform data to match expected format
+      const transformedUnits = units?.map(unit => ({
+        ...unit,
+        apartment_name: unit.apartments?.name,
+        apartment_code: unit.apartments?.code,
+      })) || [];
 
       return {
         success: true,
-        data: units,
+        data: transformedUnits,
       };
     } catch (error) {
       console.error('Error getting units by apartment IDs:', error);
@@ -122,26 +143,39 @@ class UnitService {
   // Get unit by ID
   async getUnitById(id) {
     try {
-      const db = DatabaseManager.getDatabase();
-      const result = await db.executeSql(
-        `SELECT u.*, a.name as apartment_name, a.code as apartment_code
-         FROM units u
-         INNER JOIN apartments a ON u.apartment_id = a.id
-         WHERE u.id = ?`,
-        [id]
-      );
+      const { data: unit, error } = await supabase
+        .from('units')
+        .select(`
+          *,
+          apartments (
+            name,
+            code
+          )
+        `)
+        .eq('id', id)
+        .single();
 
-      if (result[0].rows.length > 0) {
-        return {
-          success: true,
-          data: result[0].rows.item(0),
-        };
-      } else {
-        return {
-          success: false,
-          message: 'Unit tidak ditemukan',
-        };
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return {
+            success: false,
+            message: 'Unit tidak ditemukan',
+          };
+        }
+        throw error;
       }
+
+      // Transform data to match expected format
+      const transformedUnit = {
+        ...unit,
+        apartment_name: unit.apartments?.name,
+        apartment_code: unit.apartments?.code,
+      };
+
+      return {
+        success: true,
+        data: transformedUnit,
+      };
     } catch (error) {
       console.error('Error getting unit by ID:', error);
       return {
@@ -483,32 +517,48 @@ class UnitService {
   // Process auto checkouts
   async processAutoCheckouts() {
     try {
-      const db = DatabaseManager.getDatabase();
+      console.log('UnitService: Processing auto checkouts...');
       const now = new Date().toISOString();
 
-      // Find expired checkins
-      const result = await db.executeSql(
-        `SELECT c.*, u.unit_number, a.name as apartment_name
-         FROM checkins c
-         INNER JOIN units u ON c.unit_id = u.id
-         INNER JOIN apartments a ON c.apartment_id = a.id
-         WHERE c.status IN ('active', 'extended') AND c.checkout_time <= ?`,
-        [now]
-      );
+      // Find expired checkins using Supabase
+      const { data: expiredCheckins, error } = await supabase
+        .from('checkins')
+        .select(`
+          *,
+          units (
+            unit_number,
+            apartments (
+              name
+            )
+          )
+        `)
+        .in('status', ['active', 'extended'])
+        .lte('checkout_time', now);
 
-      for (let i = 0; i < result[0].rows.length; i++) {
-        const checkin = result[0].rows.item(i);
-        
-        // Update checkin status to completed
-        await db.executeSql(
-          `UPDATE checkins SET status = 'completed', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-          [checkin.id]
-        );
+      if (error) {
+        console.error('Error finding expired checkins:', error);
+        return;
+      }
 
-        // Update unit status to cleaning
-        await this.updateUnitStatus(checkin.unit_id, UNIT_STATUS.CLEANING, 1, 'admin'); // System user ID = 1
+      // Process each expired checkin
+      for (const checkin of expiredCheckins || []) {
+        try {
+          // Update checkin status to completed
+          await supabase
+            .from('checkins')
+            .update({
+              status: 'completed',
+              updated_at: now
+            })
+            .eq('id', checkin.id);
 
-        console.log(`Auto checkout: Unit ${checkin.unit_number} at ${checkin.apartment_name}`);
+          // Update unit status to cleaning
+          await this.updateUnitStatus(checkin.unit_id, UNIT_STATUS.CLEANING, 1, 'admin');
+
+          console.log(`Auto checkout: Unit ${checkin.units?.unit_number} at ${checkin.units?.apartments?.name}`);
+        } catch (updateError) {
+          console.error(`Error processing auto checkout for checkin ${checkin.id}:`, updateError);
+        }
       }
     } catch (error) {
       console.error('Error processing auto checkouts:', error);
@@ -518,24 +568,34 @@ class UnitService {
   // Process cleaning completion
   async processCleaningCompletion() {
     try {
-      const db = DatabaseManager.getDatabase();
+      console.log('UnitService: Processing cleaning completion...');
       const now = new Date();
       const cleaningDuration = TIME_CONSTANTS.CLEANING_DURATION_MINUTES * 60 * 1000; // Convert to milliseconds
+      const cutoffTime = new Date(now.getTime() - cleaningDuration).toISOString();
 
       // Find units that have been cleaning for more than the specified duration
-      const result = await db.executeSql(
-        `SELECT * FROM units 
-         WHERE status = 'cleaning' AND cleaning_started_at IS NOT NULL
-         AND datetime(cleaning_started_at, '+${TIME_CONSTANTS.CLEANING_DURATION_MINUTES} minutes') <= datetime('now')`
-      );
+      const { data: cleaningUnits, error } = await supabase
+        .from('units')
+        .select('*')
+        .eq('status', 'cleaning')
+        .not('cleaning_started_at', 'is', null)
+        .lte('cleaning_started_at', cutoffTime);
 
-      for (let i = 0; i < result[0].rows.length; i++) {
-        const unit = result[0].rows.item(i);
-        
-        // Update unit status to available
-        await this.updateUnitStatus(unit.id, UNIT_STATUS.AVAILABLE, 1, 'admin'); // System user ID = 1
+      if (error) {
+        console.error('Error finding cleaning units:', error);
+        return;
+      }
 
-        console.log(`Auto cleaning completion: Unit ${unit.unit_number}`);
+      // Process each unit that finished cleaning
+      for (const unit of cleaningUnits || []) {
+        try {
+          // Update unit status to available
+          await this.updateUnitStatus(unit.id, UNIT_STATUS.AVAILABLE, 1, 'admin');
+
+          console.log(`Auto cleaning completion: Unit ${unit.unit_number}`);
+        } catch (updateError) {
+          console.error(`Error completing cleaning for unit ${unit.id}:`, updateError);
+        }
       }
     } catch (error) {
       console.error('Error processing cleaning completion:', error);
@@ -545,25 +605,31 @@ class UnitService {
   // Get unit statistics
   async getUnitStatistics(apartmentIds = null) {
     try {
-      const db = DatabaseManager.getDatabase();
-      let query = `
-        SELECT 
-          status,
-          COUNT(*) as count
-        FROM units u
-      `;
-      
-      const params = [];
+      console.log('UnitService: Getting unit statistics...');
+
+      let query = supabase
+        .from('units')
+        .select('status');
 
       if (apartmentIds && apartmentIds.length > 0) {
-        const placeholders = apartmentIds.map(() => '?').join(',');
-        query += ` WHERE u.apartment_id IN (${placeholders})`;
-        params.push(...apartmentIds);
+        query = query.in('apartment_id', apartmentIds);
       }
 
-      query += ' GROUP BY status';
+      const { data: units, error } = await query;
 
-      const result = await db.executeSql(query, params);
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // Return empty statistics if no units found
+          const statistics = {};
+          Object.values(UNIT_STATUS).forEach(status => {
+            statistics[status] = 0;
+          });
+          return { success: true, data: statistics };
+        }
+        throw error;
+      }
+
+      // Count units by status
       const statistics = {};
 
       // Initialize all statuses with 0
@@ -571,11 +637,12 @@ class UnitService {
         statistics[status] = 0;
       });
 
-      // Fill with actual counts
-      for (let i = 0; i < result[0].rows.length; i++) {
-        const row = result[0].rows.item(i);
-        statistics[row.status] = row.count;
-      }
+      // Count actual units
+      units?.forEach(unit => {
+        if (statistics.hasOwnProperty(unit.status)) {
+          statistics[unit.status]++;
+        }
+      });
 
       return {
         success: true,
@@ -593,34 +660,49 @@ class UnitService {
   // Search units
   async searchUnits(searchTerm, apartmentIds = null) {
     try {
-      const db = DatabaseManager.getDatabase();
-      let query = `
-        SELECT u.*, a.name as apartment_name, a.code as apartment_code
-        FROM units u
-        INNER JOIN apartments a ON u.apartment_id = a.id
-        WHERE (u.unit_number LIKE ? OR u.unit_type LIKE ? OR a.name LIKE ?)
-      `;
-      
-      const params = [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`];
+      console.log('UnitService: Searching units with term:', searchTerm);
 
+      let query = supabase
+        .from('units')
+        .select(`
+          *,
+          apartments (
+            name,
+            code
+          )
+        `);
+
+      // Apply apartment filter if provided
       if (apartmentIds && apartmentIds.length > 0) {
-        const placeholders = apartmentIds.map(() => '?').join(',');
-        query += ` AND u.apartment_id IN (${placeholders})`;
-        params.push(...apartmentIds);
+        query = query.in('apartment_id', apartmentIds);
       }
 
-      query += ' ORDER BY a.name ASC, u.unit_number ASC';
-
-      const result = await db.executeSql(query, params);
-      const units = [];
-
-      for (let i = 0; i < result[0].rows.length; i++) {
-        units.push(result[0].rows.item(i));
+      // Apply search filter - search in unit_number, unit_type, and apartment name
+      if (searchTerm && searchTerm.trim()) {
+        query = query.or(`unit_number.ilike.%${searchTerm}%,unit_type.ilike.%${searchTerm}%,apartments.name.ilike.%${searchTerm}%`);
       }
+
+      query = query.order('unit_number', { ascending: true });
+
+      const { data: units, error } = await query;
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return { success: true, data: [] };
+        }
+        throw error;
+      }
+
+      // Transform data to match expected format
+      const transformedUnits = units?.map(unit => ({
+        ...unit,
+        apartment_name: unit.apartments?.name,
+        apartment_code: unit.apartments?.code,
+      })) || [];
 
       return {
         success: true,
-        data: units,
+        data: transformedUnits,
       };
     } catch (error) {
       console.error('Error searching units:', error);

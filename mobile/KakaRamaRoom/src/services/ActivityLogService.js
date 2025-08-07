@@ -40,15 +40,7 @@ class ActivityLogService {
       let query = supabase
         .from('activity_logs')
         .select(`
-          *,
-          admins!activity_logs_user_id_fkey (
-            full_name,
-            username
-          ),
-          field_teams!activity_logs_user_id_fkey (
-            full_name,
-            username
-          )
+          *
         `)
         .order('created_at', { ascending: false });
 
@@ -90,15 +82,12 @@ class ActivityLogService {
         throw error;
       }
 
-      // Transform data to include user_name
+      // Transform data - for now just return the logs as is
+      // TODO: Add user name lookup if needed
       const transformedLogs = logs?.map(log => ({
         ...log,
-        user_name: log.user_type === 'admin'
-          ? log.admins?.full_name
-          : log.field_teams?.full_name,
-        username: log.user_type === 'admin'
-          ? log.admins?.username
-          : log.field_teams?.username,
+        user_name: `${log.user_type} ${log.user_id}`, // Simple fallback
+        username: `${log.user_type}_${log.user_id}`, // Simple fallback
       })) || [];
 
       return {
