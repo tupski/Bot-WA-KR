@@ -76,6 +76,13 @@ const AdminDashboardScreen = ({ navigation }) => {
       color: COLORS.secondary,
     },
     {
+      title: 'Auto-Checkout System',
+      subtitle: 'Monitor dan kontrol sistem auto-checkout',
+      icon: 'schedule',
+      onPress: () => navigation.navigate('AdminAutoCheckout'),
+      color: COLORS.warning,
+    },
+    {
       title: 'Top Marketing',
       subtitle: 'Lihat marketing terbaik',
       icon: 'star',
