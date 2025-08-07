@@ -33,6 +33,7 @@
   },
   "homepage": "https://github.com/tupski/Bot-WA-KR#readme",
   "dependencies": {
+    "@supabase/supabase-js": "^2.53.0",
     "cron-parser": "^5.3.0",
     "dotenv": "^17.2.1",
     "exceljs": "^4.4.0",

@@ -1,0 +1,266 @@
+{
+  "migrationDate": "2025-08-07T00:18:42.087Z",
+  "sourceDatabase": "./data/bot-kr (1).db",
+  "targetDatabase": "Supabase",
+  "tables": {
+    "transactions": {
+      "rowCount": 399,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "nullable": true,
+          "primaryKey": true
+        },
+        {
+          "name": "message_id",
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "primaryKey": false
+        },
+        {
+          "name": "location",
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "primaryKey": false
+        },
+        {
+          "name": "unit",
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "primaryKey": false
+        },
+        {
+          "name": "checkout_time",
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "primaryKey": false
+        },
+        {
+          "name": "duration",
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "primaryKey": false
+        },
+        {
+          "name": "payment_method",
+          "type": "VARCHAR(20)",
+          "nullable": true,
+          "primaryKey": false
+        },
+        {
+          "name": "cs_name",
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "primaryKey": false
+        },
+        {
+          "name": "commission",
+          "type": "DECIMAL(10,2)",
+          "nullable": true,
+          "primaryKey": false
+        },
+        {
+          "name": "amount",
+          "type": "DECIMAL(12,2)",
+          "nullable": true,
+          "primaryKey": false
+        },
+        {
+          "name": "net_amount",
+          "type": "DECIMAL(12,2)",
+          "nullable": true,
+          "primaryKey": false
+        },
+        {
+          "name": "skip_financial",
+          "type": "BOOLEAN",
+          "nullable": true,
+          "primaryKey": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": true,
+          "primaryKey": false
+        },
+        {
+          "name": "date_only",
+          "type": "DATE",
+          "nullable": true,
+          "primaryKey": false
+        }
+      ]
+    },
+    "cs_summary": {
+      "rowCount": 139,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "nullable": true,
+          "primaryKey": true
+        },
+        {
+          "name": "date",
+          "type": "DATE",
+          "nullable": true,
+          "primaryKey": false
+        },
+        {
+          "name": "cs_name",
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "primaryKey": false
+        },
+        {
+          "name": "total_bookings",
+          "type": "INTEGER",
+          "nullable": true,
+          "primaryKey": false
+        },
+        {
+          "name": "total_cash",
+          "type": "DECIMAL(12,2)",
+          "nullable": true,
+          "primaryKey": false
+        },
+        {
+          "name": "total_transfer",
+          "type": "DECIMAL(12,2)",
+          "nullable": true,
+          "primaryKey": false
+        },
+        {
+          "name": "total_commission",
+          "type": "DECIMAL(12,2)",
+          "nullable": true,
+          "primaryKey": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": true,
+          "primaryKey": false
+        }
+      ]
+    },
+    "daily_summary": {
+      "rowCount": 9,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "nullable": true,
+          "primaryKey": true
+        },
+        {
+          "name": "date",
+          "type": "DATE",
+          "nullable": true,
+          "primaryKey": false
+        },
+        {
+          "name": "total_bookings",
+          "type": "INTEGER",
+          "nullable": true,
+          "primaryKey": false
+        },
+        {
+          "name": "total_cash",
+          "type": "DECIMAL(12,2)",
+          "nullable": true,
+          "primaryKey": false
+        },
+        {
+          "name": "total_transfer",
+          "type": "DECIMAL(12,2)",
+          "nullable": true,
+          "primaryKey": false
+        },
+        {
+          "name": "total_gross",
+          "type": "DECIMAL(12,2)",
+          "nullable": true,
+          "primaryKey": false
+        },
+        {
+          "name": "total_commission",
+          "type": "DECIMAL(12,2)",
+          "nullable": true,
+          "primaryKey": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": true,
+          "primaryKey": false
+        }
+      ]
+    },
+    "processed_messages": {
+      "rowCount": 404,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "nullable": true,
+          "primaryKey": true
+        },
+        {
+          "name": "message_id",
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "primaryKey": false
+        },
+        {
+          "name": "chat_id",
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "primaryKey": false
+        },
+        {
+          "name": "processed_at",
+          "type": "DATETIME",
+          "nullable": true,
+          "primaryKey": false
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "primaryKey": false
+        }
+      ]
+    },
+    "config": {
+      "rowCount": 0,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "nullable": true,
+          "primaryKey": true
+        },
+        {
+          "name": "key_name",
+          "type": "VARCHAR(100)",
+          "nullable": true,
+          "primaryKey": false
+        },
+        {
+          "name": "value",
+          "type": "TEXT",
+          "nullable": true,
+          "primaryKey": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": true,
+          "primaryKey": false
+        }
+      ]
+    }
+  }
+}

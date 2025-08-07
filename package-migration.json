@@ -1,0 +1,17 @@
+{
+  "name": "kakarama-migration",
+  "version": "1.0.0",
+  "description": "Migration tool for KakaRama Room from SQLite to Supabase",
+  "main": "migrate-sqlite-to-supabase.js",
+  "scripts": {
+    "migrate": "node migrate-sqlite-to-supabase.js",
+    "upload": "node migrate-sqlite-to-supabase.js --upload",
+    "install-deps": "npm install sqlite3 @supabase/supabase-js"
+  },
+  "dependencies": {
+    "sqlite3": "^5.1.6",
+    "@supabase/supabase-js": "^2.39.0"
+  },
+  "author": "KakaRama Room",
+  "license": "MIT"
+}
