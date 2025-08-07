@@ -5,7 +5,8 @@
 require('dotenv').config();
 
 const config = require('./config/config.js');
-const database = require('./src/database');
+// Switch to Supabase database for real-time sync with mobile app
+const database = require('./src/database-supabase');
 const WhatsAppBot = require('./src/whatsappBot');
 const Scheduler = require('./src/scheduler');
 const messageParser = require('./src/messageParser');
@@ -824,7 +825,7 @@ async function handleCommand(message, apartmentName) {
                 logger.info(`Generating Excel export for date range: ${startDate} - ${endDate}${apartmentText}`);
 
                 // Generate Excel dengan business day range
-                const database = require('./src/database');
+                // database already imported at top of file
                 const transactions = await database.getTransactionsByDateRange(startDate, endDate, apartmentName);
 
                 if (transactions.length === 0) {

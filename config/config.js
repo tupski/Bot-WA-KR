@@ -44,7 +44,7 @@ class Configuration {
 
             // Database Configuration
             database: {
-                type: process.env.DB_TYPE || 'sqlite', // 'sqlite' or 'mysql'
+                type: process.env.DB_TYPE || 'supabase', // 'sqlite', 'mysql', or 'supabase'
                 sqlite: {
                     path: process.env.SQLITE_PATH || './data/bot-kr.db'
                 },
@@ -317,8 +317,8 @@ class Configuration {
         const errors = [];
 
         // Validate database configuration
-        if (!['sqlite', 'mysql'].includes(this.get('database.type'))) {
-            errors.push('Invalid database type. Must be "sqlite" or "mysql"');
+        if (!['sqlite', 'mysql', 'supabase'].includes(this.get('database.type'))) {
+            errors.push('Invalid database type. Must be "sqlite", "mysql", or "supabase"');
         }
 
         // Validate email configuration

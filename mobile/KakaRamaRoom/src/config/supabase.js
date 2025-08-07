@@ -2,9 +2,12 @@ import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import 'react-native-url-polyfill/auto';
 
-// SECURITY: Keys moved to environment variables
-const supabaseUrl = process.env.SUPABASE_URL || 'YOUR_SUPABASE_URL';
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_KEY';
+// Supabase configuration - keys loaded from environment
+// For React Native, we'll use a config file approach
+import { SUPABASE_CONFIG } from './env-config';
+
+const supabaseUrl = SUPABASE_CONFIG.url;
+const supabaseAnonKey = SUPABASE_CONFIG.anonKey;
 
 // Create Supabase client
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -77,4 +80,4 @@ const databaseManager = new DatabaseManager();
 export default databaseManager;
 
 // Export Supabase client untuk penggunaan langsung
-export { supabase as default };
+export { supabase };
