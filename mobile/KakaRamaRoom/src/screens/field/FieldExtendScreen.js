@@ -12,7 +12,6 @@ import {
   Image,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { launchImageLibrary, launchCamera } from 'react-native-image-picker';
 import { COLORS, SIZES, PAYMENT_METHODS, CHECKIN_STATUS } from '../../config/constants';
 import CheckinService from '../../services/CheckinService';
 import AuthService from '../../services/AuthService';
@@ -113,42 +112,14 @@ const FieldExtendScreen = ({ navigation, route }) => {
    * Buka kamera untuk foto bukti transfer
    */
   const openCamera = () => {
-    const options = {
-      mediaType: 'photo',
-      quality: 0.8,
-      maxWidth: 1024,
-      maxHeight: 1024,
-    };
-
-    launchCamera(options, (response) => {
-      if (response.assets && response.assets[0]) {
-        setFormData({
-          ...formData,
-          paymentProofPath: response.assets[0].uri,
-        });
-      }
-    });
+    Alert.alert('Info', 'Fitur kamera akan tersedia setelah instalasi react-native-image-picker');
   };
 
   /**
    * Buka galeri untuk pilih bukti transfer
    */
   const openGallery = () => {
-    const options = {
-      mediaType: 'photo',
-      quality: 0.8,
-      maxWidth: 1024,
-      maxHeight: 1024,
-    };
-
-    launchImageLibrary(options, (response) => {
-      if (response.assets && response.assets[0]) {
-        setFormData({
-          ...formData,
-          paymentProofPath: response.assets[0].uri,
-        });
-      }
-    });
+    Alert.alert('Info', 'Fitur galeri akan tersedia setelah instalasi react-native-image-picker');
   };
 
   /**
