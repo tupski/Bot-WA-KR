@@ -1,9 +1,11 @@
 // Modul WhatsApp Bot
-const { Client, LocalAuth } = require('whatsapp-web.js');
+const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const config = require('../config/config.js');
 const logger = require('./logger');
 const database = require('./database');
+const fs = require('fs');
+const path = require('path');
 
 class WhatsAppBot {
     constructor() {
@@ -709,6 +711,139 @@ class WhatsAppBot {
             return true;
         } catch (error) {
             logger.error('Error sending message:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Kirim dokumen/file ke chat
+     */
+    async sendDocument(chatId, filePath, caption = '') {
+        try {
+            logger.info(`Attempting to send document: ${filePath} to ${chatId}`);
+
+            if (!this.isReady) {
+                throw new Error('WhatsApp client is not ready');
+            }
+
+            if (!fs.existsSync(filePath)) {
+                throw new Error(`File not found: ${filePath}`);
+            }
+
+            logger.info(`File exists, creating MessageMedia...`);
+
+            // Create MessageMedia from file
+            const media = MessageMedia.fromFilePath(filePath);
+
+            logger.info(`MessageMedia created, sending document...`);
+
+            // Send document
+            await this.client.sendMessage(chatId, media, { caption });
+
+            logger.info(`Dokumen berhasil dikirim ke ${chatId}: ${path.basename(filePath)}`);
+            return true;
+        } catch (error) {
+            logger.error(`Error sending document to ${chatId}:`, error);
+            logger.error(`Error details:`, error.message);
+            return false;
+        }
+    }
+
+    /**
+     * Kirim laporan dengan attachment ke chat tertentu
+     */
+    async sendReportWithAttachment(chatId, reportText, filePath) {
+        try {
+            // Kirim teks laporan terlebih dahulu
+            const textSent = await this.sendMessage(chatId, reportText);
+            if (!textSent) {
+                logger.error('Gagal mengirim teks laporan');
+                return false;
+            }
+
+            // Delay sebentar sebelum mengirim file
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // Kirim file attachment
+            const fileName = path.basename(filePath);
+            const caption = `📊 File Laporan: ${fileName}`;
+            const fileSent = await this.sendDocument(chatId, filePath, caption);
+
+            if (!fileSent) {
+                logger.error('Gagal mengirim file attachment');
+                return false;
+            }
+
+            logger.info(`Laporan dengan attachment berhasil dikirim ke ${chatId}`);
+            return true;
+        } catch (error) {
+            logger.error(`Error sending report with attachment to ${chatId}:`, error);
+            return false;
+        }
+    }
+
+    /**
+     * Kirim laporan harian dengan Excel attachment ke semua grup yang enabled
+     */
+    async sendDailyReportsWithAttachment(excelFilePath) {
+        try {
+            if (!config.apartments.allowedGroups || config.apartments.allowedGroups.length === 0) {
+                logger.error('No enabled groups configured');
+                return false;
+            }
+
+            if (!excelFilePath || !fs.existsSync(excelFilePath)) {
+                logger.error('Excel file not found for WhatsApp attachment');
+                return false;
+            }
+
+            let successCount = 0;
+            let totalGroups = config.apartments.allowedGroups.length;
+
+            logger.info(`Mengirim laporan harian dengan attachment ke ${totalGroups} grup yang enabled...`);
+
+            const reportGenerator = require('./reportGenerator');
+            const moment = require('moment-timezone');
+
+            for (const groupId of config.apartments.allowedGroups) {
+                try {
+                    const apartmentName = config.apartments.groupMapping[groupId] || 'Unknown';
+
+                    // Generate text report untuk grup ini
+                    const report = await reportGenerator.generateDailyReport();
+
+                    if (report) {
+                        // Kirim laporan dengan attachment
+                        const success = await this.sendReportWithAttachment(groupId, report, excelFilePath);
+                        if (success) {
+                            successCount++;
+                            logger.info(`✅ Laporan harian dengan attachment berhasil dikirim ke grup: ${apartmentName} (${groupId})`);
+                        } else {
+                            logger.error(`❌ Gagal mengirim laporan harian dengan attachment ke grup: ${apartmentName} (${groupId})`);
+                        }
+                    } else {
+                        // Send no data message dengan attachment
+                        const displayDate = moment().tz(this.timezone).format('DD/MM/YYYY');
+                        const noDataMessage = `📊 *REKAP LAPORAN ${displayDate}*\n🏢 KAKARAMA ROOM\n🏠 ${apartmentName}\n\n❌ Tidak ada transaksi pada periode ini.`;
+                        const success = await this.sendReportWithAttachment(groupId, noDataMessage, excelFilePath);
+                        if (success) {
+                            successCount++;
+                            logger.info(`✅ Pesan "tidak ada data" dengan attachment berhasil dikirim ke grup: ${apartmentName} (${groupId})`);
+                        }
+                    }
+
+                    // Delay antar pengiriman untuk menghindari rate limiting
+                    await new Promise(resolve => setTimeout(resolve, config.whatsapp.messageDelay || 2000));
+                } catch (error) {
+                    const apartmentName = config.apartments.groupMapping[groupId] || 'Unknown';
+                    logger.error(`Error mengirim laporan harian dengan attachment ke grup ${apartmentName} (${groupId}):`, error);
+                }
+            }
+
+            logger.info(`Pengiriman laporan harian dengan attachment selesai: ${successCount}/${totalGroups} grup berhasil`);
+            return successCount > 0;
+        } catch (error) {
+            logger.error('Error dalam sendDailyReportsWithAttachment:', error);
             return false;
         }
     }

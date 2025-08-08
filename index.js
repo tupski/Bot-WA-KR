@@ -588,6 +588,102 @@ async function handleCommand(message, apartmentName) {
                 await bot.sendMessage(message.from, '❌ Terjadi error saat mengambil status bot.');
             }
 
+        } else if (message.body.startsWith('!help')) {
+            logger.info(`Memproses command help dari ${message.from}: ${message.body}`);
+
+            const isFromGroup = message.from.includes('@g.us');
+
+            let helpMessage = '';
+
+            if (isFromGroup) {
+                // Help untuk grup
+                const apartmentName = bot.getApartmentName(message.from);
+                helpMessage = `📋 **PANDUAN PERINTAH BOT KAKARAMA ROOM**\n🏠 *${apartmentName}*\n\n`;
+
+                helpMessage += `**📊 LAPORAN & REKAP**\n`;
+                helpMessage += `• \`!rekap\` - Rekap hari ini (business day)\n`;
+                helpMessage += `• \`!rekap DDMMYYYY\` - Rekap tanggal tertentu\n`;
+                helpMessage += `• \`!detailrekap\` - Detail transaksi hari ini\n`;
+                helpMessage += `• \`!detailrekap DDMMYYYY\` - Detail tanggal tertentu\n\n`;
+
+                helpMessage += `**📝 CONTOH PENGGUNAAN**\n`;
+                helpMessage += `• \`!rekap\` - Rekap hari ini\n`;
+                helpMessage += `• \`!rekap 08082025\` - Rekap 8 Agustus 2025\n`;
+                helpMessage += `• \`!detailrekap\` - Detail hari ini\n\n`;
+
+                helpMessage += `**📋 FORMAT BOOKING**\n`;
+                helpMessage += `Kirim pesan dengan format:\n`;
+                helpMessage += `\`\`\`\n🟢${apartmentName}\nUnit      : L3/10D\nCek out: 23:05\nUntuk   : 9 jam\nCash/tf: transfer 200\nCs         : dreamy\nkomisi : 50\`\`\`\n\n`;
+
+                helpMessage += `**⏰ BUSINESS DAY**\n`;
+                helpMessage += `Laporan harian: jam 12:00 - 11:59 hari berikutnya\n\n`;
+
+                helpMessage += `**ℹ️ INFO**\n`;
+                helpMessage += `Bot otomatis memproses pesan booking dan mengirim laporan harian jam 12:00 WIB`;
+            } else {
+                // Help untuk private message (owner)
+                if (!isOwner) {
+                    helpMessage = `📋 **PANDUAN PERINTAH BOT KAKARAMA ROOM**\n\n`;
+                    helpMessage += `**❌ AKSES TERBATAS**\n`;
+                    helpMessage += `Anda tidak terdaftar sebagai owner.\n`;
+                    helpMessage += `Untuk akses penuh, hubungi administrator.\n\n`;
+                    helpMessage += `**📱 GUNAKAN DI GRUP**\n`;
+                    helpMessage += `Untuk melihat laporan apartemen, gunakan perintah di grup apartemen yang bersangkutan.`;
+                } else {
+                    helpMessage = `📋 **PANDUAN LENGKAP PERINTAH BOT KAKARAMA ROOM**\n*Owner Access*\n\n`;
+
+                    helpMessage += `**📊 LAPORAN & REKAP**\n`;
+                    helpMessage += `• \`!rekap\` - Rekap semua apartemen hari ini\n`;
+                    helpMessage += `• \`!rekap <apartemen>\` - Rekap apartemen tertentu\n`;
+                    helpMessage += `• \`!rekap DDMMYYYY\` - Rekap tanggal tertentu\n`;
+                    helpMessage += `• \`!rekap <apartemen> DDMMYYYY\` - Rekap apartemen tanggal tertentu\n`;
+                    helpMessage += `• \`!detailrekap\` - Detail transaksi (sama format dengan !rekap)\n\n`;
+
+                    helpMessage += `**📤 EXPORT & EMAIL**\n`;
+                    helpMessage += `• \`!export\` - Export business day kemarin\n`;
+                    helpMessage += `• \`!export <angka>\` - Export X hari terakhir (1-31)\n`;
+                    helpMessage += `• \`!export DDMMYYYY\` - Export tanggal tertentu\n`;
+                    helpMessage += `• \`!export DD-DDMMYYYY\` - Export range tanggal\n`;
+                    helpMessage += `• \`!export <bulan>\` - Export bulanan (agustus, juli, dll)\n`;
+                    helpMessage += `• \`!export <apartemen>\` - Export apartemen tertentu\n`;
+                    helpMessage += `• \`!export <apartemen> <parameter>\` - Kombinasi apartemen + parameter\n\n`;
+
+                    helpMessage += `**🔧 SISTEM & MAINTENANCE**\n`;
+                    helpMessage += `• \`!status\` - Status bot dan jadwal laporan\n`;
+                    helpMessage += `• \`!debug\` - Informasi debug sistem\n`;
+                    helpMessage += `• \`!reload\` - Reload konfigurasi grup\n`;
+                    helpMessage += `• \`!mapping\` - Lihat mapping grup aktif\n`;
+                    helpMessage += `• \`!rekapulang\` - Reprocess semua pesan\n\n`;
+
+                    helpMessage += `**🔄 RECOVERY & TESTING**\n`;
+                    helpMessage += `• \`!forcereload\` - Force reload konfigurasi\n`;
+                    helpMessage += `• \`!forcedelete <message_id>\` - Hapus transaksi paksa\n`;
+                    helpMessage += `• \`!testbusiness\` - Test business day logic\n`;
+                    helpMessage += `• \`!testsync\` - Test sinkronisasi edit/delete\n\n`;
+
+                    helpMessage += `**🏢 APARTEMEN YANG DIDUKUNG**\n`;
+                    helpMessage += `• \`sky\` → SKY HOUSE BSD\n`;
+                    helpMessage += `• \`treepark\` → TREEPARK BSD\n`;
+                    helpMessage += `• \`emerald\` → EMERALD BINTARO\n`;
+                    helpMessage += `• \`springwood\` → SPRINGWOOD\n`;
+                    helpMessage += `• \`serpong\` → SERPONG GARDEN\n`;
+                    helpMessage += `• \`tokyo\` → TOKYO PIK 2\n\n`;
+
+                    helpMessage += `**📝 CONTOH PENGGUNAAN**\n`;
+                    helpMessage += `• \`!export 2\` - Export 2 hari terakhir\n`;
+                    helpMessage += `• \`!export 08082025\` - Export 8 Agustus 2025\n`;
+                    helpMessage += `• \`!export sky 08082025\` - Export Sky House 8 Agustus\n`;
+                    helpMessage += `• \`!rekap emerald\` - Rekap Emerald Bintaro hari ini\n\n`;
+
+                    helpMessage += `**⏰ BUSINESS DAY LOGIC**\n`;
+                    helpMessage += `Laporan harian: jam 12:00 - 11:59 hari berikutnya\n`;
+                    helpMessage += `Export otomatis dikirim ke WhatsApp + Email`;
+                }
+            }
+
+            await bot.sendMessage(message.from, helpMessage);
+            logger.info('Help message berhasil dikirim');
+
         } else if (message.body.startsWith('!debug')) {
             logger.info(`Memproses command debug dari ${message.from}: ${message.body}`);
 
@@ -662,30 +758,75 @@ async function handleCommand(message, apartmentName) {
                 let apartmentName = null;
 
                 if (parts.length === 1) {
-                    // !export - Default: business day kemarin (seperti laporan harian)
+                    // !export - Default: business day berdasarkan jam saat ini
                     const now = moment().tz('Asia/Jakarta');
-                    const businessDay = now.clone().subtract(1, 'day');
 
-                    startDate = businessDay.format('YYYY-MM-DD') + ' 12:00:00';
-                    endDate = now.format('YYYY-MM-DD') + ' 11:59:59';
+                    // Tentukan business day berdasarkan jam saat ini
+                    let businessDay;
+                    if (now.hour() < 12) {
+                        // Sebelum jam 12:00 - masih business day kemarin
+                        businessDay = now.clone().subtract(1, 'day');
+                    } else {
+                        // Setelah jam 12:00 - sudah business day hari ini
+                        businessDay = now.clone();
+                    }
+
+                    // Rentang waktu: business day jam 12:00 - business day+1 jam 11:59
+                    const startTime = businessDay.hour(12).minute(0).second(0);
+                    const endTime = businessDay.clone().add(1, 'day').hour(11).minute(59).second(59);
+
+                    startDate = startTime.format('YYYY-MM-DD HH:mm:ss');
+                    endDate = endTime.format('YYYY-MM-DD HH:mm:ss');
                     displayDate = businessDay.format('DD/MM/YYYY');
                     targetDate = businessDay.format('YYYY-MM-DD');
                 } else if (parts.length === 2) {
                     const param = parts[1];
 
-                    // Check if it's a number (days)
-                    if (/^\d+$/.test(param)) {
+                    // Check if it's a date (DDMMYYYY) first - 8 digits
+                    if (/^\d{8}$/.test(param)) {
+                        // !export DDMMYYYY - Export tanggal tertentu
+                        const parsedDate = moment(param, 'DDMMYYYY').tz('Asia/Jakarta');
+                        if (!parsedDate.isValid()) {
+                            await bot.sendMessage(message.from, '❌ Format tanggal tidak valid. Gunakan DDMMYYYY (contoh: 08082025)');
+                            return;
+                        }
+
+                        // Gunakan business day range untuk tanggal tertentu
+                        const businessDay = parsedDate.clone();
+                        const startTime = businessDay.hour(12).minute(0).second(0);
+                        const endTime = businessDay.clone().add(1, 'day').hour(11).minute(59).second(59);
+
+                        startDate = startTime.format('YYYY-MM-DD HH:mm:ss');
+                        endDate = endTime.format('YYYY-MM-DD HH:mm:ss');
+                        displayDate = businessDay.format('DD/MM/YYYY');
+                        targetDate = businessDay.format('YYYY-MM-DD');
+                    }
+                    // Check if it's a number (days) - 1-2 digits only
+                    else if (/^\d{1,2}$/.test(param)) {
                         const days = parseInt(param);
                         if (days >= 1 && days <= 31) {
-                            // !export <angka> - Export X hari terakhir
+                            // !export <angka> - Export X hari terakhir dengan business day range
                             const now = moment().tz('Asia/Jakarta');
-                            const endMoment = now.clone();
-                            const startMoment = now.clone().subtract(days - 1, 'days');
 
-                            startDate = startMoment.format('YYYY-MM-DD') + ' 00:00:00';
-                            endDate = endMoment.format('YYYY-MM-DD') + ' 23:59:59';
-                            displayDate = `${startMoment.format('DD/MM/YYYY')} - ${endMoment.format('DD/MM/YYYY')} (${days} hari)`;
-                            targetDate = startMoment.format('YYYY-MM-DD');
+                            // Tentukan business day saat ini
+                            let currentBusinessDay;
+                            if (now.hour() < 12) {
+                                // Sebelum jam 12:00 - masih business day kemarin
+                                currentBusinessDay = now.clone().subtract(1, 'day');
+                            } else {
+                                // Setelah jam 12:00 - sudah business day hari ini
+                                currentBusinessDay = now.clone();
+                            }
+
+                            // Hitung range: dari (current business day - (days-1)) jam 12:00 sampai current business day+1 jam 11:59
+                            const startBusinessDay = currentBusinessDay.clone().subtract(days - 1, 'days');
+                            const startTime = startBusinessDay.hour(12).minute(0).second(0);
+                            const endTime = currentBusinessDay.clone().add(1, 'day').hour(11).minute(59).second(59);
+
+                            startDate = startTime.format('YYYY-MM-DD HH:mm:ss');
+                            endDate = endTime.format('YYYY-MM-DD HH:mm:ss');
+                            displayDate = `${startBusinessDay.format('DD/MM/YYYY')} - ${currentBusinessDay.format('DD/MM/YYYY')} (${days} hari business)`;
+                            targetDate = startBusinessDay.format('YYYY-MM-DD');
                         } else {
                             await bot.sendMessage(message.from, '❌ Jumlah hari harus antara 1-31.');
                             return;
@@ -730,23 +871,6 @@ async function handleCommand(message, apartmentName) {
                         displayDate = `${startMoment.format('MMMM YYYY')}`;
                         targetDate = startMoment.format('YYYY-MM-DD');
                     }
-                    // Check if it's a date (DDMMYYYY)
-                    else if (/^\d{8}$/.test(param)) {
-                        // !export DDMMYYYY - Export tanggal tertentu
-                        const parsedDate = moment(param, 'DDMMYYYY').tz('Asia/Jakarta');
-                        if (!parsedDate.isValid()) {
-                            await bot.sendMessage(message.from, '❌ Format tanggal tidak valid. Gunakan DDMMYYYY (contoh: 01082025)');
-                            return;
-                        }
-
-                        const businessDay = parsedDate.clone();
-                        const nextDay = businessDay.clone().add(1, 'day');
-
-                        startDate = businessDay.format('YYYY-MM-DD') + ' 12:00:00';
-                        endDate = nextDay.format('YYYY-MM-DD') + ' 11:59:59';
-                        displayDate = businessDay.format('DD/MM/YYYY');
-                        targetDate = businessDay.format('YYYY-MM-DD');
-                    }
                     // Check if it's an apartment name
                     else {
                         // Try apartment name first
@@ -761,7 +885,7 @@ async function handleCommand(message, apartmentName) {
                             displayDate = businessDay.format('DD/MM/YYYY');
                             targetDate = businessDay.format('YYYY-MM-DD');
                         } else {
-                            await bot.sendMessage(message.from, `❌ Parameter "${param}" tidak dikenali. Gunakan:\n- Angka 1-31 untuk hari terakhir\n- DDMMYYYY untuk tanggal\n- DD-DDMMYYYY untuk range tanggal\n- Nama bulan untuk laporan bulanan\n- Nama apartemen`);
+                            await bot.sendMessage(message.from, `❌ Parameter "${param}" tidak dikenali. Gunakan:\n- Angka 1-31 untuk hari terakhir (contoh: !export 7)\n- DDMMYYYY untuk tanggal tertentu (contoh: !export 08082025)\n- DD-DDMMYYYY untuk range tanggal (contoh: !export 01-08082025)\n- Nama bulan untuk laporan bulanan (contoh: !export agustus)\n- Nama apartemen untuk business day apartemen`);
                             return;
                         }
                     }
@@ -865,16 +989,28 @@ async function handleCommand(message, apartmentName) {
 
                 await workbook.xlsx.writeFile(filepath);
 
-                // Send via email
+                // Send via email and WhatsApp
                 const emailSent = await emailService.sendDailyReport(filepath, targetDate, apartmentName, true);
 
                 const apartmentInfo = apartmentName ? `\n- Apartemen: ${apartmentName}` : '';
+                const reportSummary = `📊 **LAPORAN EXPORT**\n\n📅 Periode: ${displayDate}${apartmentInfo}\n📈 Total transaksi: ${transactions.length}\n📄 File: ${filename}`;
 
-                if (emailSent) {
-                    await bot.sendMessage(message.from, `✅ Export laporan berhasil!\n\n📊 **Ringkasan:**\n- Periode: ${displayDate}${apartmentInfo}\n- Total transaksi: ${transactions.length}\n- File: ${filename}\n\n📧 Laporan telah dikirim via email ke ${config.email.to}`);
+                // Send report with attachment to WhatsApp
+                const whatsappSent = await bot.sendReportWithAttachment(message.from, reportSummary, filepath);
+
+                // Send status message
+                let statusMessage = '';
+                if (emailSent && whatsappSent) {
+                    statusMessage = `✅ Export laporan berhasil!\n\n${reportSummary}\n\n📧 Laporan telah dikirim via email ke ${config.email.to}\n💬 File attachment telah dikirim ke chat ini`;
+                } else if (emailSent && !whatsappSent) {
+                    statusMessage = `⚠️ Export laporan berhasil!\n\n${reportSummary}\n\n📧 Laporan telah dikirim via email ke ${config.email.to}\n❌ Gagal mengirim file attachment ke WhatsApp`;
+                } else if (!emailSent && whatsappSent) {
+                    statusMessage = `⚠️ Export laporan berhasil!\n\n${reportSummary}\n\n❌ Gagal mengirim via email\n💬 File attachment telah dikirim ke chat ini`;
                 } else {
-                    await bot.sendMessage(message.from, `⚠️ Export laporan berhasil dibuat tapi gagal dikirim via email.\n\n📊 **Ringkasan:**\n- Periode: ${displayDate}${apartmentInfo}\n- Total transaksi: ${transactions.length}\n- File: ${filename}\n\n💾 File tersimpan di server: ${filepath}`);
+                    statusMessage = `⚠️ Export laporan berhasil dibuat tapi gagal dikirim.\n\n${reportSummary}\n\n❌ Gagal mengirim via email dan WhatsApp\n💾 File tersimpan di server: ${filepath}`;
                 }
+
+                await bot.sendMessage(message.from, statusMessage);
 
                 logger.info(`Export completed: ${filename} with ${transactions.length} transactions`);
 

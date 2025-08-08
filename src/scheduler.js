@@ -46,29 +46,38 @@ class Scheduler {
             try {
                 logger.info('Memulai pembuatan laporan harian terjadwal...');
                 
-                // Send apartment-specific reports to each group
-                const messageSent = await this.bot.sendDailyReportsToGroups();
-
-                if (messageSent) {
-                    logger.info('Laporan harian berhasil dikirim ke semua grup WhatsApp yang enabled');
-                } else {
-                    logger.error('Gagal mengirim laporan harian ke grup WhatsApp');
-                }
-                
-                // Generate Excel file
+                // Generate Excel file first
                 const excelPath = await excelExporter.generateDailyExcel();
-                
+
                 if (excelPath) {
                     // Send email with Excel attachment
                     const emailSent = await emailService.sendDailyReport(excelPath);
-                    
+
                     if (emailSent) {
                         logger.info('Laporan Excel harian berhasil dikirim via email');
                     } else {
                         logger.error('Gagal mengirim laporan Excel harian via email');
                     }
+
+                    // Send apartment-specific reports with Excel attachment to each group
+                    const whatsappSent = await this.bot.sendDailyReportsWithAttachment(excelPath);
+
+                    if (whatsappSent) {
+                        logger.info('Laporan harian dengan attachment berhasil dikirim ke semua grup WhatsApp yang enabled');
+                    } else {
+                        logger.error('Gagal mengirim laporan harian dengan attachment ke grup WhatsApp');
+                    }
                 } else {
                     logger.error('Gagal membuat file Excel untuk laporan harian');
+
+                    // Fallback: Send text-only reports to WhatsApp groups
+                    const messageSent = await this.bot.sendDailyReportsToGroups();
+
+                    if (messageSent) {
+                        logger.info('Laporan harian teks berhasil dikirim ke semua grup WhatsApp yang enabled (tanpa attachment)');
+                    } else {
+                        logger.error('Gagal mengirim laporan harian ke grup WhatsApp');
+                    }
                 }
 
             } catch (error) {

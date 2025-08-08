@@ -81,12 +81,22 @@ class ExcelExporter {
                 // Default: gunakan business day range (untuk laporan harian otomatis)
                 const now = moment().tz(this.timezone);
 
-                // Business day kemarin (karena laporan jam 12:00 untuk hari sebelumnya)
-                const businessDay = now.clone().subtract(1, 'day');
+                // Tentukan business day berdasarkan jam saat ini
+                let businessDay;
+                if (now.hour() < 12) {
+                    // Sebelum jam 12:00 - masih business day kemarin
+                    businessDay = now.clone().subtract(1, 'day');
+                } else {
+                    // Setelah jam 12:00 - sudah business day hari ini
+                    businessDay = now.clone();
+                }
 
-                // Rentang waktu: business day kemarin jam 12:00 - hari ini jam 11:59
-                startDate = businessDay.format('YYYY-MM-DD') + ' 12:00:00';
-                endDate = now.format('YYYY-MM-DD') + ' 11:59:59';
+                // Rentang waktu: business day jam 12:00 - business day+1 jam 11:59
+                const startTime = businessDay.hour(12).minute(0).second(0);
+                const endTime = businessDay.clone().add(1, 'day').hour(11).minute(59).second(59);
+
+                startDate = startTime.format('YYYY-MM-DD HH:mm:ss');
+                endDate = endTime.format('YYYY-MM-DD HH:mm:ss');
                 displayDate = businessDay.format('YYYY-MM-DD');
 
                 logger.info(`Membuat laporan Excel untuk business day range: ${startDate} - ${endDate}`);
