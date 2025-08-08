@@ -214,7 +214,7 @@ class CleaningService {
       const baseDuration = 30; // 30 menit default
       const extendedMinutes = unit.cleaning_extended_minutes || 0;
       const totalDuration = baseDuration + extendedMinutes;
-      
+
       const elapsedMinutes = Math.floor((now - cleaningStarted) / (1000 * 60));
       const remainingMinutes = totalDuration - elapsedMinutes;
 
@@ -235,6 +235,108 @@ class CleaningService {
       return {
         success: false,
         message: 'Gagal mengambil status cleaning',
+      };
+    }
+  }
+
+  /**
+   * Extend checkin dari status cleaning (untuk tamu yang telat checkout)
+   * @param {string} unitId - ID unit yang sedang cleaning
+   * @param {number} additionalHours - Jam tambahan untuk checkin
+   * @param {string} userId - ID user
+   * @param {string} userType - Tipe user
+   */
+  async extendCheckinFromCleaning(unitId, additionalHours, userId, userType) {
+    try {
+      console.log('CleaningService: Extending checkin from cleaning for unit:', unitId);
+
+      // Get unit yang sedang cleaning
+      const { data: unit, error: unitError } = await supabase
+        .from('units')
+        .select('*')
+        .eq('id', unitId)
+        .eq('status', UNIT_STATUS.CLEANING)
+        .single();
+
+      if (unitError || !unit) {
+        return {
+          success: false,
+          message: 'Unit tidak dalam status cleaning',
+        };
+      }
+
+      // Get checkin terakhir untuk unit ini
+      const { data: lastCheckin, error: checkinError } = await supabase
+        .from('checkins')
+        .select('*')
+        .eq('unit_id', unitId)
+        .in('status', ['completed', 'early_checkout'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (checkinError || !lastCheckin) {
+        return {
+          success: false,
+          message: 'Tidak ditemukan checkin untuk unit ini',
+        };
+      }
+
+      const now = new Date();
+      const newCheckoutTime = new Date(now.getTime() + (additionalHours * 60 * 60 * 1000));
+
+      // Update checkin status kembali ke active dengan waktu checkout baru
+      const { error: updateCheckinError } = await supabase
+        .from('checkins')
+        .update({
+          status: 'active',
+          checkout_time: newCheckoutTime.toISOString(),
+          updated_at: now.toISOString()
+        })
+        .eq('id', lastCheckin.id);
+
+      if (updateCheckinError) {
+        throw updateCheckinError;
+      }
+
+      // Update unit status kembali ke occupied dan reset cleaning
+      const { error: updateUnitError } = await supabase
+        .from('units')
+        .update({
+          status: UNIT_STATUS.OCCUPIED,
+          cleaning_started_at: null,
+          cleaning_extended_minutes: 0,
+          updated_at: now.toISOString()
+        })
+        .eq('id', unitId);
+
+      if (updateUnitError) {
+        throw updateUnitError;
+      }
+
+      // Log activity
+      await ActivityLogService.logActivity(
+        userId,
+        userType,
+        ACTIVITY_ACTIONS.EXTEND_CHECKIN,
+        `Extend checkin dari cleaning ${additionalHours} jam - Unit ${unit.unit_number}`,
+        'checkins',
+        lastCheckin.id
+      );
+
+      return {
+        success: true,
+        message: `Checkin berhasil diperpanjang ${additionalHours} jam dari status cleaning`,
+        data: {
+          checkinId: lastCheckin.id,
+          newCheckoutTime: newCheckoutTime.toISOString(),
+        },
+      };
+    } catch (error) {
+      console.error('Error extending checkin from cleaning:', error);
+      return {
+        success: false,
+        message: 'Gagal memperpanjang checkin dari cleaning',
       };
     }
   }

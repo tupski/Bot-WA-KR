@@ -16,7 +16,9 @@ const CleaningManagement = ({ unitId, onStatusChange, currentUser }) => {
   const [cleaningStatus, setCleaningStatus] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showExtendModal, setShowExtendModal] = useState(false);
+  const [showExtendCheckinModal, setShowExtendCheckinModal] = useState(false);
   const [extendMinutes, setExtendMinutes] = useState('5');
+  const [extendHours, setExtendHours] = useState('2');
 
   useEffect(() => {
     loadCleaningStatus();
@@ -63,6 +65,37 @@ const CleaningManagement = ({ unitId, onStatusChange, currentUser }) => {
       }
     } catch (error) {
       Alert.alert('Error', 'Gagal memperpanjang cleaning');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExtendCheckin = async () => {
+    const hours = parseInt(extendHours);
+    if (isNaN(hours) || hours < 1 || hours > 12) {
+      Alert.alert('Error', 'Masukkan jam antara 1-12');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await CleaningService.extendCheckinFromCleaning(
+        unitId,
+        hours,
+        currentUser.id,
+        currentUser.role
+      );
+
+      if (result.success) {
+        Alert.alert('Sukses', result.message);
+        setShowExtendCheckinModal(false);
+        await loadCleaningStatus();
+        onStatusChange && onStatusChange();
+      } else {
+        Alert.alert('Error', result.message);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Gagal memperpanjang checkin');
     } finally {
       setLoading(false);
     }
@@ -155,9 +188,18 @@ const CleaningManagement = ({ unitId, onStatusChange, currentUser }) => {
             disabled={loading}
           >
             <Icon name="schedule" size={16} color={COLORS.background} />
-            <Text style={styles.buttonText}>Perpanjang</Text>
+            <Text style={styles.buttonText}>+Cleaning</Text>
           </TouchableOpacity>
         )}
+
+        <TouchableOpacity
+          style={[styles.button, styles.extendCheckinButton]}
+          onPress={() => setShowExtendCheckinModal(true)}
+          disabled={loading}
+        >
+          <Icon name="access-time" size={16} color={COLORS.background} />
+          <Text style={styles.buttonText}>+Checkin</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.button, styles.finishButton]}
@@ -169,7 +211,7 @@ const CleaningManagement = ({ unitId, onStatusChange, currentUser }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Extend Modal */}
+      {/* Extend Cleaning Modal */}
       <Modal
         visible={showExtendModal}
         transparent
@@ -179,7 +221,7 @@ const CleaningManagement = ({ unitId, onStatusChange, currentUser }) => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Perpanjang Cleaning</Text>
-            
+
             <Text style={styles.modalLabel}>Tambah menit (1-10):</Text>
             <TextInput
               style={styles.modalInput}
@@ -204,6 +246,48 @@ const CleaningManagement = ({ unitId, onStatusChange, currentUser }) => {
                 disabled={loading}
               >
                 <Text style={styles.confirmButtonText}>Perpanjang</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Extend Checkin Modal */}
+      <Modal
+        visible={showExtendCheckinModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowExtendCheckinModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Perpanjang Checkin</Text>
+            <Text style={styles.modalSubtitle}>Untuk tamu yang telat checkout</Text>
+
+            <Text style={styles.modalLabel}>Tambah jam (1-12):</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={extendHours}
+              onChangeText={setExtendHours}
+              keyboardType="numeric"
+              placeholder="2"
+              maxLength={2}
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setShowExtendCheckinModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Batal</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={handleExtendCheckin}
+                disabled={loading}
+              >
+                <Text style={styles.confirmButtonText}>Extend</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -250,12 +334,12 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     marginTop: SIZES.sm,
-    gap: SIZES.sm,
+    gap: SIZES.xs,
   },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: SIZES.md,
+    paddingHorizontal: SIZES.sm,
     paddingVertical: SIZES.sm,
     borderRadius: SIZES.radius,
     flex: 1,
@@ -263,6 +347,9 @@ const styles = StyleSheet.create({
   },
   extendButton: {
     backgroundColor: COLORS.info,
+  },
+  extendCheckinButton: {
+    backgroundColor: COLORS.primary,
   },
   finishButton: {
     backgroundColor: COLORS.success,
@@ -291,7 +378,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.textPrimary,
     textAlign: 'center',
+    marginBottom: SIZES.sm,
+  },
+  modalSubtitle: {
+    fontSize: SIZES.caption,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
     marginBottom: SIZES.md,
+    fontStyle: 'italic',
   },
   modalLabel: {
     fontSize: SIZES.body,

@@ -1,5 +1,6 @@
 import { supabase } from '../config/supabase';
 import ActivityLogService from './ActivityLogService';
+import TeamAssignmentService from './TeamAssignmentService';
 import { ACTIVITY_ACTIONS, UNIT_STATUS, TIME_CONSTANTS } from '../config/constants';
 
 class UnitService {
@@ -49,41 +50,28 @@ class UnitService {
     }
   }
 
-  // Get available units only (untuk checkin)
+  // Get available units only (untuk checkin) dengan filtering assignment
   async getAvailableUnits(apartmentId = null) {
     try {
-      let query = supabase
-        .from('units')
-        .select(`
-          *,
-          apartments (
-            name,
-            code
-          )
-        `)
-        .eq('status', UNIT_STATUS.AVAILABLE)
-        .order('unit_number', { ascending: true });
+      console.log('UnitService: Getting available units for apartment:', apartmentId);
 
-      if (apartmentId) {
-        query = query.eq('apartment_id', apartmentId);
+      // Use TeamAssignmentService untuk filtering
+      const result = await TeamAssignmentService.getAccessibleUnits(apartmentId);
+
+      if (!result.success) {
+        return result;
       }
 
-      const { data: units, error } = await query;
-
-      if (error) {
-        if (error.code === 'PGRST116') {
-          return { success: true, data: [] };
-        }
-        throw error;
-      }
+      // Filter hanya unit yang available
+      const availableUnits = result.data.filter(unit => unit.status === UNIT_STATUS.AVAILABLE);
 
       // Transform data to match expected format
-      const transformedUnits = units?.map(unit => ({
+      const transformedUnits = availableUnits.map(unit => ({
         ...unit,
         apartment_name: unit.apartments?.name,
         apartment_code: unit.apartments?.code,
         isSelectable: true, // Available units are always selectable
-      })) || [];
+      }));
 
       return {
         success: true,

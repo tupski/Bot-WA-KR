@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase';
 import ActivityLogService from './ActivityLogService';
 import UnitService from './UnitService';
+import TeamAssignmentService from './TeamAssignmentService';
 import { ACTIVITY_ACTIONS, UNIT_STATUS, CHECKIN_STATUS } from '../config/constants';
 
 /**
@@ -30,6 +31,17 @@ class CheckinService {
         notes,
         createdBy,
       } = checkinData;
+
+      // Validate access untuk tim lapangan
+      if (userType === 'field_team') {
+        const canAccess = await TeamAssignmentService.validateAccess('apartment', apartmentId);
+        if (!canAccess) {
+          return {
+            success: false,
+            message: 'Tidak memiliki akses ke apartemen ini',
+          };
+        }
+      }
 
       // Use createdBy from checkinData if provided, otherwise use userId
       const finalUserId = createdBy || userId;
@@ -271,27 +283,32 @@ class CheckinService {
    * Get active checkins untuk tim lapangan
    * @param {number} teamId - ID tim lapangan
    */
-  async getActiveCheckins(teamId) {
+  async getActiveCheckins(teamId = null) {
     try {
-      const db = DatabaseManager.getDatabase();
-      const result = await db.executeSql(
-        `SELECT c.*, u.unit_number, a.name as apartment_name
-         FROM checkins c
-         INNER JOIN units u ON c.unit_id = u.id
-         INNER JOIN apartments a ON c.apartment_id = a.id
-         WHERE c.team_id = ? AND c.status IN ('active', 'extended')
-         ORDER BY c.created_at DESC`,
-        [teamId]
-      );
+      console.log('CheckinService: Getting active checkins for team:', teamId);
 
-      const checkins = [];
-      for (let i = 0; i < result[0].rows.length; i++) {
-        checkins.push(result[0].rows.item(i));
+      // Use TeamAssignmentService untuk filtering
+      const result = await TeamAssignmentService.getAccessibleCheckins({
+        status: ['active', 'extended'],
+        teamId: teamId,
+      });
+
+      if (!result.success) {
+        return result;
       }
+
+      // Transform data untuk compatibility
+      const transformedCheckins = result.data.map(checkin => ({
+        ...checkin,
+        unit_number: checkin.units?.unit_number,
+        apartment_name: checkin.apartments?.name,
+        apartment_code: checkin.apartments?.code,
+        team_name: checkin.field_teams?.full_name,
+      }));
 
       return {
         success: true,
-        data: checkins,
+        data: transformedCheckins,
       };
     } catch (error) {
       console.error('Error getting active checkins:', error);
