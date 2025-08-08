@@ -117,21 +117,23 @@ class ApartmentService {
         };
       }
 
-      const db = DatabaseManager.getDatabase();
-      const placeholders = ids.map(() => '?').join(',');
-      const result = await db.executeSql(
-        `SELECT * FROM apartments WHERE id IN (${placeholders}) AND status = 'active' ORDER BY name ASC`,
-        ids
-      );
+      const { data: apartments, error } = await supabase
+        .from('apartments')
+        .select('*')
+        .in('id', ids)
+        .eq('status', 'active')
+        .order('name', { ascending: true });
 
-      const apartments = [];
-      for (let i = 0; i < result[0].rows.length; i++) {
-        apartments.push(result[0].rows.item(i));
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return { success: true, data: [] };
+        }
+        throw error;
       }
 
       return {
         success: true,
-        data: apartments,
+        data: apartments || [],
       };
     } catch (error) {
       console.error('Error getting apartments by IDs:', error);

@@ -28,26 +28,43 @@ const AdminApartmentDetailScreen = ({ route, navigation }) => {
     try {
       setLoading(true);
 
+      console.log('AdminApartmentDetailScreen: Loading apartment data for ID:', apartmentId);
+
+      // Validate apartmentId
+      if (!apartmentId) {
+        Alert.alert('Error', 'ID apartemen tidak valid');
+        navigation.goBack();
+        return;
+      }
+
       // Load apartment details
       const apartmentResult = await ApartmentService.getApartmentById(apartmentId);
-      if (apartmentResult.success) {
+      console.log('AdminApartmentDetailScreen: Apartment result:', apartmentResult);
+
+      if (apartmentResult && apartmentResult.success) {
         setApartment(apartmentResult.data);
       } else {
-        Alert.alert('Error', apartmentResult.message);
+        const errorMessage = apartmentResult?.message || 'Gagal memuat data apartemen';
+        console.error('AdminApartmentDetailScreen: Apartment error:', errorMessage);
+        Alert.alert('Error', errorMessage);
+        navigation.goBack();
         return;
       }
 
       // Load units for this apartment
       const unitsResult = await UnitService.getUnitsByApartment(apartmentId);
-      if (unitsResult.success) {
+      console.log('AdminApartmentDetailScreen: Units result:', unitsResult);
+
+      if (unitsResult && unitsResult.success) {
         setUnits(unitsResult.data);
       } else {
-        console.error('Error loading units:', unitsResult.message);
+        console.error('AdminApartmentDetailScreen: Units error:', unitsResult?.message);
         setUnits([]);
       }
     } catch (error) {
-      console.error('Error loading apartment data:', error);
-      Alert.alert('Error', 'Gagal memuat data apartemen');
+      console.error('AdminApartmentDetailScreen: Error loading apartment data:', error);
+      Alert.alert('Error', `Gagal memuat data apartemen: ${error.message || 'Unknown error'}`);
+      navigation.goBack();
     } finally {
       setLoading(false);
     }
