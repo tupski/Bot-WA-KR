@@ -9,7 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { COLORS, SIZES } from '../../config/constants';
+import { COLORS, SIZES, SCREENS } from '../../config/constants';
 import AuthService from '../../services/AuthService';
 import SyncStatusIndicator from '../../components/SyncStatusIndicator';
 import { useAutoRefresh } from '../../hooks/useRealtime';
@@ -164,7 +164,10 @@ const AdminDashboardScreen = ({ navigation }) => {
     {
       title: 'Log Aktivitas',
       icon: 'history',
-      onPress: () => navigation.navigate('AdminActivityLogs'),
+      onPress: () => {
+        console.log('Navigating to AdminActivityLogs');
+        navigation.navigate(SCREENS.ADMIN_ACTIVITY_LOGS);
+      },
       color: '#9C27B0',
     },
     {
