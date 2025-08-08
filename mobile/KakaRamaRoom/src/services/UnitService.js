@@ -225,7 +225,25 @@ class UnitService {
   // Create unit
   async createUnit(unitData, userId) {
     try {
+      console.log('UnitService: Creating unit with data:', unitData);
+
+      // Validate input data
+      if (!unitData) {
+        return {
+          success: false,
+          message: 'Data unit tidak valid',
+        };
+      }
+
       const { apartmentId, unitNumber, unitType } = unitData;
+
+      // Validate required fields
+      if (!apartmentId || !unitNumber) {
+        return {
+          success: false,
+          message: 'Apartemen ID dan nomor unit harus diisi',
+        };
+      }
 
       // Check if unit number already exists in the apartment
       const { data: existing, error: checkError } = await supabase
@@ -235,7 +253,10 @@ class UnitService {
         .eq('unit_number', unitNumber)
         .single();
 
+      console.log('UnitService: Check existing unit result:', { existing, checkError });
+
       if (checkError && checkError.code !== 'PGRST116') {
+        console.error('UnitService: Check error:', checkError);
         throw checkError;
       }
 
@@ -247,32 +268,44 @@ class UnitService {
       }
 
       // Insert new unit
+      const insertData = {
+        apartment_id: apartmentId,
+        unit_number: unitNumber,
+        unit_type: unitType || null,
+        status: 'available'
+      };
+
+      console.log('UnitService: Inserting unit data:', insertData);
+
       const { data: newUnit, error: insertError } = await supabase
         .from('units')
-        .insert([{
-          apartment_id: apartmentId,
-          unit_number: unitNumber,
-          unit_type: unitType,
-          status: 'available'
-        }])
+        .insert([insertData])
         .select()
         .single();
 
+      console.log('UnitService: Insert result:', { newUnit, insertError });
+
       if (insertError) {
+        console.error('UnitService: Insert error:', insertError);
         throw insertError;
       }
 
       const unitId = newUnit.id;
 
       // Log activity
-      await ActivityLogService.logActivity(
-        userId,
-        'admin',
-        ACTIVITY_ACTIONS.CREATE_UNIT,
-        `Membuat unit baru: ${unitNumber} di apartemen ID ${apartmentId}`,
-        'units',
-        unitId
-      );
+      try {
+        await ActivityLogService.logActivity(
+          userId,
+          'admin',
+          ACTIVITY_ACTIONS.CREATE_UNIT,
+          `Membuat unit baru: ${unitNumber} di apartemen ID ${apartmentId}`,
+          'units',
+          unitId
+        );
+      } catch (logError) {
+        console.error('UnitService: Activity log error:', logError);
+        // Don't fail the whole operation if logging fails
+      }
 
       return {
         success: true,
@@ -280,10 +313,10 @@ class UnitService {
         message: 'Unit berhasil dibuat',
       };
     } catch (error) {
-      console.error('Error creating unit:', error);
+      console.error('UnitService: Error creating unit:', error);
       return {
         success: false,
-        message: 'Gagal membuat unit',
+        message: `Gagal membuat unit: ${error.message || 'Unknown error'}`,
       };
     }
   }

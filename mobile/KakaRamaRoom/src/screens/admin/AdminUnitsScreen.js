@@ -146,7 +146,10 @@ const AdminUnitsScreen = () => {
 
     try {
       const currentUser = AuthService.getCurrentUser();
-      let result;
+      if (!currentUser) {
+        Alert.alert('Error', 'User tidak ditemukan. Silakan login ulang.');
+        return;
+      }
 
       const unitData = {
         apartmentId: parseInt(formData.apartmentId),
@@ -155,6 +158,9 @@ const AdminUnitsScreen = () => {
         status: formData.status,
       };
 
+      console.log('AdminUnitsScreen: Saving unit data:', unitData);
+
+      let result;
       if (editingUnit) {
         // Update unit yang sudah ada
         result = await UnitService.updateUnit(
@@ -167,16 +173,20 @@ const AdminUnitsScreen = () => {
         result = await UnitService.createUnit(unitData, currentUser.id);
       }
 
-      if (result.success) {
+      console.log('AdminUnitsScreen: Save result:', result);
+
+      if (result && result.success) {
         Alert.alert('Sukses', result.message);
         setModalVisible(false);
         await loadUnits();
       } else {
-        Alert.alert('Error', result.message);
+        const errorMessage = result?.message || 'Gagal menyimpan data unit tanpa pesan error';
+        console.error('AdminUnitsScreen: Save failed:', errorMessage);
+        Alert.alert('Error', errorMessage);
       }
     } catch (error) {
-      console.error('Save unit error:', error);
-      Alert.alert('Error', 'Gagal menyimpan data unit');
+      console.error('AdminUnitsScreen: Save unit error:', error);
+      Alert.alert('Error', `Gagal menyimpan data unit: ${error.message || 'Unknown error'}`);
     }
   };
 
