@@ -13,10 +13,12 @@ import {
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { COLORS, SIZES } from '../../config/constants';
 import SMTPService from '../../services/SMTPService';
+import EmailReportService from '../../services/EmailReportService';
 
 const AdminSMTPSettingsScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [testingEmail, setTestingEmail] = useState(false);
+  const [testingReport, setTestingReport] = useState(false);
   const [smtpConfig, setSMTPConfig] = useState({
     host: '',
     port: '587',
@@ -103,6 +105,29 @@ const AdminSMTPSettingsScreen = ({ navigation }) => {
       Alert.alert('Error', 'Gagal melakukan test SMTP');
     } finally {
       setTestingEmail(false);
+    }
+  };
+
+  const testDailyReport = async () => {
+    try {
+      if (!testEmail) {
+        Alert.alert('Error', 'Masukkan email tujuan untuk test laporan');
+        return;
+      }
+
+      setTestingReport(true);
+      const result = await EmailReportService.sendTestReport(testEmail);
+
+      if (result.success) {
+        Alert.alert('Berhasil', 'Test laporan harian berhasil dikirim! Silakan cek inbox email tujuan.');
+      } else {
+        Alert.alert('Error', result.message || 'Gagal mengirim test laporan');
+      }
+    } catch (error) {
+      console.error('Error testing daily report:', error);
+      Alert.alert('Error', 'Gagal melakukan test laporan harian');
+    } finally {
+      setTestingReport(false);
     }
   };
 
@@ -224,6 +249,21 @@ const AdminSMTPSettingsScreen = ({ navigation }) => {
           <>
             <Icon name="send" size={20} color={COLORS.background} />
             <Text style={styles.buttonText}>Kirim Test Email</Text>
+          </>
+        )}
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.reportTestButton, testingReport && styles.buttonDisabled]}
+        onPress={testDailyReport}
+        disabled={testingReport}
+      >
+        {testingReport ? (
+          <ActivityIndicator color={COLORS.background} />
+        ) : (
+          <>
+            <Icon name="assessment" size={20} color={COLORS.background} />
+            <Text style={styles.buttonText}>Kirim Test Laporan Harian</Text>
           </>
         )}
       </TouchableOpacity>
@@ -450,6 +490,16 @@ const styles = StyleSheet.create({
   },
   testButton: {
     backgroundColor: COLORS.info,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SIZES.md,
+    borderRadius: SIZES.radius,
+    gap: SIZES.sm,
+    marginBottom: SIZES.sm,
+  },
+  reportTestButton: {
+    backgroundColor: COLORS.success,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
