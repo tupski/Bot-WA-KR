@@ -384,7 +384,7 @@ const AdminUnitsScreen = () => {
                 selectedApartment === apartment.id && styles.filterButtonTextActive,
               ]}
             >
-              {apartment.name}
+              {apartment.name || apartment.code || 'Apartemen'}
             </Text>
           </TouchableOpacity>
         ))}
@@ -592,6 +592,9 @@ const styles = StyleSheet.create({
     borderRadius: SIZES.radius,
     backgroundColor: COLORS.gray100,
     marginRight: SIZES.sm,
+    minWidth: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   filterButtonActive: {
     backgroundColor: COLORS.primary,
@@ -600,6 +603,7 @@ const styles = StyleSheet.create({
     fontSize: SIZES.body,
     color: COLORS.textSecondary,
     fontWeight: '500',
+    textAlign: 'center',
   },
   filterButtonTextActive: {
     color: COLORS.background,
