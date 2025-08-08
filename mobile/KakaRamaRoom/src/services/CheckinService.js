@@ -2,6 +2,7 @@ import { supabase } from '../config/supabase';
 import ActivityLogService from './ActivityLogService';
 import UnitService from './UnitService';
 import TeamAssignmentService from './TeamAssignmentService';
+import StorageService from './StorageService';
 import { ACTIVITY_ACTIONS, UNIT_STATUS, CHECKIN_STATUS } from '../config/constants';
 
 /**
@@ -36,6 +37,7 @@ class CheckinService {
         paymentAmount,
         marketingCommission,
         paymentProofPath,
+        paymentProof, // New field for file object/path
         marketingName,
         notes,
         createdBy,
@@ -103,6 +105,26 @@ class CheckinService {
         }
       }
 
+      // Upload payment proof if provided
+      let uploadedPaymentProofUrl = paymentProofPath; // Use existing path if provided
+
+      if (paymentProof && !paymentProofPath) {
+        console.log('CheckinService: Uploading payment proof to Supabase Storage');
+
+        // Generate temporary checkin ID for file naming
+        const tempCheckinId = `temp_${Date.now()}`;
+        const uploadResult = await StorageService.uploadPaymentProof(paymentProof, tempCheckinId);
+
+        if (uploadResult.success) {
+          uploadedPaymentProofUrl = uploadResult.data.publicUrl;
+          console.log('CheckinService: Payment proof uploaded successfully:', uploadedPaymentProofUrl);
+        } else {
+          console.error('CheckinService: Payment proof upload failed:', uploadResult.message);
+          // Continue without payment proof rather than failing the whole checkin
+          uploadedPaymentProofUrl = null;
+        }
+      }
+
       // Insert checkin baru
       const { data: newCheckin, error: insertError } = await supabase
         .from('checkins')
@@ -115,7 +137,7 @@ class CheckinService {
           payment_method: paymentMethod,
           payment_amount: paymentAmount,
           marketing_commission: marketingCommission || 0,
-          payment_proof_path: paymentProofPath,
+          payment_proof_path: uploadedPaymentProofUrl,
           marketing_name: marketingName,
           notes: notes,
           status: 'active',
@@ -472,6 +494,14 @@ class CheckinService {
     try {
       console.log('CheckinService: Getting active checkin for unit:', unitId);
 
+      // Validate unitId
+      if (!unitId) {
+        return {
+          success: false,
+          message: 'Unit ID tidak valid',
+        };
+      }
+
       const { data: checkin, error } = await supabase
         .from('checkins')
         .select(`
@@ -493,12 +523,15 @@ class CheckinService {
           )
         `)
         .eq('unit_id', unitId)
-        .in('status', [CHECKIN_STATUS.ACTIVE, CHECKIN_STATUS.EXTENDED])
+        .in('status', ['active', 'extended']) // Use string literals instead of constants
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
 
+      console.log('CheckinService: Query result:', { checkin, error });
+
       if (error) {
+        console.error('CheckinService: Supabase error:', error);
         if (error.code === 'PGRST116') {
           return {
             success: false,
@@ -508,15 +541,24 @@ class CheckinService {
         throw error;
       }
 
+      if (!checkin) {
+        return {
+          success: false,
+          message: 'Tidak ada checkin aktif untuk unit ini',
+        };
+      }
+
+      console.log('CheckinService: Found active checkin:', checkin);
+
       return {
         success: true,
         data: checkin,
       };
     } catch (error) {
-      console.error('Error getting active checkin by unit:', error);
+      console.error('CheckinService: Error getting active checkin by unit:', error);
       return {
         success: false,
-        message: 'Gagal mengambil data checkin aktif',
+        message: `Gagal mengambil data checkin aktif: ${error.message || 'Unknown error'}`,
       };
     }
   }

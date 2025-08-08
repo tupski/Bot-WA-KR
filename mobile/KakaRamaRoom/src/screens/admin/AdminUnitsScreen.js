@@ -152,7 +152,7 @@ const AdminUnitsScreen = () => {
       }
 
       const unitData = {
-        apartmentId: parseInt(formData.apartmentId),
+        apartmentId: formData.apartmentId, // Keep as UUID string, don't parse to int
         unitNumber: formData.unitNumber.trim(),
         unitType: formData.unitType.trim(),
         status: formData.status,

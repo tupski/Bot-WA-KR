@@ -94,9 +94,11 @@ const LoginScreen = ({ navigation }) => {
       if (result && result.success) {
         console.log('Login successful, user data:', JSON.stringify(result.user, null, 2));
 
-        // Navigate immediately without alert
-        console.log('Navigating to home...');
-        navigateToHome(result.user);
+        // Force navigation with timeout to ensure state is updated
+        setTimeout(() => {
+          console.log('Navigating to home...');
+          navigateToHome(result.user);
+        }, 100);
       } else {
         const errorMessage = result?.message || 'Login gagal tanpa pesan error';
         console.log('Login failed:', errorMessage);

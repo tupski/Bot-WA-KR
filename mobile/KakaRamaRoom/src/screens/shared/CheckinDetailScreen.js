@@ -34,25 +34,40 @@ const CheckinDetailScreen = ({ route, navigation }) => {
   const loadCheckinDetail = async () => {
     try {
       setLoading(true);
-      
+
+      console.log('CheckinDetailScreen: Loading checkin detail with params:', { unitId, checkinId });
+
+      // Validate parameters
+      if (!checkinId && !unitId) {
+        Alert.alert('Error', 'Parameter tidak valid untuk memuat detail checkin');
+        navigation.goBack();
+        return;
+      }
+
       let result;
       if (checkinId) {
         // Load by checkin ID
+        console.log('CheckinDetailScreen: Loading by checkin ID:', checkinId);
         result = await CheckinService.getCheckinById(checkinId);
       } else if (unitId) {
         // Load active checkin by unit ID
+        console.log('CheckinDetailScreen: Loading by unit ID:', unitId);
         result = await CheckinService.getActiveCheckinByUnit(unitId);
       }
 
-      if (result && result.success) {
+      console.log('CheckinDetailScreen: Service result:', result);
+
+      if (result && result.success && result.data) {
         setCheckin(result.data);
       } else {
-        Alert.alert('Error', result?.message || 'Gagal memuat detail checkin');
+        const errorMessage = result?.message || 'Gagal memuat detail checkin';
+        console.error('CheckinDetailScreen: Service error:', errorMessage);
+        Alert.alert('Error', errorMessage);
         navigation.goBack();
       }
     } catch (error) {
-      console.error('Error loading checkin detail:', error);
-      Alert.alert('Error', 'Gagal memuat detail checkin');
+      console.error('CheckinDetailScreen: Error loading checkin detail:', error);
+      Alert.alert('Error', `Gagal memuat detail checkin: ${error.message || 'Unknown error'}`);
       navigation.goBack();
     } finally {
       setLoading(false);

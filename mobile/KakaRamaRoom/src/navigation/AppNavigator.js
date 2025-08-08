@@ -6,6 +6,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 
 import AuthService from '../services/AuthService';
 import { COLORS, SIZES, USER_ROLES, SCREENS } from '../config/constants';
+import { AuthProvider, useAuth } from '../context/AuthContext';
 
 // Auth Screens
 import LoginScreen from '../screens/LoginScreen';
@@ -227,16 +228,18 @@ const AppNavigator = () => {
 
   useEffect(() => {
     checkAuthState();
-  }, []);
 
-  // Listen for navigation state changes to update auth state
-  const onStateChange = () => {
-    const user = AuthService.getCurrentUser();
-    if (user !== currentUser) {
-      console.log('AppNavigator: Auth state updated:', user);
-      setCurrentUser(user);
-    }
-  };
+    // Set up interval to check auth state changes
+    const interval = setInterval(() => {
+      const user = AuthService.getCurrentUser();
+      if (JSON.stringify(user) !== JSON.stringify(currentUser)) {
+        console.log('AppNavigator: Auth state changed:', user);
+        setCurrentUser(user);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [currentUser]);
 
   const checkAuthState = async () => {
     try {
@@ -257,7 +260,7 @@ const AppNavigator = () => {
   console.log('AppNavigator: Rendering with currentUser:', currentUser);
 
   return (
-    <NavigationContainer onStateChange={onStateChange}>
+    <NavigationContainer>
       <Stack.Navigator
         screenOptions={{
           headerShown: false,

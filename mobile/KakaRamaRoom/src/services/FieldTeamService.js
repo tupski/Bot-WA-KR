@@ -6,6 +6,8 @@ class FieldTeamService {
   // Get all field teams
   async getAllFieldTeams() {
     try {
+      console.log('FieldTeamService: Fetching all field teams...');
+
       const { data: teams, error } = await supabase
         .from('field_teams')
         .select(`
@@ -20,35 +22,57 @@ class FieldTeamService {
         `)
         .order('full_name', { ascending: true });
 
+      console.log('FieldTeamService: Supabase response:', { teams, error });
+
       if (error) {
+        console.error('FieldTeamService: Supabase error:', error);
         if (error.code === 'PGRST116') {
+          console.log('FieldTeamService: Table not found, returning empty array');
           return { success: true, data: [] };
         }
         throw error;
       }
 
+      if (!teams) {
+        console.log('FieldTeamService: No teams data returned');
+        return { success: true, data: [] };
+      }
+
+      console.log(`FieldTeamService: Found ${teams.length} teams`);
+
       // Transform data to include apartment names and IDs
       const transformedTeams = teams.map(team => {
-        const assignments = team.team_apartment_assignments || [];
-        const apartmentNames = assignments.map(a => a.apartments?.name).filter(Boolean);
-        const apartmentIds = assignments.map(a => a.apartments?.id).filter(Boolean);
+        try {
+          const assignments = team.team_apartment_assignments || [];
+          const apartmentNames = assignments.map(a => a.apartments?.name).filter(Boolean);
+          const apartmentIds = assignments.map(a => a.apartments?.id).filter(Boolean);
 
-        return {
-          ...team,
-          apartmentNames,
-          apartmentIds,
-        };
+          return {
+            ...team,
+            apartmentNames,
+            apartmentIds,
+          };
+        } catch (transformError) {
+          console.error('FieldTeamService: Error transforming team:', team, transformError);
+          return {
+            ...team,
+            apartmentNames: [],
+            apartmentIds: [],
+          };
+        }
       });
+
+      console.log('FieldTeamService: Transformed teams:', transformedTeams);
 
       return {
         success: true,
         data: transformedTeams,
       };
     } catch (error) {
-      console.error('Error getting field teams:', error);
+      console.error('FieldTeamService: Error getting field teams:', error);
       return {
         success: false,
-        message: 'Gagal mengambil data tim lapangan',
+        message: `Gagal mengambil data tim lapangan: ${error.message || 'Unknown error'}`,
       };
     }
   }
@@ -106,7 +130,25 @@ class FieldTeamService {
   // Create field team
   async createFieldTeam(teamData, userId) {
     try {
+      console.log('FieldTeamService: Creating field team with data:', teamData);
+
+      // Validate input data
+      if (!teamData) {
+        return {
+          success: false,
+          message: 'Data tim lapangan tidak valid',
+        };
+      }
+
       const { username, password, fullName, phone, email, apartmentIds } = teamData;
+
+      // Validate required fields
+      if (!username || !fullName) {
+        return {
+          success: false,
+          message: 'Username dan nama lengkap harus diisi',
+        };
+      }
 
       // Check if username already exists
       const { data: existing, error: checkError } = await supabase
@@ -115,7 +157,10 @@ class FieldTeamService {
         .eq('username', username)
         .single();
 
+      console.log('FieldTeamService: Check existing username result:', { existing, checkError });
+
       if (checkError && checkError.code !== 'PGRST116') {
+        console.error('FieldTeamService: Check error:', checkError);
         throw checkError;
       }
 
@@ -126,21 +171,29 @@ class FieldTeamService {
         };
       }
 
+      // Prepare insert data
+      const insertData = {
+        username,
+        password: password || 'default123', // Default password if not provided
+        full_name: fullName,
+        phone: phone || null,
+        email: email || null,
+        status: 'active'
+      };
+
+      console.log('FieldTeamService: Inserting team data:', insertData);
+
       // Insert new field team
       const { data: newTeam, error: insertError } = await supabase
         .from('field_teams')
-        .insert([{
-          username,
-          password,
-          full_name: fullName,
-          phone,
-          email,
-          status: 'active'
-        }])
+        .insert([insertData])
         .select()
         .single();
 
+      console.log('FieldTeamService: Insert result:', { newTeam, insertError });
+
       if (insertError) {
+        console.error('FieldTeamService: Insert error:', insertError);
         throw insertError;
       }
 
@@ -148,18 +201,29 @@ class FieldTeamService {
 
       // Assign apartments if provided
       if (apartmentIds && apartmentIds.length > 0) {
-        await this.assignApartments(teamId, apartmentIds);
+        console.log('FieldTeamService: Assigning apartments:', apartmentIds);
+        try {
+          await this.assignApartments(teamId, apartmentIds);
+        } catch (assignError) {
+          console.error('FieldTeamService: Apartment assignment error:', assignError);
+          // Don't fail the whole operation if apartment assignment fails
+        }
       }
 
       // Log activity
-      await ActivityLogService.logActivity(
-        userId,
-        'admin',
-        'create_team',
-        `Membuat tim lapangan baru: ${fullName} (${username})`,
-        'field_teams',
-        teamId
-      );
+      try {
+        await ActivityLogService.logActivity(
+          userId,
+          'admin',
+          'create_team',
+          `Membuat tim lapangan baru: ${fullName} (${username})`,
+          'field_teams',
+          teamId
+        );
+      } catch (logError) {
+        console.error('FieldTeamService: Activity log error:', logError);
+        // Don't fail the whole operation if logging fails
+      }
 
       return {
         success: true,
@@ -167,10 +231,10 @@ class FieldTeamService {
         message: 'Tim lapangan berhasil dibuat',
       };
     } catch (error) {
-      console.error('Error creating field team:', error);
+      console.error('FieldTeamService: Error creating field team:', error);
       return {
         success: false,
-        message: 'Gagal membuat tim lapangan',
+        message: `Gagal membuat tim lapangan: ${error.message || 'Unknown error'}`,
       };
     }
   }

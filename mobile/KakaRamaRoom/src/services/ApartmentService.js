@@ -419,22 +419,22 @@ class ApartmentService {
   // Search apartments
   async searchApartments(searchTerm) {
     try {
-      const db = DatabaseManager.getDatabase();
-      const result = await db.executeSql(
-        `SELECT * FROM apartments 
-         WHERE name LIKE ? OR code LIKE ? OR address LIKE ?
-         ORDER BY name ASC`,
-        [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`]
-      );
+      const { data: apartments, error } = await supabase
+        .from('apartments')
+        .select('*')
+        .or(`name.ilike.%${searchTerm}%,code.ilike.%${searchTerm}%,address.ilike.%${searchTerm}%`)
+        .order('name', { ascending: true });
 
-      const apartments = [];
-      for (let i = 0; i < result[0].rows.length; i++) {
-        apartments.push(result[0].rows.item(i));
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return { success: true, data: [] };
+        }
+        throw error;
       }
 
       return {
         success: true,
-        data: apartments,
+        data: apartments || [],
       };
     } catch (error) {
       console.error('Error searching apartments:', error);
