@@ -10,101 +10,63 @@ class AuthService {
     this.sessionTimeout = null;
   }
 
-  // Login untuk Admin
-  async loginAdmin(username, password) {
-    try {
-      console.log('AuthService: Attempting admin login for:', username);
+  // Helper: sign in to Supabase Auth with email/password
+  async signInSupabase(email, password) {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      console.log('Supabase Auth sign-in error:', error.message);
+      return { success: false, message: 'Autentikasi gagal: ' + error.message };
+    }
+    return { success: true, session: data.session, user: data.user };
+  }
 
-      // Query ke Supabase untuk admin (ambil berdasarkan username saja)
-      const { data, error } = await supabase
+  // Login untuk Admin (via Supabase Auth)
+  async loginAdmin(email, password) {
+    try {
+      console.log('AuthService: Attempting admin login for:', email);
+
+      // Sign in ke Supabase Auth menggunakan email + password
+      const authRes = await this.signInSupabase(email, password);
+      if (!authRes.success) {
+        return authRes;
+      }
+
+      // Ambil profil admin berdasarkan email
+      const { data: adminRow, error: adminError } = await supabase
         .from('admins')
         .select('*')
-        .eq('username', username)
+        .eq('email', email)
         .single();
 
-      console.log('AuthService: Supabase query result:', { data, error });
-
-      if (error) {
-        console.log('AuthService: Supabase error:', error.code, error.message);
-        if (error.code === 'PGRST116' || error.code === 'PGRST301') {
-          // Table doesn't exist or no rows found, use default admin
-          return await this.loginDefaultAdmin(username, password);
-        }
-        // Untuk error lain, coba fallback juga
-        console.log('AuthService: Unknown error, trying fallback...');
-        return await this.loginDefaultAdmin(username, password);
+      if (adminError || !adminRow) {
+        return { success: false, message: 'Profil admin tidak ditemukan' };
       }
 
-      if (data) {
-        // Verify password dengan hash
-        let isPasswordValid = false;
+      const userData = {
+        id: adminRow.id,
+        username: adminRow.username,
+        fullName: adminRow.full_name,
+        email: adminRow.email,
+        phone: adminRow.phone,
+        role: USER_ROLES.ADMIN,
+        loginTime: new Date().toISOString(),
+      };
 
-        try {
-          // Coba verify dengan bcrypt (React Native)
-          if (PasswordUtils.isPasswordHashed(data.password)) {
-            isPasswordValid = await PasswordUtils.verifyPassword(password, data.password);
-          } else {
-            // Fallback: cek dengan PostgreSQL crypt function
-            const { data: cryptResult, error: cryptError } = await supabase
-              .rpc('verify_password', {
-                input_password: password,
-                stored_hash: data.password
-              });
+      await this.setCurrentUser(userData);
+      await this.startSession();
 
-            if (!cryptError && cryptResult) {
-              isPasswordValid = cryptResult;
-            } else {
-              // Last fallback: plain text comparison (untuk development)
-              isPasswordValid = password === data.password;
-            }
-          }
-        } catch (error) {
-          console.error('Password verification error:', error);
-          // Fallback ke plain text untuk development
-          isPasswordValid = password === data.password;
-        }
+      // Log aktivitas login
+      await ActivityLogService.logActivity(
+        adminRow.id,
+        USER_ROLES.ADMIN,
+        'login',
+        `Admin ${adminRow.username} berhasil login`
+      );
 
-        if (!isPasswordValid) {
-          return {
-            success: false,
-            message: 'Username atau password salah',
-          };
-        }
-
-        const userData = {
-          id: data.id,
-          username: data.username,
-          fullName: data.full_name,
-          email: data.email,
-          phone: data.phone,
-          role: USER_ROLES.ADMIN,
-          loginTime: new Date().toISOString(),
-        };
-
-        await this.setCurrentUser(userData);
-        await this.startSession();
-
-        // Log aktivitas login
-        await ActivityLogService.logActivity(
-          data.id,
-          USER_ROLES.ADMIN,
-          'login',
-          `Admin ${data.username} berhasil login`
-        );
-
-        return {
-          success: true,
-          user: userData,
-        };
-      } else {
-        // User tidak ditemukan di Supabase, coba fallback
-        console.log('AuthService: User not found in Supabase, trying fallback...');
-        return await this.loginDefaultAdmin(username, password);
-      }
+      return { success: true, user: userData };
     } catch (error) {
       console.error('Login admin error:', error);
-      // Fallback to default admin if Supabase fails
-      return await this.loginDefaultAdmin(username, password);
+      return { success: false, message: 'Terjadi kesalahan saat login admin' };
     }
   }
 
@@ -149,13 +111,19 @@ class AuthService {
     };
   }
 
-  // Login untuk Tim Lapangan (menggunakan nomor WA)
-  async loginFieldTeam(phoneNumber, password) {
+  // Login untuk Tim Lapangan (menerima username/email/phone)
+  async loginFieldTeam(email, password) {
     try {
-      console.log('AuthService: Attempting field team login for:', phoneNumber);
+      console.log('AuthService: Attempting field team login for:', email);
 
-      // Query ke Supabase untuk field team (ambil berdasarkan phone_number saja)
-      const { data: fieldTeam, error: teamError } = await supabase
+      // Sign in ke Supabase Auth
+      const authRes = await this.signInSupabase(email, password);
+      if (!authRes.success) {
+        return authRes;
+      }
+
+      // Ambil profil field team berdasarkan email
+      const { data: ftRow, error: ftError } = await supabase
         .from('field_teams')
         .select(`
           *,
@@ -167,74 +135,46 @@ class AuthService {
             )
           )
         `)
-        .eq('phone_number', phoneNumber)
-        .eq('is_active', true)
+        .eq('email', email)
+        .eq('status', 'active')
         .single();
 
-      console.log('AuthService: Field team query result:', { fieldTeam, teamError });
+      console.log('AuthService: Field team query result:', { ftRow, ftError });
 
-      if (teamError) {
-        if (teamError.code === 'PGRST116') {
-          // Table doesn't exist, return error
-          return {
-            success: false,
-            message: 'Sistem field team belum tersedia',
-          };
+      if (ftError) {
+        if (ftError.code === 'PGRST116') {
+          return { success: false, message: 'Akun tidak ditemukan/aktif' };
         }
-        throw teamError;
+        throw ftError;
       }
 
-      if (fieldTeam) {
-        // Verify password dengan hash
-        let isPasswordValid = false;
-
-        try {
-          // Coba verify dengan bcrypt (React Native)
-          if (PasswordUtils.isPasswordHashed(fieldTeam.password)) {
-            isPasswordValid = await PasswordUtils.verifyPassword(password, fieldTeam.password);
-          } else {
-            // Fallback: cek dengan PostgreSQL crypt function
-            const { data: cryptResult, error: cryptError } = await supabase
-              .rpc('verify_password', {
-                input_password: password,
-                stored_hash: fieldTeam.password
-              });
-
-            if (!cryptError && cryptResult) {
-              isPasswordValid = cryptResult;
-            } else {
-              // Last fallback: plain text comparison (untuk development)
-              isPasswordValid = password === fieldTeam.password;
-            }
-          }
-        } catch (error) {
-          console.error('Field team password verification error:', error);
-          // Fallback ke plain text untuk development
-          isPasswordValid = password === fieldTeam.password;
+      if (ftRow) {
+        // Wajib ada email untuk Supabase Auth
+        if (!ftRow.email) {
+          return { success: false, message: 'Email tim lapangan tidak terdaftar' };
         }
 
-        if (!isPasswordValid) {
-          return {
-            success: false,
-            message: 'Nomor WhatsApp atau password salah',
-          };
+        // Sign in ke Supabase Auth
+        const authRes = await this.signInSupabase(ftRow.email, password);
+        if (!authRes.success) {
+          return authRes;
         }
 
-        // Extract apartment data from Supabase result
-        const apartmentIds = fieldTeam.team_apartment_assignments?.map(
+        // Extract apartment data
+        const apartmentIds = ftRow.team_apartment_assignments?.map(
           assignment => assignment.apartments?.id
         ).filter(Boolean) || [];
 
-        const apartmentNames = fieldTeam.team_apartment_assignments?.map(
+        const apartmentNames = ftRow.team_apartment_assignments?.map(
           assignment => assignment.apartments?.name
         ).filter(Boolean) || [];
 
         const userData = {
-          id: fieldTeam.id,
-          username: fieldTeam.phone_number, // Use phone number as username
-          fullName: fieldTeam.full_name,
-          email: fieldTeam.email || null,
-          phone: fieldTeam.phone_number,
+          id: ftRow.id,
+          username: ftRow.username || ftRow.phone || ftRow.email,
+          fullName: ftRow.full_name,
+          email: ftRow.email || null,
+          phone: ftRow.phone || null,
           role: USER_ROLES.FIELD_TEAM,
           apartmentIds,
           apartmentNames,
@@ -244,18 +184,14 @@ class AuthService {
         await this.setCurrentUser(userData);
         await this.startSession();
 
-        // Log aktivitas login
         await ActivityLogService.logActivity(
-          fieldTeam.id,
+          ftRow.id,
           USER_ROLES.FIELD_TEAM,
           'login',
-          `Tim lapangan ${fieldTeam.username} berhasil login`
+          `Tim lapangan ${userData.username} berhasil login`
         );
 
-        return {
-          success: true,
-          user: userData,
-        };
+        return { success: true, user: userData };
       } else {
         return {
           success: false,
@@ -379,35 +315,26 @@ class AuthService {
   async changePassword(currentPassword, newPassword) {
     try {
       if (!this.currentUser) {
-        return {
-          success: false,
-          message: 'User tidak ditemukan',
-        };
+        return { success: false, message: 'User tidak ditemukan' };
       }
 
-      const db = DatabaseManager.getDatabase();
-      const table = this.isAdmin() ? 'admins' : 'field_teams';
-      
-      // Verify current password
-      const verifyResult = await db.executeSql(
-        `SELECT id FROM ${table} WHERE id = ? AND password = ?`,
-        [this.currentUser.id, currentPassword]
-      );
-
-      if (verifyResult[0].rows.length === 0) {
-        return {
-          success: false,
-          message: 'Password lama tidak sesuai',
-        };
+      // Reauthenticate by signing in again
+      const email = this.currentUser.email;
+      if (!email) {
+        return { success: false, message: 'Email tidak tersedia untuk akun ini' };
       }
 
-      // Update password
-      await db.executeSql(
-        `UPDATE ${table} SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-        [newPassword, this.currentUser.id]
-      );
+      const reauth = await this.signInSupabase(email, currentPassword);
+      if (!reauth.success) {
+        return { success: false, message: 'Password lama tidak sesuai' };
+      }
 
-      // Log aktivitas
+      // Update password via Supabase Auth
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) {
+        throw error;
+      }
+
       await ActivityLogService.logActivity(
         this.currentUser.id,
         this.currentUser.role,
@@ -415,16 +342,10 @@ class AuthService {
         'Password berhasil diubah'
       );
 
-      return {
-        success: true,
-        message: 'Password berhasil diubah',
-      };
+      return { success: true, message: 'Password berhasil diubah' };
     } catch (error) {
       console.error('Change password error:', error);
-      return {
-        success: false,
-        message: 'Terjadi kesalahan saat mengubah password',
-      };
+      return { success: false, message: 'Terjadi kesalahan saat mengubah password' };
     }
   }
 
@@ -432,30 +353,31 @@ class AuthService {
   async updateProfile(profileData) {
     try {
       if (!this.currentUser) {
-        return {
-          success: false,
-          message: 'User tidak ditemukan',
-        };
+        return { success: false, message: 'User tidak ditemukan' };
       }
 
-      const db = DatabaseManager.getDatabase();
       const table = this.isAdmin() ? 'admins' : 'field_teams';
-      
       const { fullName, email, phone } = profileData;
-      
-      await db.executeSql(
-        `UPDATE ${table} SET full_name = ?, email = ?, phone = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-        [fullName, email, phone, this.currentUser.id]
-      );
 
-      // Update current user data
+      // Update profile row in public table
+      const { error } = await supabase
+        .from(table)
+        .update({ full_name: fullName, email, phone })
+        .eq('id', this.currentUser.id);
+
+      if (error) throw error;
+
+      // Optionally update auth user email/display name
+      if (email && email !== this.currentUser.email) {
+        await supabase.auth.updateUser({ email });
+      }
+
+      // Update current user cache
       this.currentUser.fullName = fullName;
       this.currentUser.email = email;
       this.currentUser.phone = phone;
-      
       await this.setCurrentUser(this.currentUser);
 
-      // Log aktivitas
       await ActivityLogService.logActivity(
         this.currentUser.id,
         this.currentUser.role,
@@ -463,16 +385,10 @@ class AuthService {
         'Profil berhasil diperbarui'
       );
 
-      return {
-        success: true,
-        message: 'Profil berhasil diperbarui',
-      };
+      return { success: true, message: 'Profil berhasil diperbarui' };
     } catch (error) {
       console.error('Update profile error:', error);
-      return {
-        success: false,
-        message: 'Terjadi kesalahan saat memperbarui profil',
-      };
+      return { success: false, message: 'Terjadi kesalahan saat memperbarui profil' };
     }
   }
 }

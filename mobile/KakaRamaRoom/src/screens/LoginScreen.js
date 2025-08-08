@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -27,6 +27,8 @@ const LoginScreen = ({ navigation }) => {
   const [userType, setUserType] = useState(USER_ROLES.FIELD_TEAM); // Default ke Tim Lapangan
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  const passwordRef = useRef(null);
 
   useEffect(() => {
     initializeApp();
@@ -67,8 +69,7 @@ const LoginScreen = ({ navigation }) => {
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
-      const usernameLabel = userType === USER_ROLES.ADMIN ? 'Username' : 'Username';
-      Alert.alert('Error', `${usernameLabel} dan password harus diisi`);
+      Alert.alert('Error', `Email dan password harus diisi`);
       return;
     }
 
@@ -157,7 +158,7 @@ const LoginScreen = ({ navigation }) => {
             style={styles.logo}
             resizeMode="contain"
           />
-          <Text style={styles.title}>KakaRama Room</Text>
+          <Text style={styles.title}>Kakarama Room</Text>
           <Text style={styles.subtitle}>Sistem Manajemen Checkin</Text>
         </View>
 
@@ -198,36 +199,51 @@ const LoginScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
-          {/* Username/Phone Input */}
+          {/* Email Input */}
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>
-              Username
-            </Text>
+            <Text style={styles.inputLabel}>Email</Text>
             <TextInput
               style={styles.input}
               value={username}
               onChangeText={setUsername}
-              placeholder="Masukkan username"
+              placeholder="Masukkan email"
               placeholderTextColor={COLORS.gray400}
               autoCapitalize="none"
               autoCorrect={false}
-              keyboardType="default"
+              keyboardType="email-address"
+              textContentType="emailAddress"
+              returnKeyType="next"
+              onSubmitEditing={() => passwordRef.current && passwordRef.current.focus()}
+              blurOnSubmit={false}
             />
           </View>
 
           {/* Password Input */}
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Password</Text>
-            <TextInput
-              style={styles.input}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Masukkan password"
-              placeholderTextColor={COLORS.gray400}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
+            <View style={{ position: 'relative' }}>
+              <TextInput
+                ref={passwordRef}
+                style={styles.input}
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Masukkan password"
+                placeholderTextColor={COLORS.gray400}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="password"
+                returnKeyType="go"
+                onSubmitEditing={handleLogin}
+              />
+              <TouchableOpacity
+                onPress={() => setShowPassword(prev => !prev)}
+                style={{ position: 'absolute', right: 12, top: 12 }}
+                accessibilityLabel={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+              >
+                <Text style={{ color: COLORS.gray500 }}>{showPassword ? '🙈' : '👁️'}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Login Button */}

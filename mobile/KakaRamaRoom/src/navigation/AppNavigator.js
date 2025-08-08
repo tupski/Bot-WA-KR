@@ -31,7 +31,6 @@ import FieldUnitsScreen from '../screens/field/FieldUnitsScreen';
 
 // Shared Screens
 import ProfileScreen from '../screens/shared/ProfileScreen';
-import SettingsScreen from '../screens/shared/SettingsScreen';
 import AppSettingsScreen from '../screens/shared/AppSettingsScreen';
 import ProfileManagementScreen from '../screens/shared/ProfileManagementScreen';
 
@@ -329,7 +328,7 @@ const AppNavigator = () => {
             />
             <Stack.Screen
               name={SCREENS.SETTINGS}
-              component={SettingsScreen}
+              component={AppSettingsScreen}
               options={{
                 headerShown: true,
                 title: 'Pengaturan',
@@ -361,7 +360,7 @@ const AppNavigator = () => {
             />
             <Stack.Screen
               name={SCREENS.SETTINGS}
-              component={SettingsScreen}
+              component={AppSettingsScreen}
               options={{
                 headerShown: true,
                 title: 'Pengaturan',
