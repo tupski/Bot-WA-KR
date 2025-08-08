@@ -19,6 +19,7 @@ import UnitService from '../../services/UnitService';
 import CheckinService from '../../services/CheckinService';
 import AuthService from '../../services/AuthService';
 import MarketingSourceService from '../../services/MarketingSourceService';
+import ImagePickerService from '../../services/ImagePickerService';
 import CurrencyInput from '../../components/CurrencyInput';
 
 const AdminCheckinScreen = ({ navigation }) => {
@@ -141,25 +142,56 @@ const AdminCheckinScreen = ({ navigation }) => {
 
   // Payment proof functionality
   const selectPaymentProof = () => {
-    Alert.alert(
-      'Pilih Bukti Pembayaran',
-      'Pilih sumber gambar',
-      [
-        { text: 'Batal', style: 'cancel' },
-        { text: 'Kamera', onPress: () => openCamera() },
-        { text: 'Galeri', onPress: () => openGallery() },
-      ]
-    );
+    ImagePickerService.showImagePickerOptions((selectedImage) => {
+      console.log('AdminCheckinScreen: Image selected:', selectedImage);
+
+      // Validate image
+      const validation = ImagePickerService.validateImage(selectedImage);
+      if (!validation.valid) {
+        Alert.alert('Error', validation.message);
+        return;
+      }
+
+      setPaymentProof(selectedImage);
+    });
   };
 
-  const openCamera = () => {
-    // Simulasi camera picker - dalam implementasi nyata gunakan react-native-image-picker
-    Alert.alert('Info', 'Fitur kamera akan tersedia setelah instalasi react-native-image-picker');
+  const openCamera = async () => {
+    try {
+      const result = await ImagePickerService.openCamera();
+      if (result.success) {
+        const validation = ImagePickerService.validateImage(result.data);
+        if (validation.valid) {
+          setPaymentProof(result.data);
+        } else {
+          Alert.alert('Error', validation.message);
+        }
+      } else if (result.message !== 'Camera cancelled') {
+        Alert.alert('Error', result.message);
+      }
+    } catch (error) {
+      console.error('AdminCheckinScreen: Camera error:', error);
+      Alert.alert('Error', 'Terjadi kesalahan saat mengakses kamera');
+    }
   };
 
-  const openGallery = () => {
-    // Simulasi gallery picker - dalam implementasi nyata gunakan react-native-image-picker
-    Alert.alert('Info', 'Fitur galeri akan tersedia setelah instalasi react-native-image-picker');
+  const openGallery = async () => {
+    try {
+      const result = await ImagePickerService.openGallery();
+      if (result.success) {
+        const validation = ImagePickerService.validateImage(result.data);
+        if (validation.valid) {
+          setPaymentProof(result.data);
+        } else {
+          Alert.alert('Error', validation.message);
+        }
+      } else if (result.message !== 'Gallery cancelled') {
+        Alert.alert('Error', result.message);
+      }
+    } catch (error) {
+      console.error('AdminCheckinScreen: Gallery error:', error);
+      Alert.alert('Error', 'Terjadi kesalahan saat mengakses galeri');
+    }
   };
 
   const removePaymentProof = () => {
@@ -374,18 +406,33 @@ const AdminCheckinScreen = ({ navigation }) => {
           <Text style={styles.inputLabel}>Bukti Pembayaran</Text>
           {paymentProof ? (
             <View style={styles.paymentProofContainer}>
-              <View style={styles.paymentProofInfo}>
-                <Icon name="attach-file" size={20} color={COLORS.primary} />
-                <Text style={styles.paymentProofName} numberOfLines={1}>
-                  {paymentProof.name || 'Bukti pembayaran dipilih'}
-                </Text>
+              {/* Image Preview */}
+              <View style={styles.imagePreviewContainer}>
+                <Image
+                  source={{ uri: paymentProof.uri }}
+                  style={styles.imagePreview}
+                  resizeMode="cover"
+                />
+                <TouchableOpacity
+                  style={styles.removeProofButton}
+                  onPress={removePaymentProof}
+                >
+                  <Icon name="close" size={18} color={COLORS.white} />
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity
-                style={styles.removeProofButton}
-                onPress={removePaymentProof}
-              >
-                <Icon name="close" size={20} color={COLORS.error} />
-              </TouchableOpacity>
+
+              {/* Image Info */}
+              <View style={styles.paymentProofInfo}>
+                <Icon name="image" size={20} color={COLORS.primary} />
+                <View style={styles.imageInfoText}>
+                  <Text style={styles.paymentProofName} numberOfLines={1}>
+                    {paymentProof.name || 'Bukti pembayaran'}
+                  </Text>
+                  <Text style={styles.imageSize}>
+                    {paymentProof.size ? `${(paymentProof.size / 1024 / 1024).toFixed(2)} MB` : 'Unknown size'}
+                  </Text>
+                </View>
+              </View>
             </View>
           ) : (
             <TouchableOpacity
@@ -394,6 +441,9 @@ const AdminCheckinScreen = ({ navigation }) => {
             >
               <Icon name="cloud-upload" size={24} color={COLORS.primary} />
               <Text style={styles.uploadButtonText}>Upload Bukti Pembayaran</Text>
+              <Text style={styles.uploadButtonSubtext}>
+                Pilih dari kamera atau galeri
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -874,45 +924,75 @@ const styles = StyleSheet.create({
   },
   // Payment proof styles
   paymentProofContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: COLORS.gray100,
     padding: SIZES.md,
     borderRadius: SIZES.radius,
     borderWidth: 1,
     borderColor: COLORS.gray300,
   },
+  imagePreviewContainer: {
+    position: 'relative',
+    marginBottom: SIZES.sm,
+  },
+  imagePreview: {
+    width: '100%',
+    height: 200,
+    borderRadius: SIZES.radius,
+    backgroundColor: COLORS.gray200,
+  },
+  removeProofButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: COLORS.error,
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   paymentProofInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  imageInfoText: {
+    marginLeft: SIZES.sm,
     flex: 1,
   },
   paymentProofName: {
-    marginLeft: SIZES.sm,
     fontSize: SIZES.body,
     color: COLORS.textPrimary,
-    flex: 1,
+    fontWeight: '500',
   },
-  removeProofButton: {
-    padding: SIZES.xs,
+  imageSize: {
+    fontSize: SIZES.caption,
+    color: COLORS.textSecondary,
+    marginTop: 2,
   },
   uploadButton: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.background,
-    padding: SIZES.md,
+    padding: SIZES.lg,
     borderRadius: SIZES.radius,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: COLORS.primary,
     borderStyle: 'dashed',
+    minHeight: 120,
   },
   uploadButtonText: {
-    marginLeft: SIZES.sm,
+    marginTop: SIZES.sm,
     fontSize: SIZES.body,
     color: COLORS.primary,
-    fontWeight: '500',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  uploadButtonSubtext: {
+    marginTop: SIZES.xs,
+    fontSize: SIZES.caption,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
   },
   // Marketing modal styles
   searchContainer: {

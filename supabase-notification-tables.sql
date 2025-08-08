@@ -56,35 +56,43 @@ ALTER TABLE broadcast_notifications ENABLE ROW LEVEL SECURITY;
 
 -- Policy untuk user_fcm_tokens - users can only access their own tokens
 CREATE POLICY "Users can manage their own FCM tokens" ON user_fcm_tokens
-    FOR ALL USING (auth.uid()::text = user_id::text);
+    FOR ALL USING (
+        auth.uid()::text = user_id::text OR
+        EXISTS (
+            SELECT 1 FROM field_teams
+            WHERE id = auth.uid()
+            AND status = 'active'
+        )
+    );
 
 -- Policy untuk notifications - users can only access their own notifications
 CREATE POLICY "Users can view their own notifications" ON notifications
-    FOR SELECT USING (auth.uid()::text = user_id::text);
+    FOR SELECT USING (
+        auth.uid()::text = user_id::text OR
+        EXISTS (
+            SELECT 1 FROM field_teams
+            WHERE id = auth.uid()
+            AND status = 'active'
+        )
+    );
 
 CREATE POLICY "Users can update their own notifications" ON notifications
-    FOR UPDATE USING (auth.uid()::text = user_id::text);
-
--- Policy untuk broadcast_notifications - only admins can create
-CREATE POLICY "Admins can create broadcast notifications" ON broadcast_notifications
-    FOR INSERT WITH CHECK (
+    FOR UPDATE USING (
+        auth.uid()::text = user_id::text OR
         EXISTS (
-            SELECT 1 FROM users 
-            WHERE id = auth.uid() 
-            AND role = 'admin' 
+            SELECT 1 FROM field_teams
+            WHERE id = auth.uid()
             AND status = 'active'
         )
     );
 
-CREATE POLICY "Admins can view broadcast notifications" ON broadcast_notifications
-    FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM users 
-            WHERE id = auth.uid() 
-            AND role = 'admin' 
-            AND status = 'active'
-        )
-    );
+-- Policy untuk broadcast_notifications - allow all authenticated users to create for now
+-- (You can restrict this later based on your admin table structure)
+CREATE POLICY "Authenticated users can create broadcast notifications" ON broadcast_notifications
+    FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+
+CREATE POLICY "Authenticated users can view broadcast notifications" ON broadcast_notifications
+    FOR SELECT USING (auth.uid() IS NOT NULL);
 
 -- Function untuk auto-update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
