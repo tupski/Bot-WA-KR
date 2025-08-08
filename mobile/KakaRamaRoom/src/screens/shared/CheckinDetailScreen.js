@@ -96,20 +96,31 @@ const CheckinDetailScreen = ({ route, navigation }) => {
   };
 
   const formatDateTime = (dateString) => {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleString('id-ID', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    try {
+      if (!dateString) return '-';
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '-';
+      return date.toLocaleString('id-ID', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return '-';
+    }
   };
 
   const formatCurrency = (amount) => {
-    if (!amount) return 'Rp 0';
-    return `Rp ${amount.toLocaleString('id-ID')}`;
+    try {
+      if (!amount || isNaN(amount)) return 'Rp 0';
+      return `Rp ${Number(amount).toLocaleString('id-ID')}`;
+    } catch (error) {
+      console.error('Error formatting currency:', error);
+      return 'Rp 0';
+    }
   };
 
   const handleExtendCheckin = () => {
@@ -237,15 +248,15 @@ const CheckinDetailScreen = ({ route, navigation }) => {
           <Text style={styles.sectionTitle}>Informasi Checkin</Text>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Checkin:</Text>
-            <Text style={styles.infoValue}>{formatDateTime(checkin.checkin_time)}</Text>
+            <Text style={styles.infoValue}>{formatDateTime(checkin?.checkin_time)}</Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Checkout:</Text>
-            <Text style={styles.infoValue}>{formatDateTime(checkin.checkout_time)}</Text>
+            <Text style={styles.infoValue}>{formatDateTime(checkin?.checkout_time)}</Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Durasi:</Text>
-            <Text style={styles.infoValue}>{checkin.duration_hours} jam</Text>
+            <Text style={styles.infoValue}>{checkin?.duration_hours || 0} jam</Text>
           </View>
         </View>
 
@@ -254,20 +265,23 @@ const CheckinDetailScreen = ({ route, navigation }) => {
           <Text style={styles.sectionTitle}>Informasi Pembayaran</Text>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Metode:</Text>
-            <Text style={styles.infoValue}>{checkin.payment_method || '-'}</Text>
+            <Text style={styles.infoValue}>{checkin?.payment_method || '-'}</Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Jumlah:</Text>
-            <Text style={styles.infoValue}>{formatCurrency(checkin.payment_amount)}</Text>
+            <Text style={styles.infoValue}>{formatCurrency(checkin?.payment_amount)}</Text>
           </View>
-          
-          {checkin.payment_proof_url && (
+
+          {checkin?.payment_proof_url && (
             <View style={styles.paymentProofContainer}>
               <Text style={styles.infoLabel}>Bukti Pembayaran:</Text>
-              <Image 
-                source={{ uri: checkin.payment_proof_url }} 
+              <Image
+                source={{ uri: checkin.payment_proof_url }}
                 style={styles.paymentProofImage}
                 resizeMode="cover"
+                onError={(error) => {
+                  console.error('Error loading payment proof image:', error);
+                }}
               />
             </View>
           )}

@@ -77,22 +77,38 @@ const FieldDashboardScreen = ({ navigation }) => {
    * @param {Object} checkin - Data checkin yang akan di-checkout
    */
   const confirmEarlyCheckout = (checkin) => {
-    const checkoutTime = new Date(checkin.checkout_time);
-    const now = new Date();
-    const remainingHours = Math.ceil((checkoutTime - now) / (1000 * 60 * 60));
+    try {
+      if (!checkin || !checkin.checkout_time) {
+        Alert.alert('Error', 'Data checkin tidak valid');
+        return;
+      }
 
-    Alert.alert(
-      'Konfirmasi Early Checkout',
-      `Apakah Anda yakin ingin checkout unit ${checkin.unit_number} sekarang?\n\nSisa waktu: ${remainingHours > 0 ? remainingHours + ' jam' : 'Sudah lewat waktu'}`,
-      [
-        { text: 'Batal', style: 'cancel' },
-        {
-          text: 'Checkout',
-          style: 'destructive',
-          onPress: () => handleEarlyCheckout(checkin.id),
-        },
-      ]
-    );
+      const checkoutTime = new Date(checkin.checkout_time);
+      const now = new Date();
+
+      if (isNaN(checkoutTime.getTime())) {
+        Alert.alert('Error', 'Waktu checkout tidak valid');
+        return;
+      }
+
+      const remainingHours = Math.ceil((checkoutTime - now) / (1000 * 60 * 60));
+
+      Alert.alert(
+        'Konfirmasi Early Checkout',
+        `Apakah Anda yakin ingin checkout unit ${checkin?.unit_number || 'N/A'} sekarang?\n\nSisa waktu: ${remainingHours > 0 ? remainingHours + ' jam' : 'Sudah lewat waktu'}`,
+        [
+          { text: 'Batal', style: 'cancel' },
+          {
+            text: 'Checkout',
+            style: 'destructive',
+            onPress: () => handleEarlyCheckout(checkin.id),
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('Error in confirmEarlyCheckout:', error);
+      Alert.alert('Error', 'Terjadi kesalahan saat memproses checkout');
+    }
   };
 
   /**
@@ -133,30 +149,44 @@ const FieldDashboardScreen = ({ navigation }) => {
    * @returns {Object} - Object dengan informasi sisa waktu
    */
   const calculateRemainingTime = (checkoutTime) => {
-    const checkout = new Date(checkoutTime);
-    const now = new Date();
-    const diff = checkout - now;
+    try {
+      if (!checkoutTime) {
+        return { isOvertime: true, text: 'Tidak diketahui', color: COLORS.error };
+      }
 
-    if (diff <= 0) {
-      return { isOvertime: true, text: 'Sudah lewat waktu', color: COLORS.error };
-    }
+      const checkout = new Date(checkoutTime);
+      const now = new Date();
 
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      if (isNaN(checkout.getTime())) {
+        return { isOvertime: true, text: 'Tidak valid', color: COLORS.error };
+      }
 
-    if (hours < 1) {
+      const diff = checkout - now;
+
+      if (diff <= 0) {
+        return { isOvertime: true, text: 'Sudah lewat waktu', color: COLORS.error };
+      }
+
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+      if (hours < 1) {
+        return {
+          isOvertime: false,
+          text: `${minutes} menit lagi`,
+          color: COLORS.warning
+        };
+      }
+
       return {
         isOvertime: false,
-        text: `${minutes} menit lagi`,
-        color: COLORS.warning
+        text: `${hours} jam ${minutes} menit lagi`,
+        color: hours < 2 ? COLORS.warning : COLORS.success
       };
+    } catch (error) {
+      console.error('Error calculating remaining time:', error);
+      return { isOvertime: true, text: 'Error', color: COLORS.error };
     }
-
-    return {
-      isOvertime: false,
-      text: `${hours} jam ${minutes} menit lagi`,
-      color: hours < 2 ? COLORS.warning : COLORS.success
-    };
   };
 
   const handleLogout = async () => {
@@ -279,21 +309,25 @@ const FieldDashboardScreen = ({ navigation }) => {
             data={activeCheckins}
             keyExtractor={(item) => item.id.toString()}
             renderItem={({ item }) => {
-              const remainingTime = calculateRemainingTime(item.checkout_time);
+              if (!item) return null;
+
+              const remainingTime = calculateRemainingTime(item?.checkout_time);
 
               return (
                 <View style={styles.checkinCard}>
                   <View style={styles.checkinHeader}>
                     <View style={styles.checkinInfo}>
-                      <Text style={styles.unitNumber}>{item.unit_number}</Text>
-                      <Text style={styles.apartmentName}>{item.apartment_name}</Text>
+                      <Text style={styles.unitNumber}>{item?.unit_number || 'N/A'}</Text>
+                      <Text style={styles.apartmentName}>{item?.apartment_name || 'N/A'}</Text>
                       <Text style={styles.checkoutTime}>
-                        Checkout: {new Date(item.checkout_time).toLocaleString('id-ID', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
+                        Checkout: {item?.checkout_time ?
+                          new Date(item.checkout_time).toLocaleString('id-ID', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          }) : 'Tidak diketahui'
+                        }
                       </Text>
                     </View>
 
