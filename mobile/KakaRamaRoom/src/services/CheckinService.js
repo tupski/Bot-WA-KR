@@ -105,14 +105,18 @@ class CheckinService {
       // Update status unit menjadi occupied
       await UnitService.updateUnitStatus(unitId, UNIT_STATUS.OCCUPIED, finalUserId, userType);
 
-      // Log aktivitas
+      // Log aktivitas dengan detail lengkap
       await ActivityLogService.logActivity(
         finalUserId,
         userType,
         ACTIVITY_ACTIONS.CREATE_CHECKIN || 'create_checkin',
-        `Checkin baru untuk unit ${unitId}, durasi ${durationHours} jam`,
+        `Checkin baru - Durasi: ${durationHours} jam, Pembayaran: ${paymentMethod}, Marketing: ${marketingName || 'N/A'}`,
         'checkins',
-        checkinId
+        checkinId,
+        {
+          apartmentId: apartmentId,
+          unitId: unitId,
+        }
       );
 
       console.log('CheckinService: Checkin created successfully:', newCheckin);
@@ -256,14 +260,18 @@ class CheckinService {
       const CleaningService = require('./CleaningService').default;
       await CleaningService.startCleaning(checkin.unit_id, userId, userType);
 
-      // Log aktivitas
+      // Log aktivitas dengan detail lengkap
       await ActivityLogService.logActivity(
         userId,
         userType,
         ACTIVITY_ACTIONS.EARLY_CHECKOUT,
-        `Early checkout untuk checkin ${checkinId}`,
+        `Early checkout - Unit akan masuk proses cleaning`,
         'checkins',
-        checkinId
+        checkinId,
+        {
+          apartmentId: checkin.apartment_id,
+          unitId: checkin.unit_id,
+        }
       );
 
       return {

@@ -174,6 +174,7 @@ export const SCREENS = {
   // Shared
   PROFILE: 'Profile',
   SETTINGS: 'Settings',
+  ACTIVITY_LOG: 'ActivityLog',
 };
 
 // Colors

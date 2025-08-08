@@ -1,46 +1,154 @@
 import { supabase } from '../config/supabase';
 import { ACTIVITY_ACTIONS } from '../config/constants';
+import AuthService from './AuthService';
 
 class ActivityLogService {
-  // Log aktivitas user
-  async logActivity(userId, userType, action, description, relatedTable = null, relatedId = null, ipAddress = null, userAgent = null) {
+  /**
+   * Log aktivitas user dengan detail lengkap
+   * @param {string} userId - ID user
+   * @param {string} userType - Tipe user (admin/field_team)
+   * @param {string} action - Action yang dilakukan
+   * @param {string} description - Deskripsi detail
+   * @param {string} relatedTable - Tabel terkait
+   * @param {string} relatedId - ID record terkait
+   * @param {Object} additionalData - Data tambahan
+   */
+  async logActivity(userId, userType, action, description, relatedTable = null, relatedId = null, additionalData = {}) {
     try {
+      // Get user info untuk detail logging
+      const userInfo = await this.getUserInfo(userId, userType);
+      const now = new Date();
+
+      // Format timestamp Indonesia
+      const timestamp = now.toLocaleString('id-ID', {
+        timeZone: 'Asia/Jakarta',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+
+      // Enhanced description dengan user info
+      const enhancedDescription = `[${timestamp}] ${userInfo.fullName} (${userInfo.role}) - ${description}`;
+
+      const logData = {
+        user_id: userId,
+        user_type: userType,
+        user_name: userInfo.fullName,
+        user_username: userInfo.username,
+        action,
+        description: enhancedDescription,
+        related_table: relatedTable,
+        related_id: relatedId,
+        ip_address: additionalData.ipAddress || null,
+        user_agent: additionalData.userAgent || 'Mobile App',
+        apartment_id: additionalData.apartmentId || null,
+        unit_id: additionalData.unitId || null,
+        created_at: now.toISOString(),
+      };
+
       const { error } = await supabase
         .from('activity_logs')
-        .insert({
-          user_id: userId,
-          user_type: userType,
-          action,
-          description,
-          related_table: relatedTable,
-          related_id: relatedId,
-          ip_address: ipAddress,
-          user_agent: userAgent,
-          created_at: new Date().toISOString(),
-        });
+        .insert(logData);
 
       if (error) {
         if (error.code === 'PGRST116') {
           // Table doesn't exist, just log to console
-          console.log(`Activity logged (local): ${userType} ${userId} - ${action}`);
-          return;
+          console.log(`Activity logged (local): ${enhancedDescription}`);
+          return { success: true };
         }
         throw error;
       }
 
-      console.log(`Activity logged: ${userType} ${userId} - ${action}`);
+      console.log(`✅ Activity logged: ${enhancedDescription}`);
+      return { success: true };
     } catch (error) {
-      console.error('Error logging activity:', error);
+      console.error('❌ Error logging activity:', error);
+      return { success: false, error: error.message };
     }
   }
 
-  // Get activity logs dengan filter
+  /**
+   * Get user info untuk logging
+   * @param {string} userId - ID user
+   * @param {string} userType - Tipe user
+   */
+  async getUserInfo(userId, userType) {
+    try {
+      // Try to get from current user first
+      const currentUser = AuthService.getCurrentUser();
+      if (currentUser && currentUser.id === userId) {
+        return {
+          fullName: currentUser.fullName || currentUser.username,
+          username: currentUser.username,
+          role: currentUser.role === 'admin' ? 'Administrator' : 'Tim Lapangan',
+        };
+      }
+
+      // Fallback: get from database
+      let userData = null;
+      if (userType === 'admin') {
+        const { data } = await supabase
+          .from('admins')
+          .select('full_name, username')
+          .eq('id', userId)
+          .single();
+        userData = data;
+      } else if (userType === 'field_team') {
+        const { data } = await supabase
+          .from('field_teams')
+          .select('full_name, username')
+          .eq('id', userId)
+          .single();
+        userData = data;
+      }
+
+      if (userData) {
+        return {
+          fullName: userData.full_name || userData.username,
+          username: userData.username,
+          role: userType === 'admin' ? 'Administrator' : 'Tim Lapangan',
+        };
+      }
+
+      // Ultimate fallback
+      return {
+        fullName: userType === 'admin' ? 'Administrator' : 'Tim Lapangan',
+        username: `user_${userId}`,
+        role: userType === 'admin' ? 'Administrator' : 'Tim Lapangan',
+      };
+    } catch (error) {
+      console.error('Error getting user info for logging:', error);
+      return {
+        fullName: userType === 'admin' ? 'Administrator' : 'Tim Lapangan',
+        username: `user_${userId}`,
+        role: userType === 'admin' ? 'Administrator' : 'Tim Lapangan',
+      };
+    }
+  }
+
+  /**
+   * Get activity logs dengan filter dan detail lengkap
+   * @param {Object} filters - Filter options
+   */
   async getActivityLogs(filters = {}) {
     try {
       let query = supabase
         .from('activity_logs')
         .select(`
-          *
+          *,
+          apartments (
+            name,
+            code
+          ),
+          units (
+            unit_number,
+            apartments (
+              name
+            )
+          )
         `)
         .order('created_at', { ascending: false });
 
@@ -57,6 +165,10 @@ class ActivityLogService {
         query = query.eq('action', filters.action);
       }
 
+      if (filters.apartmentId) {
+        query = query.eq('apartment_id', filters.apartmentId);
+      }
+
       if (filters.startDate) {
         query = query.gte('created_at', filters.startDate);
       }
@@ -67,27 +179,28 @@ class ActivityLogService {
 
       if (filters.limit) {
         query = query.limit(filters.limit);
+      } else {
+        query = query.limit(100); // Default limit
       }
 
       const { data: logs, error } = await query;
 
       if (error) {
         if (error.code === 'PGRST116') {
-          // Table doesn't exist, return empty array
-          return {
-            success: true,
-            data: [],
-          };
+          return { success: true, data: [] };
         }
         throw error;
       }
 
-      // Transform data - for now just return the logs as is
-      // TODO: Add user name lookup if needed
+      // Transform data untuk display yang lebih baik
       const transformedLogs = logs?.map(log => ({
         ...log,
-        user_name: `${log.user_type} ${log.user_id}`, // Simple fallback
-        username: `${log.user_type}_${log.user_id}`, // Simple fallback
+        displayTime: this.formatDisplayTime(log.created_at),
+        displayDate: this.formatDisplayDate(log.created_at),
+        actionLabel: this.getActionLabel(log.action),
+        userTypeLabel: log.user_type === 'admin' ? 'Administrator' : 'Tim Lapangan',
+        apartmentName: log.apartments?.name || null,
+        unitInfo: log.units ? `${log.units.unit_number} (${log.units.apartments?.name})` : null,
       })) || [];
 
       return {
@@ -299,6 +412,71 @@ class ActivityLogService {
         message: 'Gagal mengambil data pengguna paling aktif',
       };
     }
+  }
+
+  /**
+   * Format waktu untuk display
+   * @param {string} timestamp - ISO timestamp
+   */
+  formatDisplayTime(timestamp) {
+    try {
+      const date = new Date(timestamp);
+      return date.toLocaleTimeString('id-ID', {
+        timeZone: 'Asia/Jakarta',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+    } catch (error) {
+      return timestamp;
+    }
+  }
+
+  /**
+   * Format tanggal untuk display
+   * @param {string} timestamp - ISO timestamp
+   */
+  formatDisplayDate(timestamp) {
+    try {
+      const date = new Date(timestamp);
+      return date.toLocaleDateString('id-ID', {
+        timeZone: 'Asia/Jakarta',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch (error) {
+      return timestamp;
+    }
+  }
+
+  /**
+   * Get label untuk action
+   * @param {string} action - Action code
+   */
+  getActionLabel(action) {
+    const actionLabels = {
+      [ACTIVITY_ACTIONS.LOGIN]: 'Login',
+      [ACTIVITY_ACTIONS.LOGOUT]: 'Logout',
+      [ACTIVITY_ACTIONS.CREATE_CHECKIN]: 'Buat Checkin',
+      [ACTIVITY_ACTIONS.EXTEND_CHECKIN]: 'Perpanjang Checkin',
+      [ACTIVITY_ACTIONS.EARLY_CHECKOUT]: 'Early Checkout',
+      [ACTIVITY_ACTIONS.AUTO_CHECKOUT]: 'Auto Checkout',
+      [ACTIVITY_ACTIONS.CREATE_APARTMENT]: 'Buat Apartemen',
+      [ACTIVITY_ACTIONS.UPDATE_APARTMENT]: 'Update Apartemen',
+      [ACTIVITY_ACTIONS.DELETE_APARTMENT]: 'Hapus Apartemen',
+      [ACTIVITY_ACTIONS.CREATE_TEAM]: 'Buat Tim',
+      [ACTIVITY_ACTIONS.UPDATE_TEAM]: 'Update Tim',
+      [ACTIVITY_ACTIONS.DELETE_TEAM]: 'Hapus Tim',
+      [ACTIVITY_ACTIONS.ASSIGN_TEAM]: 'Assign Tim',
+      [ACTIVITY_ACTIONS.CREATE_UNIT]: 'Buat Unit',
+      [ACTIVITY_ACTIONS.UPDATE_UNIT]: 'Update Unit',
+      [ACTIVITY_ACTIONS.DELETE_UNIT]: 'Hapus Unit',
+      [ACTIVITY_ACTIONS.UPDATE_UNIT_STATUS]: 'Update Status Unit',
+      [ACTIVITY_ACTIONS.EXPORT_REPORT]: 'Export Laporan',
+    };
+
+    return actionLabels[action] || action;
   }
 }
 

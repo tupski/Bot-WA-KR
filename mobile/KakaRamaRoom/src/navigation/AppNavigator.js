@@ -33,6 +33,7 @@ import FieldUnitsScreen from '../screens/field/FieldUnitsScreen';
 import ProfileScreen from '../screens/shared/ProfileScreen';
 import AppSettingsScreen from '../screens/shared/AppSettingsScreen';
 import ProfileManagementScreen from '../screens/shared/ProfileManagementScreen';
+import ActivityLogScreen from '../screens/shared/ActivityLogScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -349,6 +350,13 @@ const AppNavigator = () => {
                 title: 'Extend Check-in',
                 headerStyle: { backgroundColor: COLORS.primary },
                 headerTintColor: COLORS.background,
+              }}
+            />
+            <Stack.Screen
+              name={SCREENS.ACTIVITY_LOG}
+              component={ActivityLogScreen}
+              options={{
+                headerShown: false,
               }}
             />
             <Stack.Screen

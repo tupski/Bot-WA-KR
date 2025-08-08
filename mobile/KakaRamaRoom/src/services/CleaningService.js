@@ -29,14 +29,17 @@ class CleaningService {
         throw error;
       }
 
-      // Log activity
+      // Log activity dengan detail lengkap
       await ActivityLogService.logActivity(
         userId,
         userType,
         ACTIVITY_ACTIONS.UPDATE_UNIT_STATUS,
-        `Memulai cleaning unit`,
+        `Memulai cleaning - Timer 30 menit dimulai`,
         'units',
-        unitId
+        unitId,
+        {
+          unitId: unitId,
+        }
       );
 
       return {
@@ -107,14 +110,17 @@ class CleaningService {
         throw error;
       }
 
-      // Log activity
+      // Log activity dengan detail lengkap
       await ActivityLogService.logActivity(
         userId,
         userType,
         ACTIVITY_ACTIONS.UPDATE_UNIT_STATUS,
-        `Memperpanjang cleaning ${additionalMinutes} menit (total: ${newExtended} menit)`,
+        `Perpanjang cleaning +${additionalMinutes} menit (total: ${newExtended} menit)`,
         'units',
-        unitId
+        unitId,
+        {
+          unitId: unitId,
+        }
       );
 
       return {

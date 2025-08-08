@@ -235,7 +235,15 @@ const AppSettingsScreen = ({ navigation }) => {
         {/* Data & Storage */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Data & Penyimpanan</Text>
-          
+
+          <SettingItem
+            icon="history"
+            title="Log Aktivitas"
+            subtitle="Lihat riwayat aktivitas pengguna"
+            onPress={() => navigation.navigate('ActivityLog')}
+            showChevron={true}
+          />
+
           <SettingItem
             icon="clear"
             title="Hapus Cache"
@@ -243,7 +251,7 @@ const AppSettingsScreen = ({ navigation }) => {
             onPress={clearCache}
             showChevron={true}
           />
-          
+
           <SettingItem
             icon="restore"
             title="Reset Pengaturan"
