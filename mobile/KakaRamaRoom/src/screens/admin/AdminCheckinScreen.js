@@ -182,80 +182,83 @@ const AdminCheckinScreen = ({ navigation }) => {
   };
 
   const handleSubmit = async () => {
-    // Validasi form
-    if (!formData.apartmentId || !formData.unitId || !formData.paymentAmount) {
-      Alert.alert('Error', 'Harap lengkapi apartemen, unit, dan jumlah pembayaran');
-      return;
-    }
-
-    const durationHours = parseInt(formData.durationHours);
-    if (isNaN(durationHours) || durationHours <= 0) {
-      Alert.alert('Error', 'Durasi harus berupa angka yang valid');
-      return;
-    }
-
-    const paymentAmount = parseFloat(formData.paymentAmount);
-    if (isNaN(paymentAmount) || paymentAmount <= 0) {
-      Alert.alert('Error', 'Jumlah pembayaran harus berupa angka yang valid');
-      return;
-    }
-
-    setSubmitting(true);
-
     try {
+      // Validasi form
+      if (!formData.apartmentId || !formData.unitId || !formData.paymentAmount) {
+        Alert.alert('Error', 'Harap lengkapi apartemen, unit, dan jumlah pembayaran');
+        return;
+      }
+
+      const durationHours = parseInt(formData.durationHours);
+      if (isNaN(durationHours) || durationHours <= 0) {
+        Alert.alert('Error', 'Durasi harus berupa angka yang valid');
+        return;
+      }
+
+      const paymentAmount = parseFloat(formData.paymentAmount);
+      if (isNaN(paymentAmount) || paymentAmount <= 0) {
+        Alert.alert('Error', 'Jumlah pembayaran harus berupa angka yang valid');
+        return;
+      }
+
       const currentUser = AuthService.getCurrentUser();
-      
-      // Hitung checkout time
+      if (!currentUser) {
+        Alert.alert('Error', 'User tidak ditemukan. Silakan login ulang.');
+        return;
+      }
+
+      setSubmitting(true);
+
+      // Hitung checkout time dengan error handling
       const checkoutTime = new Date();
-      checkoutTime.setHours(checkoutTime.getHours() + parseInt(formData.durationHours));
+      if (isNaN(checkoutTime.getTime())) {
+        throw new Error('Invalid date');
+      }
+      checkoutTime.setHours(checkoutTime.getHours() + durationHours);
 
       const checkinData = {
-        apartmentId: formData.apartmentId,
-        unitId: formData.unitId,
+        apartmentId: parseInt(formData.apartmentId),
+        unitId: parseInt(formData.unitId),
         durationHours: durationHours,
         checkoutTime: checkoutTime.toISOString(),
-        paymentMethod: formData.paymentMethod,
+        paymentMethod: formData.paymentMethod || 'cash',
         paymentAmount: paymentAmount,
         marketingCommission: parseFloat(formData.marketingCommission) || 0,
-        marketingName: formData.marketingName.trim() || null,
-        notes: formData.notes.trim() || null,
+        marketingName: formData.marketingName?.trim() || null,
+        notes: formData.notes?.trim() || null,
         paymentProof: paymentProof,
         createdBy: currentUser.id,
       };
 
+      console.log('AdminCheckinScreen: Submitting checkin data:', checkinData);
       const result = await CheckinService.createCheckin(checkinData);
 
-      if (result.success) {
-        Alert.alert(
-          'Berhasil',
-          'Checkin berhasil dibuat',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                // Reset form
-                setFormData({
-                  apartmentId: '',
-                  unitId: '',
-                  durationHours: '3',
-                  paymentMethod: 'cash',
-                  paymentAmount: '',
-                  marketingCommission: '',
-                  marketingName: '',
-                  notes: '',
-                });
-                setPaymentProof(null);
-                navigation.goBack();
-              }
-            }
-          ]
-        );
+      console.log('AdminCheckinScreen: Checkin result:', result);
+
+      if (result && result.success) {
+        // Reset form immediately
+        setFormData({
+          apartmentId: '',
+          unitId: '',
+          durationHours: '3',
+          paymentMethod: 'cash',
+          paymentAmount: '',
+          marketingCommission: '',
+          marketingName: '',
+          notes: '',
+        });
+        setPaymentProof(null);
+
+        // Navigate back without alert to prevent navigation issues
+        navigation.goBack();
       } else {
-        Alert.alert('Error', result.message);
+        const errorMessage = result?.message || 'Gagal membuat checkin tanpa pesan error';
+        console.error('AdminCheckinScreen: Checkin failed:', errorMessage);
+        Alert.alert('Error', errorMessage);
       }
     } catch (error) {
-      console.error('Submit checkin error:', error);
-      Alert.alert('Error', 'Gagal membuat checkin: ' + error.message);
+      console.error('AdminCheckinScreen: Submit checkin error:', error);
+      Alert.alert('Error', `Gagal membuat checkin: ${error.message || 'Unknown error'}`);
     } finally {
       setSubmitting(false);
     }

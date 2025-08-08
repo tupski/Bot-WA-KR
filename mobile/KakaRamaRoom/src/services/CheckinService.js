@@ -19,6 +19,14 @@ class CheckinService {
     try {
       console.log('CheckinService: Creating checkin with data:', checkinData);
 
+      // Validate input data
+      if (!checkinData) {
+        return {
+          success: false,
+          message: 'Data checkin tidak valid',
+        };
+      }
+
       const {
         apartmentId,
         unitId,
@@ -32,6 +40,14 @@ class CheckinService {
         notes,
         createdBy,
       } = checkinData;
+
+      // Validate required fields
+      if (!apartmentId || !unitId || !durationHours || !paymentAmount) {
+        return {
+          success: false,
+          message: 'Data checkin tidak lengkap',
+        };
+      }
 
       // Validate access untuk tim lapangan
       if (userType === 'field_team') {
@@ -62,7 +78,7 @@ class CheckinService {
         };
       }
 
-      if (unit.status !== UNIT_STATUS.AVAILABLE) {
+      if (unit?.status !== 'available') {
         return {
           success: false,
           message: 'Unit tidak tersedia untuk checkin',
@@ -72,8 +88,19 @@ class CheckinService {
       // Calculate checkout time if not provided
       let finalCheckoutTime = checkoutTime;
       if (!finalCheckoutTime) {
-        const now = new Date();
-        finalCheckoutTime = new Date(now.getTime() + (durationHours * 60 * 60 * 1000)).toISOString();
+        try {
+          const now = new Date();
+          if (isNaN(now.getTime())) {
+            throw new Error('Invalid date');
+          }
+          finalCheckoutTime = new Date(now.getTime() + (durationHours * 60 * 60 * 1000)).toISOString();
+        } catch (error) {
+          console.error('CheckinService: Error calculating checkout time:', error);
+          return {
+            success: false,
+            message: 'Gagal menghitung waktu checkout',
+          };
+        }
       }
 
       // Insert checkin baru
