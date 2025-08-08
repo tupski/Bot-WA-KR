@@ -1,10 +1,58 @@
 // App Constants
 export const APP_CONFIG = {
-  name: 'Kakarama Room',
-  version: '1.2.2',
-  company: 'Kakarama Room',
+  name: 'KakaRama Room',
+  version: '2.0.0',
+  company: 'KakaRama Room',
   website: 'https://kakaramaroom.com',
   logo: require('../assets/images/logo-placeholder.png'), // Placeholder
+};
+
+export const APP_INFO = {
+  name: 'KakaRama Room',
+  version: '2.0.0',
+  buildNumber: '20250108',
+  developer: 'Angga Artupas',
+  description: 'Aplikasi manajemen kamar apartemen untuk check-in, check-out, dan monitoring unit secara real-time.',
+  features: [
+    'Manajemen Apartemen & Unit',
+    'Check-in & Check-out Digital',
+    'Monitoring Status Unit Real-time',
+    'Laporan Harian & Bulanan',
+    'Tim Lapangan Management',
+    'Upload Bukti Pembayaran',
+    'Marketing Source Tracking',
+    'Business Day Reporting'
+  ],
+  changelog: [
+    {
+      version: '2.0.0',
+      date: '8 Januari 2025',
+      changes: [
+        'Aplikasi standalone tanpa WhatsApp bot',
+        'Form checkin manual untuk admin dan tim lapangan',
+        'Upload bukti pembayaran',
+        'Marketing source dengan select2 functionality',
+        'Payment methods baru: Transfer KR, Transfer Amel, Cash Amel, APK',
+        'Input durasi dengan angka langsung',
+        'Business day reporting (12:00-11:59 WIB)',
+        'Unit overview untuk tim lapangan',
+        'Quick booking dari unit tersedia',
+        'Real-time unit status monitoring',
+        'Enhanced UI/UX dengan modern design'
+      ]
+    },
+    {
+      version: '1.0.0',
+      date: '15 Desember 2024',
+      changes: [
+        'Aplikasi pertama dengan WhatsApp bot integration',
+        'Basic checkin/checkout functionality',
+        'Manajemen apartemen dan unit',
+        'Dashboard admin dan tim lapangan',
+        'Laporan sederhana'
+      ]
+    }
+  ]
 };
 
 // API Configuration (for future integrations)

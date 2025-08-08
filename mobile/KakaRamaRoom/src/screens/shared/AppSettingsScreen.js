@@ -40,7 +40,7 @@ const AppSettingsScreen = ({ navigation }) => {
 
   const loadCurrentUser = async () => {
     try {
-      const user = await AuthService.getCurrentUser();
+      const user = AuthService.getCurrentUser();
       setCurrentUser(user);
     } catch (error) {
       console.error('Error loading current user:', error);
@@ -116,6 +116,39 @@ const AppSettingsScreen = ({ navigation }) => {
           },
         },
       ]
+    );
+  };
+
+  const showAboutApp = () => {
+    Alert.alert(
+      `Tentang ${APP_INFO.name}`,
+      `${APP_INFO.description}\n\nVersi: ${APP_INFO.version}\nBuild: ${APP_INFO.buildNumber}\nDeveloper: ${APP_INFO.developer}`,
+      [{ text: 'OK' }]
+    );
+  };
+
+  const showChangelog = () => {
+    const changelogText = APP_INFO.changelog
+      .map(version => {
+        const changes = version.changes.map(change => `• ${change}`).join('\n');
+        return `${version.version} (${version.date})\n${changes}`;
+      })
+      .join('\n\n');
+
+    Alert.alert(
+      'Changelog',
+      changelogText,
+      [{ text: 'OK' }],
+      { scrollable: true }
+    );
+  };
+
+  const showFeatures = () => {
+    const featuresText = APP_INFO.features.map(feature => `• ${feature}`).join('\n');
+    Alert.alert(
+      'Fitur Aplikasi',
+      featuresText,
+      [{ text: 'OK' }]
     );
   };
 
@@ -268,11 +301,27 @@ const AppSettingsScreen = ({ navigation }) => {
           <SettingItem
             icon="info"
             title="Tentang Aplikasi"
-            subtitle={`Versi ${APP_INFO.version}`}
-            onPress={showAbout}
+            subtitle={`Versi ${APP_INFO.version} - ${APP_INFO.developer}`}
+            onPress={showAboutApp}
             showChevron={true}
           />
-          
+
+          <SettingItem
+            icon="update"
+            title="Changelog"
+            subtitle="Riwayat perubahan aplikasi"
+            onPress={showChangelog}
+            showChevron={true}
+          />
+
+          <SettingItem
+            icon="star"
+            title="Fitur Aplikasi"
+            subtitle="Daftar fitur yang tersedia"
+            onPress={showFeatures}
+            showChevron={true}
+          />
+
           <SettingItem
             icon="help"
             title="Bantuan"
@@ -302,10 +351,10 @@ const AppSettingsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.BACKGROUND,
+    backgroundColor: COLORS.background,
   },
   header: {
-    backgroundColor: COLORS.PRIMARY,
+    backgroundColor: COLORS.primary,
     flexDirection: 'row',
     alignItems: 'center',
     paddingTop: 40,
@@ -316,22 +365,22 @@ const styles = StyleSheet.create({
     marginRight: 15,
   },
   headerTitle: {
-    fontSize: SIZES.LARGE,
+    fontSize: SIZES.h4,
     fontWeight: 'bold',
-    color: COLORS.WHITE,
+    color: COLORS.background,
   },
   content: {
     flex: 1,
   },
   section: {
-    backgroundColor: COLORS.WHITE,
+    backgroundColor: COLORS.background,
     marginVertical: 5,
     paddingVertical: 15,
   },
   sectionTitle: {
-    fontSize: SIZES.SMALL,
+    fontSize: SIZES.caption,
     fontWeight: 'bold',
-    color: COLORS.TEXT_SECONDARY,
+    color: COLORS.textSecondary,
     marginBottom: 10,
     marginHorizontal: 15,
     textTransform: 'uppercase',
@@ -347,18 +396,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   userName: {
-    fontSize: SIZES.MEDIUM,
+    fontSize: SIZES.body,
     fontWeight: 'bold',
-    color: COLORS.TEXT_PRIMARY,
+    color: COLORS.textPrimary,
   },
   userRole: {
-    fontSize: SIZES.SMALL,
-    color: COLORS.PRIMARY,
+    fontSize: SIZES.caption,
+    color: COLORS.primary,
     marginTop: 2,
   },
   userContact: {
-    fontSize: SIZES.EXTRA_SMALL,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: SIZES.caption,
+    color: COLORS.textSecondary,
     marginTop: 2,
   },
   settingItem: {
@@ -367,7 +416,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.BORDER,
+    borderBottomColor: COLORS.gray300,
   },
   settingIcon: {
     width: 40,
@@ -378,25 +427,25 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   settingTitle: {
-    fontSize: SIZES.SMALL,
+    fontSize: SIZES.body,
     fontWeight: '600',
-    color: COLORS.TEXT_PRIMARY,
+    color: COLORS.textPrimary,
   },
   settingSubtitle: {
-    fontSize: SIZES.EXTRA_SMALL,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: SIZES.caption,
+    color: COLORS.textSecondary,
     marginTop: 2,
   },
   debugInfo: {
     paddingHorizontal: 15,
     paddingVertical: 10,
-    backgroundColor: COLORS.LIGHT_GRAY,
+    backgroundColor: COLORS.gray100,
     marginHorizontal: 15,
     borderRadius: 8,
   },
   debugText: {
-    fontSize: SIZES.EXTRA_SMALL,
-    color: COLORS.TEXT_SECONDARY,
+    fontSize: SIZES.caption,
+    color: COLORS.textSecondary,
     fontFamily: 'monospace',
     marginBottom: 2,
   },
