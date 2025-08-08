@@ -345,7 +345,6 @@ const AdminCheckinScreen = ({ navigation }) => {
             ]}>
               {formData.paymentMethod
                 ? getPaymentMethodLabel(formData.paymentMethod)
-                  : formData.paymentMethod
                 : 'Pilih Metode Pembayaran...'
               }
             </Text>
