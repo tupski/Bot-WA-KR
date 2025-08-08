@@ -9,7 +9,8 @@ import {
   StyleSheet,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import DatabaseManager from '../../config/supabase';
+import ApartmentService from '../../services/ApartmentService';
+import UnitService from '../../services/UnitService';
 import { COLORS, SIZES, UNIT_STATUS } from '../../config/constants';
 
 const AdminApartmentDetailScreen = ({ route, navigation }) => {
@@ -26,14 +27,24 @@ const AdminApartmentDetailScreen = ({ route, navigation }) => {
   const loadApartmentData = async () => {
     try {
       setLoading(true);
-      
+
       // Load apartment details
-      const apartmentData = await DatabaseManager.getApartmentById(apartmentId);
-      setApartment(apartmentData);
+      const apartmentResult = await ApartmentService.getApartmentById(apartmentId);
+      if (apartmentResult.success) {
+        setApartment(apartmentResult.data);
+      } else {
+        Alert.alert('Error', apartmentResult.message);
+        return;
+      }
 
       // Load units for this apartment
-      const unitsData = await DatabaseManager.getUnitsByApartment(apartmentId);
-      setUnits(unitsData);
+      const unitsResult = await UnitService.getUnitsByApartment(apartmentId);
+      if (unitsResult.success) {
+        setUnits(unitsResult.data);
+      } else {
+        console.error('Error loading units:', unitsResult.message);
+        setUnits([]);
+      }
     } catch (error) {
       console.error('Error loading apartment data:', error);
       Alert.alert('Error', 'Gagal memuat data apartemen');
@@ -67,9 +78,13 @@ const AdminApartmentDetailScreen = ({ route, navigation }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await DatabaseManager.deleteUnit(unit.id);
-              await loadApartmentData();
-              Alert.alert('Berhasil', 'Unit berhasil dihapus');
+              const result = await UnitService.deleteUnit(unit.id);
+              if (result.success) {
+                await loadApartmentData();
+                Alert.alert('Berhasil', result.message);
+              } else {
+                Alert.alert('Error', result.message);
+              }
             } catch (error) {
               Alert.alert('Error', 'Gagal menghapus unit');
             }
