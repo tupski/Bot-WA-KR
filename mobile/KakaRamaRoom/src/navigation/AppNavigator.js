@@ -33,6 +33,7 @@ import FieldUnitsOverviewScreen from '../screens/field/FieldUnitsOverviewScreen'
 // Shared Screens
 import ProfileScreen from '../screens/shared/ProfileScreen';
 import AppSettingsScreen from '../screens/shared/AppSettingsScreen';
+import CheckinDetailScreen from '../screens/shared/CheckinDetailScreen';
 import ProfileManagementScreen from '../screens/shared/ProfileManagementScreen';
 import ActivityLogScreen from '../screens/shared/ActivityLogScreen';
 
@@ -338,6 +339,13 @@ const AppNavigator = () => {
                 headerTintColor: COLORS.background,
               }}
             />
+            <Stack.Screen
+              name={SCREENS.CHECKIN_DETAIL}
+              component={CheckinDetailScreen}
+              options={{
+                headerShown: false,
+              }}
+            />
           </>
         ) : (
           // Field Team Stack
@@ -382,6 +390,13 @@ const AppNavigator = () => {
                 title: 'Pengaturan',
                 headerStyle: { backgroundColor: COLORS.primary },
                 headerTintColor: COLORS.background,
+              }}
+            />
+            <Stack.Screen
+              name={SCREENS.CHECKIN_DETAIL}
+              component={CheckinDetailScreen}
+              options={{
+                headerShown: false,
               }}
             />
           </>

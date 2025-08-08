@@ -433,6 +433,119 @@ class CheckinService {
       };
     }
   }
+
+  /**
+   * Get active checkin by unit ID
+   * @param {string} unitId - Unit ID
+   * @returns {Promise<Object>}
+   */
+  async getActiveCheckinByUnit(unitId) {
+    try {
+      console.log('CheckinService: Getting active checkin for unit:', unitId);
+
+      const { data: checkin, error } = await supabase
+        .from('checkins')
+        .select(`
+          *,
+          apartments (
+            id,
+            name,
+            code
+          ),
+          units (
+            id,
+            unit_number,
+            status
+          ),
+          field_teams (
+            id,
+            full_name,
+            username
+          )
+        `)
+        .eq('unit_id', unitId)
+        .in('status', [CHECKIN_STATUS.ACTIVE, CHECKIN_STATUS.EXTENDED])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return {
+            success: false,
+            message: 'Tidak ada checkin aktif untuk unit ini',
+          };
+        }
+        throw error;
+      }
+
+      return {
+        success: true,
+        data: checkin,
+      };
+    } catch (error) {
+      console.error('Error getting active checkin by unit:', error);
+      return {
+        success: false,
+        message: 'Gagal mengambil data checkin aktif',
+      };
+    }
+  }
+
+  /**
+   * Get checkin by ID with full details
+   * @param {string} checkinId - Checkin ID
+   * @returns {Promise<Object>}
+   */
+  async getCheckinById(checkinId) {
+    try {
+      console.log('CheckinService: Getting checkin by ID:', checkinId);
+
+      const { data: checkin, error } = await supabase
+        .from('checkins')
+        .select(`
+          *,
+          apartments (
+            id,
+            name,
+            code
+          ),
+          units (
+            id,
+            unit_number,
+            status
+          ),
+          field_teams (
+            id,
+            full_name,
+            username
+          )
+        `)
+        .eq('id', checkinId)
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return {
+            success: false,
+            message: 'Checkin tidak ditemukan',
+          };
+        }
+        throw error;
+      }
+
+      return {
+        success: true,
+        data: checkin,
+      };
+    } catch (error) {
+      console.error('Error getting checkin by ID:', error);
+      return {
+        success: false,
+        message: 'Gagal mengambil detail checkin',
+      };
+    }
+  }
 }
 
 export default new CheckinService();

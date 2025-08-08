@@ -224,6 +224,7 @@ export const SCREENS = {
   PROFILE: 'Profile',
   SETTINGS: 'Settings',
   ACTIVITY_LOG: 'ActivityLog',
+  CHECKIN_DETAIL: 'CheckinDetail',
 };
 
 // Colors

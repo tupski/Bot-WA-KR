@@ -108,11 +108,26 @@ const FieldUnitsScreen = () => {
   }, {});
 
   /**
+   * Handle unit press - show checkin detail if occupied
+   * @param {Object} unit - Unit data
+   */
+  const handleUnitPress = (unit) => {
+    if (unit.status === UNIT_STATUS.OCCUPIED) {
+      // Navigate to checkin detail
+      navigation.navigate('CheckinDetail', { unitId: unit.id });
+    }
+  };
+
+  /**
    * Render item unit dalam list
    * @param {Object} param0 - Item data dari FlatList
    */
   const renderUnitItem = ({ item }) => (
-    <View style={styles.unitCard}>
+    <TouchableOpacity
+      style={styles.unitCard}
+      onPress={() => handleUnitPress(item)}
+      activeOpacity={item.status === UNIT_STATUS.OCCUPIED ? 0.7 : 1}
+    >
       <View style={styles.unitHeader}>
         <View style={styles.unitInfo}>
           <Text style={styles.unitNumber}>{item.unit_number}</Text>
@@ -144,7 +159,15 @@ const FieldUnitsScreen = () => {
           </Text>
         </View>
       )}
-    </View>
+
+      {/* Tap hint for occupied units */}
+      {item.status === UNIT_STATUS.OCCUPIED && (
+        <View style={styles.tapHint}>
+          <Icon name="touch-app" size={16} color={COLORS.primary} />
+          <Text style={styles.tapHintText}>Tap untuk lihat detail checkin</Text>
+        </View>
+      )}
+    </TouchableOpacity>
   );
 
   /**
@@ -431,6 +454,19 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     textAlign: 'center',
     marginTop: SIZES.xs,
+  },
+  tapHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: SIZES.sm,
+    paddingVertical: SIZES.xs,
+  },
+  tapHintText: {
+    fontSize: SIZES.caption,
+    color: COLORS.primary,
+    marginLeft: SIZES.xs,
+    fontStyle: 'italic',
   },
 });
 
