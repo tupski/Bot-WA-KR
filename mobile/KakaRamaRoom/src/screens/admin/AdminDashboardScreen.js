@@ -13,13 +13,22 @@ import { COLORS, SIZES } from '../../config/constants';
 import AuthService from '../../services/AuthService';
 import SyncStatusIndicator from '../../components/SyncStatusIndicator';
 import { useAutoRefresh } from '../../hooks/useRealtime';
+import ApartmentService from '../../services/ApartmentService';
+import UnitService from '../../services/UnitService';
+import CheckinService from '../../services/CheckinService';
 
 const AdminDashboardScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [stats, setStats] = useState({
+    totalApartments: 0,
+    availableUnits: 0,
+    occupiedUnits: 0,
+  });
 
   useEffect(() => {
     loadUserData();
+    loadDashboardStats();
   }, []);
 
   const loadUserData = () => {
@@ -27,12 +36,68 @@ const AdminDashboardScreen = ({ navigation }) => {
     setCurrentUser(user);
   };
 
+  /**
+   * Get business day range (12:00 today to 11:59 tomorrow)
+   */
+  const getBusinessDayRange = () => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    // Business day starts at 12:00 today
+    const startTime = new Date(today);
+    startTime.setHours(12, 0, 0, 0);
+
+    // Business day ends at 11:59 tomorrow
+    const endTime = new Date(today);
+    endTime.setDate(endTime.getDate() + 1);
+    endTime.setHours(11, 59, 59, 999);
+
+    // If current time is before 12:00, use previous business day
+    if (now.getHours() < 12) {
+      startTime.setDate(startTime.getDate() - 1);
+      endTime.setDate(endTime.getDate() - 1);
+    }
+
+    return {
+      start: startTime.toISOString(),
+      end: endTime.toISOString(),
+    };
+  };
+
+  const loadDashboardStats = async () => {
+    try {
+      // Get total apartments
+      const apartmentsResult = await ApartmentService.getAllApartments();
+      const totalApartments = apartmentsResult.success ? apartmentsResult.data.length : 0;
+
+      // Get all units
+      const unitsResult = await UnitService.getAllUnits();
+      if (unitsResult.success) {
+        const allUnits = unitsResult.data;
+        const availableUnits = allUnits.filter(unit => unit.status === 'available').length;
+        const occupiedUnits = allUnits.filter(unit => unit.status === 'occupied').length;
+
+        setStats({
+          totalApartments,
+          availableUnits,
+          occupiedUnits,
+        });
+      }
+    } catch (error) {
+      console.error('Error loading dashboard stats:', error);
+    }
+  };
+
   // Auto-refresh when real-time changes occur
-  const { isRefreshing } = useAutoRefresh(loadUserData);
+  const { isRefreshing } = useAutoRefresh(() => {
+    loadUserData();
+    loadDashboardStats();
+  });
 
   const onRefresh = async () => {
     setRefreshing(true);
     loadUserData();
+    await loadDashboardStats();
     setTimeout(() => {
       setRefreshing(false);
     }, 1000);
@@ -126,18 +191,18 @@ const AdminDashboardScreen = ({ navigation }) => {
       <View style={styles.statsContainer}>
         <View style={styles.statCard}>
           <Icon name="apartment" size={32} color={COLORS.primary} />
-          <Text style={styles.statNumber}>7</Text>
+          <Text style={styles.statNumber}>{stats.totalApartments}</Text>
           <Text style={styles.statLabel}>Apartemen</Text>
         </View>
         <View style={styles.statCard}>
-          <Icon name="group" size={32} color={COLORS.success} />
-          <Text style={styles.statNumber}>-</Text>
-          <Text style={styles.statLabel}>Tim Lapangan</Text>
+          <Icon name="meeting-room" size={32} color={COLORS.success} />
+          <Text style={styles.statNumber}>{stats.availableUnits}</Text>
+          <Text style={styles.statLabel}>Unit Tersedia</Text>
         </View>
         <View style={styles.statCard}>
-          <Icon name="meeting-room" size={32} color={COLORS.warning} />
-          <Text style={styles.statNumber}>-</Text>
-          <Text style={styles.statLabel}>Unit Aktif</Text>
+          <Icon name="home" size={32} color={COLORS.warning} />
+          <Text style={styles.statNumber}>{stats.occupiedUnits}</Text>
+          <Text style={styles.statLabel}>Unit Terisi</Text>
         </View>
       </View>
 
