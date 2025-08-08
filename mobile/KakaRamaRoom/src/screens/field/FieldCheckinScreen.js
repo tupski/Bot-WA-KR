@@ -195,10 +195,18 @@ const FieldCheckinScreen = ({ navigation }) => {
    * @param {string} method - Metode pembayaran yang dipilih
    */
   const selectPaymentMethod = (method) => {
-    setFormData({
+    let updatedFormData = {
       ...formData,
       paymentMethod: method,
-    });
+    };
+
+    // Special handling for APK payment method
+    if (method === 'APK') {
+      updatedFormData.paymentAmount = '0';
+      updatedFormData.marketingName = 'APK';
+    }
+
+    setFormData(updatedFormData);
     setPaymentModalVisible(false);
   };
 

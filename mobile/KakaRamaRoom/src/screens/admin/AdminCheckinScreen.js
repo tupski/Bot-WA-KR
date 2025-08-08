@@ -609,7 +609,15 @@ const AdminCheckinScreen = ({ navigation }) => {
                     formData.paymentMethod === item.key && styles.modalItemSelected
                   ]}
                   onPress={() => {
-                    setFormData({ ...formData, paymentMethod: item.key });
+                    let updatedFormData = { ...formData, paymentMethod: item.key };
+
+                    // Special handling for APK payment method
+                    if (item.key === 'APK') {
+                      updatedFormData.paymentAmount = '0';
+                      updatedFormData.marketingName = 'APK';
+                    }
+
+                    setFormData(updatedFormData);
                     setPaymentModalVisible(false);
                   }}
                 >

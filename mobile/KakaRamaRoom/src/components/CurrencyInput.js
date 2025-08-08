@@ -33,14 +33,15 @@ const CurrencyInput = ({
   }, [value]);
 
   const formatCurrency = (amount) => {
-    if (!amount || amount === 0) return '';
+    if (amount === 0) return '0';
+    if (!amount) return '';
     return amount.toLocaleString('id-ID');
   };
 
   const handleInputChange = (text) => {
     // Remove non-numeric characters
     const numericText = text.replace(/[^0-9]/g, '');
-    
+
     if (numericText === '') {
       setInputValue('');
       setDisplayValue('');
@@ -48,10 +49,20 @@ const CurrencyInput = ({
       return;
     }
 
-    // Convert to number and add 000 suffix
+    // Convert to number
     const inputNumber = parseInt(numericText);
+
+    // Special case for 0 - don't add suffix
+    if (inputNumber === 0) {
+      setInputValue('0');
+      setDisplayValue(formatCurrency(0));
+      onChangeValue('0');
+      return;
+    }
+
+    // Add 000 suffix for non-zero values
     const actualValue = inputNumber * 1000;
-    
+
     setInputValue(numericText);
     setDisplayValue(formatCurrency(actualValue));
     onChangeValue(actualValue.toString());
