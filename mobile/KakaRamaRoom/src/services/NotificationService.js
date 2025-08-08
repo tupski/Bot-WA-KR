@@ -89,11 +89,16 @@ class NotificationService {
 
       if (error) {
         console.error('NotificationService: Error saving token to database:', error);
+        // Don't throw error, just log it - app should continue working
+        if (error.code === '42P01') {
+          console.log('NotificationService: Table does not exist yet. Please run the SQL setup script.');
+        }
       } else {
         console.log('NotificationService: Token saved to database successfully');
       }
     } catch (error) {
       console.error('NotificationService: Error in saveTokenToDatabase:', error);
+      // Don't throw error, just log it - app should continue working
     }
   }
 
@@ -191,6 +196,9 @@ class NotificationService {
 
       if (error) {
         console.error('NotificationService: Error saving notification:', error);
+        if (error.code === '42P01') {
+          console.log('NotificationService: Notifications table does not exist yet. Please run the SQL setup script.');
+        }
       }
     } catch (error) {
       console.error('NotificationService: Error in saveNotificationToDatabase:', error);
