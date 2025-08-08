@@ -56,14 +56,14 @@ COMMENT ON COLUMN activity_logs.unit_id IS 'Related unit ID for the action';
 
 -- Create view for detailed activity logs with joins
 CREATE OR REPLACE VIEW activity_logs_detailed AS
-SELECT 
+SELECT
     al.*,
     a.name as apartment_name,
     a.code as apartment_code,
     u.unit_number,
     u.status as unit_status,
-    CASE 
-        WHEN al.user_type = 'admin' THEN 'Administrator'
+    CASE
+        WHEN al.user_type = 'admin' THEN 'Admin'
         WHEN al.user_type = 'field_team' THEN 'Tim Lapangan'
         ELSE al.user_type
     END as user_type_label,

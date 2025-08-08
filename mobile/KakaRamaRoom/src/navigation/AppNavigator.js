@@ -28,6 +28,7 @@ import FieldDashboardScreen from '../screens/field/FieldDashboardScreen';
 import FieldCheckinScreen from '../screens/field/FieldCheckinScreen';
 import FieldExtendScreen from '../screens/field/FieldExtendScreen';
 import FieldUnitsScreen from '../screens/field/FieldUnitsScreen';
+import FieldUnitsOverviewScreen from '../screens/field/FieldUnitsOverviewScreen';
 
 // Shared Screens
 import ProfileScreen from '../screens/shared/ProfileScreen';
@@ -350,6 +351,13 @@ const AppNavigator = () => {
                 title: 'Extend Check-in',
                 headerStyle: { backgroundColor: COLORS.primary },
                 headerTintColor: COLORS.background,
+              }}
+            />
+            <Stack.Screen
+              name={SCREENS.FIELD_UNITS_OVERVIEW}
+              component={FieldUnitsOverviewScreen}
+              options={{
+                headerShown: false,
               }}
             />
             <Stack.Screen

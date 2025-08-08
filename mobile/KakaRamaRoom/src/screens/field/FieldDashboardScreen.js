@@ -191,6 +191,13 @@ const FieldDashboardScreen = ({ navigation }) => {
       color: COLORS.success,
     },
     {
+      title: 'Unit Overview',
+      subtitle: 'Lihat semua unit & booking langsung',
+      icon: 'view-module',
+      onPress: () => navigation.navigate('FieldUnitsOverview'),
+      color: COLORS.primary,
+    },
+    {
       title: 'Status Unit',
       subtitle: 'Lihat status unit apartemen',
       icon: 'meeting-room',

@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase';
+import BusinessDayService from './BusinessDayService';
 
 /**
  * Service untuk mengelola laporan dan statistik
@@ -616,6 +617,91 @@ class ReportService {
       return {
         success: false,
         message: 'Gagal mengambil laporan top marketing',
+      };
+    }
+  }
+
+  /**
+   * Get business day report (12:00 WIB - 11:59 WIB hari berikutnya)
+   * @param {string} date - Tanggal dalam format YYYY-MM-DD (optional, default: hari ini)
+   * @param {Object} filters - Additional filters
+   */
+  async getBusinessDayReport(date = null, filters = {}) {
+    try {
+      console.log('ReportService: Getting business day report for date:', date);
+
+      // Get business day range
+      const businessDayRange = date
+        ? BusinessDayService.getBusinessDayRangeForDate(date)
+        : BusinessDayService.getCurrentBusinessDayRange();
+
+      // Get checkins and statistics
+      const [checkinsResult, statsResult] = await Promise.all([
+        BusinessDayService.getCheckinsInBusinessDay(businessDayRange, filters),
+        BusinessDayService.getBusinessDayStatistics(businessDayRange, filters)
+      ]);
+
+      if (!checkinsResult.success || !statsResult.success) {
+        return {
+          success: false,
+          message: 'Gagal mengambil data business day report',
+        };
+      }
+
+      return {
+        success: true,
+        data: {
+          checkins: checkinsResult.data,
+          statistics: statsResult.data,
+          businessDate: businessDayRange.businessDate,
+          range: {
+            start: businessDayRange.startWIB,
+            end: businessDayRange.endWIB,
+          },
+        },
+      };
+    } catch (error) {
+      console.error('Error getting business day report:', error);
+      return {
+        success: false,
+        message: 'Gagal mengambil business day report',
+      };
+    }
+  }
+
+  /**
+   * Get business day summary untuk beberapa hari terakhir
+   * @param {number} days - Jumlah hari (default: 7)
+   * @param {Object} filters - Additional filters
+   */
+  async getBusinessDaySummary(days = 7, filters = {}) {
+    try {
+      console.log('ReportService: Getting business day summary for', days, 'days');
+
+      const businessDayRanges = BusinessDayService.getLastBusinessDays(days);
+      const summaryPromises = businessDayRanges.map(range =>
+        BusinessDayService.getBusinessDayStatistics(range, filters)
+      );
+
+      const results = await Promise.all(summaryPromises);
+
+      const summary = results
+        .filter(result => result.success)
+        .map(result => ({
+          businessDate: result.businessDate,
+          range: result.range,
+          statistics: result.data,
+        }));
+
+      return {
+        success: true,
+        data: summary,
+      };
+    } catch (error) {
+      console.error('Error getting business day summary:', error);
+      return {
+        success: false,
+        message: 'Gagal mengambil business day summary',
       };
     }
   }

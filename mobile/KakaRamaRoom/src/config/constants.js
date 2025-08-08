@@ -170,6 +170,7 @@ export const SCREENS = {
   FIELD_CHECKIN: 'FieldCheckin',
   FIELD_EXTEND: 'FieldExtend',
   FIELD_UNITS: 'FieldUnits',
+  FIELD_UNITS_OVERVIEW: 'FieldUnitsOverview',
   
   // Shared
   PROFILE: 'Profile',
