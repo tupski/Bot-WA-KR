@@ -212,6 +212,7 @@ export const SCREENS = {
   ADMIN_UNITS: 'AdminUnits',
   ADMIN_ACTIVITY_LOGS: 'AdminActivityLogs',
   ADMIN_TOP_MARKETING: 'AdminTopMarketing',
+  ADMIN_SMTP_SETTINGS: 'AdminSMTPSettings',
   
   // Field Team
   FIELD_DASHBOARD: 'FieldDashboard',

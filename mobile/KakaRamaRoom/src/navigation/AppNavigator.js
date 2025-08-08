@@ -19,6 +19,7 @@ import AdminTeamsScreen from '../screens/admin/AdminTeamsScreen';
 import AdminUnitsScreen from '../screens/admin/AdminUnitsScreen';
 import AdminActivityLogsScreen from '../screens/admin/AdminActivityLogsScreen';
 import AdminTopMarketingScreen from '../screens/admin/AdminTopMarketingScreen';
+import AdminSMTPSettingsScreen from '../screens/admin/AdminSMTPSettingsScreen';
 
 import AdminApartmentDetailScreen from '../screens/admin/AdminApartmentDetailScreen';
 import AdminFieldTeamManagementScreen from '../screens/admin/AdminFieldTeamManagementScreen';
@@ -342,6 +343,13 @@ const AppNavigator = () => {
             <Stack.Screen
               name={SCREENS.CHECKIN_DETAIL}
               component={CheckinDetailScreen}
+              options={{
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name={SCREENS.ADMIN_SMTP_SETTINGS}
+              component={AdminSMTPSettingsScreen}
               options={{
                 headerShown: false,
               }}

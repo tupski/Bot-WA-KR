@@ -163,6 +163,12 @@ const AdminDashboardScreen = ({ navigation }) => {
       onPress: () => navigation.navigate('AdminActivityLogs'),
       color: '#9C27B0',
     },
+    {
+      title: 'Pengaturan SMTP',
+      icon: 'email',
+      onPress: () => navigation.navigate('AdminSMTPSettings'),
+      color: '#FF5722',
+    },
   ];
 
   return (
