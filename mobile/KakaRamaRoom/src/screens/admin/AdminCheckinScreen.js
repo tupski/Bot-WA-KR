@@ -21,6 +21,7 @@ import UnitService from '../../services/UnitService';
 import CheckinService from '../../services/CheckinService';
 import AuthService from '../../services/AuthService';
 import MarketingSourceService from '../../services/MarketingSourceService';
+import CurrencyInput from '../../components/CurrencyInput';
 
 const AdminCheckinScreen = ({ navigation }) => {
   const [apartments, setApartments] = useState([]);
@@ -48,6 +49,7 @@ const AdminCheckinScreen = ({ navigation }) => {
     durationHours: '3',
     paymentMethod: 'cash',
     paymentAmount: '',
+    marketingCommission: '',
     marketingName: '',
     notes: '',
   });
@@ -211,6 +213,7 @@ const AdminCheckinScreen = ({ navigation }) => {
         checkoutTime: checkoutTime.toISOString(),
         paymentMethod: formData.paymentMethod,
         paymentAmount: paymentAmount,
+        marketingCommission: parseFloat(formData.marketingCommission) || 0,
         marketingName: formData.marketingName.trim() || null,
         notes: formData.notes.trim() || null,
         paymentProof: paymentProof,
@@ -234,6 +237,7 @@ const AdminCheckinScreen = ({ navigation }) => {
                   durationHours: '3',
                   paymentMethod: 'cash',
                   paymentAmount: '',
+                  marketingCommission: '',
                   marketingName: '',
                   notes: '',
                 });
@@ -351,14 +355,12 @@ const AdminCheckinScreen = ({ navigation }) => {
 
         {/* Jumlah Pembayaran */}
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Jumlah Pembayaran (Rp) *</Text>
-          <TextInput
-            style={styles.textInput}
+          <CurrencyInput
+            label="Jumlah Pembayaran *"
             value={formData.paymentAmount}
-            onChangeText={(text) => setFormData({ ...formData, paymentAmount: text })}
-            placeholder="Masukkan jumlah pembayaran"
-            placeholderTextColor={COLORS.gray400}
-            keyboardType="numeric"
+            onChangeValue={(value) => setFormData({ ...formData, paymentAmount: value })}
+            placeholder="Masukkan nominal pembayaran"
+            style={styles.currencyInput}
           />
         </View>
 
@@ -406,6 +408,17 @@ const AdminCheckinScreen = ({ navigation }) => {
             </Text>
             <Icon name="arrow-drop-down" size={24} color={COLORS.gray400} />
           </TouchableOpacity>
+        </View>
+
+        {/* Komisi Marketing */}
+        <View style={styles.inputGroup}>
+          <CurrencyInput
+            label="Komisi Marketing"
+            value={formData.marketingCommission}
+            onChangeValue={(value) => setFormData({ ...formData, marketingCommission: value })}
+            placeholder="Masukkan komisi marketing"
+            style={styles.currencyInput}
+          />
         </View>
 
         {/* Catatan */}
@@ -936,6 +949,9 @@ const styles = StyleSheet.create({
     fontSize: SIZES.body,
     color: COLORS.textSecondary,
     marginTop: SIZES.sm,
+  },
+  currencyInput: {
+    borderWidth: 0, // Remove border since CurrencyInput has its own
   },
 });
 
