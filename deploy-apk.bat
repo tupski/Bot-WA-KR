@@ -8,7 +8,7 @@ cd /d "D:\Projects\Bot-WA-KR\mobile\KakaRamaRoom"
 
 set "APK_PATH=android\app\build\outputs\apk\release\app-release.apk"
 set "DEPLOY_DIR=D:\Projects\Bot-WA-KR\deploy"
-set "APK_NAME=KakaRamaRoom-v1.0.0.apk"
+set "APK_NAME=KakaRamaRoom-v2.1.0.apk"
 
 echo [1/5] Check APK file...
 if exist "%APK_PATH%" (

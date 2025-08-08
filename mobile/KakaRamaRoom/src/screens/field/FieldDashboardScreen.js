@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { COLORS, SIZES, CHECKIN_STATUS } from '../../config/constants';
+import NotificationIcon from '../../components/NotificationIcon';
 import AuthService from '../../services/AuthService';
 import CheckinService from '../../services/CheckinService';
 
@@ -259,9 +260,15 @@ const FieldDashboardScreen = ({ navigation }) => {
             </Text>
           )}
         </View>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Icon name="logout" size={24} color={COLORS.background} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <NotificationIcon
+            onPress={() => navigation.navigate('Notifications')}
+            color={COLORS.background}
+          />
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Icon name="logout" size={24} color={COLORS.background} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Quick Stats */}
@@ -411,6 +418,10 @@ const styles = StyleSheet.create({
   },
   headerContent: {
     flex: 1,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   welcomeText: {
     fontSize: SIZES.body,

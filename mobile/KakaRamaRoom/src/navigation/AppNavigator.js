@@ -38,6 +38,10 @@ import AppSettingsScreen from '../screens/shared/AppSettingsScreen';
 import CheckinDetailScreen from '../screens/shared/CheckinDetailScreen';
 import ProfileManagementScreen from '../screens/shared/ProfileManagementScreen';
 import ActivityLogScreen from '../screens/shared/ActivityLogScreen';
+import NotificationsScreen from '../screens/shared/NotificationsScreen';
+
+// Admin Notification Screens
+import AdminBroadcastScreen from '../screens/admin/AdminBroadcastScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -366,6 +370,20 @@ const AppNavigator = () => {
                 headerShown: false,
               }}
             />
+            <Stack.Screen
+              name="Notifications"
+              component={NotificationsScreen}
+              options={{
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="AdminBroadcast"
+              component={AdminBroadcastScreen}
+              options={{
+                headerShown: false,
+              }}
+            />
           </>
         ) : (
           // Field Team Stack
@@ -415,6 +433,13 @@ const AppNavigator = () => {
             <Stack.Screen
               name={SCREENS.CHECKIN_DETAIL}
               component={CheckinDetailScreen}
+              options={{
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="Notifications"
+              component={NotificationsScreen}
               options={{
                 headerShown: false,
               }}

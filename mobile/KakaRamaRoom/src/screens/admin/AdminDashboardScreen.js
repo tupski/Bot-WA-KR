@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { COLORS, SIZES, SCREENS } from '../../config/constants';
+import NotificationIcon from '../../components/NotificationIcon';
 import AuthService from '../../services/AuthService';
 import SyncStatusIndicator from '../../components/SyncStatusIndicator';
 import { useAutoRefresh } from '../../hooks/useRealtime';
@@ -176,6 +177,12 @@ const AdminDashboardScreen = ({ navigation }) => {
       onPress: () => navigation.navigate('AdminSMTPSettings'),
       color: '#FF5722',
     },
+    {
+      title: 'Kirim Notifikasi',
+      icon: 'campaign',
+      onPress: () => navigation.navigate('AdminBroadcast'),
+      color: '#E91E63',
+    },
   ];
 
   return (
@@ -194,6 +201,10 @@ const AdminDashboardScreen = ({ navigation }) => {
         </View>
         <View style={styles.headerActions}>
           <SyncStatusIndicator />
+          <NotificationIcon
+            onPress={() => navigation.navigate('Notifications')}
+            color={COLORS.background}
+          />
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <Icon name="logout" size={24} color={COLORS.background} />
           </TouchableOpacity>
