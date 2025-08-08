@@ -11,7 +11,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import DatabaseManager from '../../config/supabase';
+import FieldTeamService from '../../services/FieldTeamService';
 import PasswordUtils from '../../utils/PasswordUtils';
 import { COLORS, SIZES } from '../../config/constants';
 
@@ -35,8 +35,12 @@ const AdminFieldTeamManagementScreen = ({ navigation }) => {
   const loadFieldTeams = async () => {
     try {
       setLoading(true);
-      const teams = await DatabaseManager.getAllFieldTeams();
-      setFieldTeams(teams);
+      const result = await FieldTeamService.getAllFieldTeams();
+      if (result.success) {
+        setFieldTeams(result.data);
+      } else {
+        Alert.alert('Error', result.message);
+      }
     } catch (error) {
       console.error('Error loading field teams:', error);
       Alert.alert('Error', 'Gagal memuat data tim lapangan');

@@ -1,4 +1,4 @@
-import DatabaseManager from '../config/database';
+import { supabase } from '../config/database';
 import ActivityLogService from './ActivityLogService';
 import { ACTIVITY_ACTIONS } from '../config/constants';
 
@@ -6,31 +6,43 @@ class FieldTeamService {
   // Get all field teams
   async getAllFieldTeams() {
     try {
-      const db = DatabaseManager.getDatabase();
-      const result = await db.executeSql(
-        `SELECT ft.*, 
-                GROUP_CONCAT(a.name) as apartment_names,
-                GROUP_CONCAT(a.id) as apartment_ids
-         FROM field_teams ft
-         LEFT JOIN team_apartment_assignments taa ON ft.id = taa.team_id
-         LEFT JOIN apartments a ON taa.apartment_id = a.id
-         GROUP BY ft.id
-         ORDER BY ft.full_name ASC`
-      );
+      const { data: teams, error } = await supabase
+        .from('field_teams')
+        .select(`
+          *,
+          team_apartment_assignments (
+            apartment_id,
+            apartments (
+              id,
+              name
+            )
+          )
+        `)
+        .order('full_name', { ascending: true });
 
-      const teams = [];
-      for (let i = 0; i < result[0].rows.length; i++) {
-        const team = result[0].rows.item(i);
-        teams.push({
-          ...team,
-          apartmentNames: team.apartment_names ? team.apartment_names.split(',') : [],
-          apartmentIds: team.apartment_ids ? team.apartment_ids.split(',').map(id => parseInt(id)) : [],
-        });
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return { success: true, data: [] };
+        }
+        throw error;
       }
+
+      // Transform data to include apartment names and IDs
+      const transformedTeams = teams.map(team => {
+        const assignments = team.team_apartment_assignments || [];
+        const apartmentNames = assignments.map(a => a.apartments?.name).filter(Boolean);
+        const apartmentIds = assignments.map(a => a.apartments?.id).filter(Boolean);
+
+        return {
+          ...team,
+          apartmentNames,
+          apartmentIds,
+        };
+      });
 
       return {
         success: true,
-        data: teams,
+        data: transformedTeams,
       };
     } catch (error) {
       console.error('Error getting field teams:', error);
@@ -44,35 +56,44 @@ class FieldTeamService {
   // Get field team by ID
   async getFieldTeamById(id) {
     try {
-      const db = DatabaseManager.getDatabase();
-      const result = await db.executeSql(
-        `SELECT ft.*, 
-                GROUP_CONCAT(a.name) as apartment_names,
-                GROUP_CONCAT(a.id) as apartment_ids
-         FROM field_teams ft
-         LEFT JOIN team_apartment_assignments taa ON ft.id = taa.team_id
-         LEFT JOIN apartments a ON taa.apartment_id = a.id
-         WHERE ft.id = ?
-         GROUP BY ft.id`,
-        [id]
-      );
+      const { data: team, error } = await supabase
+        .from('field_teams')
+        .select(`
+          *,
+          team_apartment_assignments (
+            apartment_id,
+            apartments (
+              id,
+              name
+            )
+          )
+        `)
+        .eq('id', id)
+        .single();
 
-      if (result[0].rows.length > 0) {
-        const team = result[0].rows.item(0);
-        return {
-          success: true,
-          data: {
-            ...team,
-            apartmentNames: team.apartment_names ? team.apartment_names.split(',') : [],
-            apartmentIds: team.apartment_ids ? team.apartment_ids.split(',').map(id => parseInt(id)) : [],
-          },
-        };
-      } else {
-        return {
-          success: false,
-          message: 'Tim lapangan tidak ditemukan',
-        };
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return {
+            success: false,
+            message: 'Tim lapangan tidak ditemukan',
+          };
+        }
+        throw error;
       }
+
+      // Transform data to include apartment names and IDs
+      const assignments = team.team_apartment_assignments || [];
+      const apartmentNames = assignments.map(a => a.apartments?.name).filter(Boolean);
+      const apartmentIds = assignments.map(a => a.apartments?.id).filter(Boolean);
+
+      return {
+        success: true,
+        data: {
+          ...team,
+          apartmentNames,
+          apartmentIds,
+        },
+      };
     } catch (error) {
       console.error('Error getting field team by ID:', error);
       return {
