@@ -1,4 +1,4 @@
-import DatabaseManager from '../config/database';
+import { supabase } from '../config/supabase';
 import UnitService from './UnitService';
 import ActivityLogService from './ActivityLogService';
 import { ACTIVITY_ACTIONS, UNIT_STATUS, CHECKIN_STATUS } from '../config/constants';
@@ -14,37 +14,52 @@ class AutoCheckoutService {
    */
   async processAutoCheckout() {
     try {
-      const db = DatabaseManager.getDatabase();
-      
-      // Get checkin yang sudah habis waktu tapi masih aktif
-      const result = await db.executeSql(
-        `SELECT c.*, u.unit_number, a.name as apartment_name
-         FROM checkins c
-         INNER JOIN units u ON c.unit_id = u.id
-         INNER JOIN apartments a ON c.apartment_id = a.id
-         WHERE c.status IN ('active', 'extended') 
-         AND datetime(c.checkout_time) <= datetime('now')
-         ORDER BY c.checkout_time ASC`
-      );
+      console.log('AutoCheckoutService: Processing auto-checkout...');
+      const now = new Date().toISOString();
 
-      const expiredCheckins = [];
-      for (let i = 0; i < result[0].rows.length; i++) {
-        expiredCheckins.push(result[0].rows.item(i));
+      // Get checkin yang sudah habis waktu tapi masih aktif
+      const { data: expiredCheckins, error } = await supabase
+        .from('checkins')
+        .select(`
+          *,
+          units (
+            unit_number,
+            apartments (
+              name
+            )
+          )
+        `)
+        .in('status', ['active', 'extended'])
+        .lte('checkout_time', now)
+        .order('checkout_time', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching expired checkins:', error);
+        return {
+          success: false,
+          message: 'Gagal mengambil data checkin expired',
+        };
       }
 
       let processedCount = 0;
       const processedUnits = [];
 
       // Process setiap checkin yang expired
-      for (const checkin of expiredCheckins) {
+      for (const checkin of expiredCheckins || []) {
         try {
           // Update status checkin menjadi completed
-          await db.executeSql(
-            `UPDATE checkins 
-             SET status = 'completed', updated_at = CURRENT_TIMESTAMP
-             WHERE id = ?`,
-            [checkin.id]
-          );
+          const { error: updateError } = await supabase
+            .from('checkins')
+            .update({
+              status: 'completed',
+              updated_at: now
+            })
+            .eq('id', checkin.id);
+
+          if (updateError) {
+            console.error(`Error updating checkin ${checkin.id}:`, updateError);
+            continue;
+          }
 
           // Update status unit menjadi cleaning
           await UnitService.updateUnitStatus(
@@ -59,20 +74,20 @@ class AutoCheckoutService {
             1, // System user ID
             'system',
             ACTIVITY_ACTIONS.AUTO_CHECKOUT,
-            `Auto-checkout unit ${checkin.unit_number} (${checkin.apartment_name}) - Checkin ID: ${checkin.id}`,
+            `Auto-checkout unit ${checkin.units?.unit_number} (${checkin.units?.apartments?.name}) - Checkin ID: ${checkin.id}`,
             'checkins',
             checkin.id
           );
 
           processedCount++;
           processedUnits.push({
-            unitNumber: checkin.unit_number,
-            apartmentName: checkin.apartment_name,
+            unitNumber: checkin.units?.unit_number,
+            apartmentName: checkin.units?.apartments?.name,
             checkinId: checkin.id,
             checkoutTime: checkin.checkout_time,
           });
 
-          console.log(`Auto-checkout processed: Unit ${checkin.unit_number} (${checkin.apartment_name})`);
+          console.log(`Auto-checkout processed: Unit ${checkin.units?.unit_number} (${checkin.units?.apartments?.name})`);
         } catch (error) {
           console.error(`Error processing auto-checkout for checkin ${checkin.id}:`, error);
         }
@@ -100,31 +115,48 @@ class AutoCheckoutService {
    */
   async getUpcomingExpiredCheckins(minutesAhead = 30) {
     try {
-      const db = DatabaseManager.getDatabase();
-      
-      const result = await db.executeSql(
-        `SELECT c.*, u.unit_number, a.name as apartment_name, ft.full_name as team_name
-         FROM checkins c
-         INNER JOIN units u ON c.unit_id = u.id
-         INNER JOIN apartments a ON c.apartment_id = a.id
-         INNER JOIN field_teams ft ON c.team_id = ft.id
-         WHERE c.status IN ('active', 'extended') 
-         AND datetime(c.checkout_time) BETWEEN datetime('now') AND datetime('now', '+${minutesAhead} minutes')
-         ORDER BY c.checkout_time ASC`
-      );
+      const now = new Date();
+      const futureTime = new Date(now.getTime() + minutesAhead * 60 * 1000);
 
-      const upcomingExpired = [];
-      for (let i = 0; i < result[0].rows.length; i++) {
-        const checkin = result[0].rows.item(i);
-        const checkoutTime = new Date(checkin.checkout_time);
-        const now = new Date();
-        const minutesRemaining = Math.ceil((checkoutTime - now) / (1000 * 60));
-        
-        upcomingExpired.push({
-          ...checkin,
-          minutesRemaining,
-        });
+      const { data: checkins, error } = await supabase
+        .from('checkins')
+        .select(`
+          *,
+          units (
+            unit_number,
+            apartments (
+              name
+            )
+          ),
+          field_teams (
+            full_name
+          )
+        `)
+        .in('status', ['active', 'extended'])
+        .gte('checkout_time', now.toISOString())
+        .lte('checkout_time', futureTime.toISOString())
+        .order('checkout_time', { ascending: true });
+
+      if (error) {
+        console.error('Error getting upcoming expired checkins:', error);
+        return {
+          success: false,
+          message: 'Gagal mengambil data checkin yang akan expired',
+        };
       }
+
+      const upcomingExpired = checkins?.map(checkin => {
+        const checkoutTime = new Date(checkin.checkout_time);
+        const minutesRemaining = Math.ceil((checkoutTime - now) / (1000 * 60));
+
+        return {
+          ...checkin,
+          unit_number: checkin.units?.unit_number,
+          apartment_name: checkin.units?.apartments?.name,
+          team_name: checkin.field_teams?.full_name,
+          minutesRemaining,
+        };
+      }) || [];
 
       return {
         success: true,
@@ -146,56 +178,59 @@ class AutoCheckoutService {
    */
   async getAutoCheckoutStatistics(filters = {}) {
     try {
-      const db = DatabaseManager.getDatabase();
-      
-      let query = `
-        SELECT 
-          COUNT(*) as total_auto_checkouts,
-          DATE(al.created_at) as date,
-          COUNT(DISTINCT al.target_id) as unique_checkins
-        FROM activity_logs al
-        WHERE al.action = '${ACTIVITY_ACTIONS.AUTO_CHECKOUT}'
-      `;
+      console.log('AutoCheckoutService: Getting auto-checkout statistics...');
 
-      const params = [];
+      // Simplified implementation - get activity logs for auto-checkout
+      let query = supabase
+        .from('activity_logs')
+        .select('*')
+        .eq('action', ACTIVITY_ACTIONS.AUTO_CHECKOUT);
 
-      // Filter by date range
       if (filters.startDate) {
-        query += ' AND DATE(al.created_at) >= ?';
-        params.push(filters.startDate);
+        query = query.gte('created_at', filters.startDate);
       }
 
       if (filters.endDate) {
-        query += ' AND DATE(al.created_at) <= ?';
-        params.push(filters.endDate);
+        query = query.lte('created_at', filters.endDate);
       }
 
-      query += ' GROUP BY DATE(al.created_at) ORDER BY date DESC';
+      const { data: logs, error } = await query.order('created_at', { ascending: false });
 
-      const result = await db.executeSql(query, params);
-      const statistics = [];
-
-      for (let i = 0; i < result[0].rows.length; i++) {
-        statistics.push(result[0].rows.item(i));
+      if (error) {
+        console.error('Error getting auto-checkout statistics:', error);
+        return {
+          success: false,
+          message: 'Gagal mengambil statistik auto-checkout',
+        };
       }
 
-      // Get total statistics
-      const totalQuery = `
-        SELECT COUNT(*) as total
-        FROM activity_logs
-        WHERE action = '${ACTIVITY_ACTIONS.AUTO_CHECKOUT}'
-        ${filters.startDate ? 'AND DATE(created_at) >= ?' : ''}
-        ${filters.endDate ? 'AND DATE(created_at) <= ?' : ''}
-      `;
+      // Group by date
+      const dailyStats = {};
+      logs?.forEach(log => {
+        const date = log.created_at.split('T')[0];
+        if (!dailyStats[date]) {
+          dailyStats[date] = {
+            date,
+            total_auto_checkouts: 0,
+            unique_checkins: new Set(),
+          };
+        }
+        dailyStats[date].total_auto_checkouts++;
+        if (log.related_id) {
+          dailyStats[date].unique_checkins.add(log.related_id);
+        }
+      });
 
-      const totalResult = await db.executeSql(totalQuery, params);
-      const totalAutoCheckouts = totalResult[0].rows.item(0).total;
+      const dailyStatistics = Object.values(dailyStats).map(stat => ({
+        ...stat,
+        unique_checkins: stat.unique_checkins.size,
+      }));
 
       return {
         success: true,
         data: {
-          dailyStatistics: statistics,
-          totalAutoCheckouts,
+          dailyStatistics,
+          totalAutoCheckouts: logs?.length || 0,
         },
       };
     } catch (error) {
@@ -214,34 +249,45 @@ class AutoCheckoutService {
    */
   async simulateAutoCheckout(checkinId) {
     try {
-      const db = DatabaseManager.getDatabase();
-      
-      // Get checkin data
-      const result = await db.executeSql(
-        `SELECT c.*, u.unit_number, a.name as apartment_name
-         FROM checkins c
-         INNER JOIN units u ON c.unit_id = u.id
-         INNER JOIN apartments a ON c.apartment_id = a.id
-         WHERE c.id = ? AND c.status IN ('active', 'extended')`,
-        [checkinId]
-      );
+      console.log('AutoCheckoutService: Simulating auto-checkout for checkin:', checkinId);
 
-      if (result[0].rows.length === 0) {
+      // Get checkin data
+      const { data: checkin, error } = await supabase
+        .from('checkins')
+        .select(`
+          *,
+          units (
+            unit_number,
+            apartments (
+              name
+            )
+          )
+        `)
+        .eq('id', checkinId)
+        .in('status', ['active', 'extended'])
+        .single();
+
+      if (error || !checkin) {
         return {
           success: false,
           message: 'Checkin tidak ditemukan atau sudah selesai',
         };
       }
 
-      const checkin = result[0].rows.item(0);
+      const now = new Date().toISOString();
 
       // Update status checkin menjadi completed
-      await db.executeSql(
-        `UPDATE checkins 
-         SET status = 'completed', updated_at = CURRENT_TIMESTAMP
-         WHERE id = ?`,
-        [checkinId]
-      );
+      const { error: updateError } = await supabase
+        .from('checkins')
+        .update({
+          status: 'completed',
+          updated_at: now
+        })
+        .eq('id', checkinId);
+
+      if (updateError) {
+        throw updateError;
+      }
 
       // Update status unit menjadi cleaning
       await UnitService.updateUnitStatus(
@@ -256,17 +302,17 @@ class AutoCheckoutService {
         1, // System user ID
         'system',
         ACTIVITY_ACTIONS.AUTO_CHECKOUT,
-        `Simulasi auto-checkout unit ${checkin.unit_number} (${checkin.apartment_name}) - Checkin ID: ${checkinId}`,
+        `Simulasi auto-checkout unit ${checkin.units?.unit_number} (${checkin.units?.apartments?.name}) - Checkin ID: ${checkinId}`,
         'checkins',
         checkinId
       );
 
       return {
         success: true,
-        message: `Simulasi auto-checkout berhasil untuk unit ${checkin.unit_number}`,
+        message: `Simulasi auto-checkout berhasil untuk unit ${checkin.units?.unit_number}`,
         data: {
-          unitNumber: checkin.unit_number,
-          apartmentName: checkin.apartment_name,
+          unitNumber: checkin.units?.unit_number,
+          apartmentName: checkin.units?.apartments?.name,
           checkinId,
         },
       };

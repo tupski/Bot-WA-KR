@@ -284,15 +284,19 @@ class ApartmentService {
   // Delete apartment
   async deleteApartment(id, userId) {
     try {
-      const db = DatabaseManager.getDatabase();
+      console.log('ApartmentService: Deleting apartment:', id);
 
       // Check if apartment has units
-      const unitsResult = await db.executeSql(
-        'SELECT COUNT(*) as count FROM units WHERE apartment_id = ?',
-        [id]
-      );
+      const { data: units, error: unitsError } = await supabase
+        .from('units')
+        .select('id', { count: 'exact', head: true })
+        .eq('apartment_id', id);
 
-      if (unitsResult[0].rows.item(0).count > 0) {
+      if (unitsError) {
+        throw unitsError;
+      }
+
+      if (units && units.length > 0) {
         return {
           success: false,
           message: 'Tidak dapat menghapus apartemen yang masih memiliki unit',
@@ -300,12 +304,16 @@ class ApartmentService {
       }
 
       // Check if apartment has team assignments
-      const assignmentsResult = await db.executeSql(
-        'SELECT COUNT(*) as count FROM team_apartment_assignments WHERE apartment_id = ?',
-        [id]
-      );
+      const { data: assignments, error: assignmentsError } = await supabase
+        .from('team_apartment_assignments')
+        .select('id', { count: 'exact', head: true })
+        .eq('apartment_id', id);
 
-      if (assignmentsResult[0].rows.item(0).count > 0) {
+      if (assignmentsError) {
+        throw assignmentsError;
+      }
+
+      if (assignments && assignments.length > 0) {
         return {
           success: false,
           message: 'Tidak dapat menghapus apartemen yang masih memiliki assignment tim',
@@ -313,47 +321,43 @@ class ApartmentService {
       }
 
       // Get apartment name for logging
-      const apartmentResult = await db.executeSql(
-        'SELECT name, code FROM apartments WHERE id = ?',
-        [id]
-      );
+      const { data: apartment, error: apartmentError } = await supabase
+        .from('apartments')
+        .select('name, code')
+        .eq('id', id)
+        .single();
 
-      if (apartmentResult[0].rows.length === 0) {
+      if (apartmentError || !apartment) {
         return {
           success: false,
           message: 'Apartemen tidak ditemukan',
         };
       }
-
-      const apartment = apartmentResult[0].rows.item(0);
 
       // Delete apartment
-      const result = await db.executeSql(
-        'DELETE FROM apartments WHERE id = ?',
-        [id]
+      const { error: deleteError } = await supabase
+        .from('apartments')
+        .delete()
+        .eq('id', id);
+
+      if (deleteError) {
+        throw deleteError;
+      }
+
+      // Log activity
+      await ActivityLogService.logActivity(
+        userId,
+        'admin',
+        ACTIVITY_ACTIONS.DELETE_APARTMENT,
+        `Menghapus apartemen: ${apartment.name} (${apartment.code})`,
+        'apartments',
+        id
       );
 
-      if (result[0].rowsAffected > 0) {
-        // Log activity
-        await ActivityLogService.logActivity(
-          userId,
-          'admin',
-          ACTIVITY_ACTIONS.DELETE_APARTMENT,
-          `Menghapus apartemen: ${apartment.name} (${apartment.code})`,
-          'apartments',
-          id
-        );
-
-        return {
-          success: true,
-          message: 'Apartemen berhasil dihapus',
-        };
-      } else {
-        return {
-          success: false,
-          message: 'Apartemen tidak ditemukan',
-        };
-      }
+      return {
+        success: true,
+        message: 'Apartemen berhasil dihapus',
+      };
     } catch (error) {
       console.error('Error deleting apartment:', error);
       return {

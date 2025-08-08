@@ -129,6 +129,7 @@ export const ACTIVITY_ACTIONS = {
   CREATE_CHECKIN: 'create_checkin',
   EXTEND_CHECKIN: 'extend_checkin',
   EARLY_CHECKOUT: 'early_checkout',
+  AUTO_CHECKOUT: 'auto_checkout',
   CREATE_APARTMENT: 'create_apartment',
   UPDATE_APARTMENT: 'update_apartment',
   DELETE_APARTMENT: 'delete_apartment',
