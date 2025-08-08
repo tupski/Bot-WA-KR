@@ -12,8 +12,6 @@ import {
   FlatList,
   Image,
 } from 'react-native';
-import DocumentPicker from 'react-native-document-picker';
-
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { COLORS, SIZES } from '../../config/constants';
 import ApartmentService from '../../services/ApartmentService';
@@ -142,21 +140,26 @@ const AdminCheckinScreen = ({ navigation }) => {
   };
 
   // Payment proof functionality
-  const selectPaymentProof = async () => {
-    try {
-      const result = await DocumentPicker.pick({
-        type: [DocumentPicker.types.images],
-        allowMultiSelection: false,
-      });
+  const selectPaymentProof = () => {
+    Alert.alert(
+      'Pilih Bukti Pembayaran',
+      'Pilih sumber gambar',
+      [
+        { text: 'Batal', style: 'cancel' },
+        { text: 'Kamera', onPress: () => openCamera() },
+        { text: 'Galeri', onPress: () => openGallery() },
+      ]
+    );
+  };
 
-      if (result && result[0]) {
-        setPaymentProof(result[0]);
-      }
-    } catch (error) {
-      if (!DocumentPicker.isCancel(error)) {
-        Alert.alert('Error', 'Gagal memilih file bukti pembayaran');
-      }
-    }
+  const openCamera = () => {
+    // Simulasi camera picker - dalam implementasi nyata gunakan react-native-image-picker
+    Alert.alert('Info', 'Fitur kamera akan tersedia setelah instalasi react-native-image-picker');
+  };
+
+  const openGallery = () => {
+    // Simulasi gallery picker - dalam implementasi nyata gunakan react-native-image-picker
+    Alert.alert('Info', 'Fitur galeri akan tersedia setelah instalasi react-native-image-picker');
   };
 
   const removePaymentProof = () => {
@@ -371,7 +374,7 @@ const AdminCheckinScreen = ({ navigation }) => {
               <View style={styles.paymentProofInfo}>
                 <Icon name="attach-file" size={20} color={COLORS.primary} />
                 <Text style={styles.paymentProofName} numberOfLines={1}>
-                  {paymentProof.name}
+                  {paymentProof.name || 'Bukti pembayaran dipilih'}
                 </Text>
               </View>
               <TouchableOpacity
