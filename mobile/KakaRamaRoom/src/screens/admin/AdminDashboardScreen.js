@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { COLORS, SIZES } from '../../config/constants';
@@ -38,10 +39,26 @@ const AdminDashboardScreen = ({ navigation }) => {
   };
 
   const handleLogout = async () => {
-    const result = await AuthService.logout();
-    if (result.success) {
-      navigation.replace('Login');
-    }
+    Alert.alert(
+      'Konfirmasi Logout',
+      'Apakah Anda yakin ingin keluar dari aplikasi?',
+      [
+        {
+          text: 'Batal',
+          style: 'cancel',
+        },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            const result = await AuthService.logout();
+            if (result.success) {
+              navigation.replace('Login');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const menuItems = [
@@ -234,14 +251,14 @@ const styles = StyleSheet.create({
     padding: SIZES.md,
     alignItems: 'center',
     justifyContent: 'center',
-    width: '48%', // 2 columns with some spacing
+    width: '31%', // 3 columns with some spacing
     marginBottom: SIZES.md,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    minHeight: 120,
+    minHeight: 100,
   },
   menuGridIcon: {
     width: 64,

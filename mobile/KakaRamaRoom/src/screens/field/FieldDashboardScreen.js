@@ -160,10 +160,26 @@ const FieldDashboardScreen = ({ navigation }) => {
   };
 
   const handleLogout = async () => {
-    const result = await AuthService.logout();
-    if (result.success) {
-      navigation.replace('Login');
-    }
+    Alert.alert(
+      'Konfirmasi Logout',
+      'Apakah Anda yakin ingin keluar dari aplikasi?',
+      [
+        {
+          text: 'Batal',
+          style: 'cancel',
+        },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            const result = await AuthService.logout();
+            if (result.success) {
+              navigation.replace('Login');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const quickActions = [

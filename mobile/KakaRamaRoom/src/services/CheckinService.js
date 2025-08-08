@@ -205,33 +205,44 @@ class CheckinService {
    */
   async earlyCheckout(checkinId, userId, userType = 'field_team') {
     try {
-      const db = DatabaseManager.getDatabase();
+      console.log('CheckinService: Processing early checkout for:', checkinId);
 
       // Get checkin data
-      const checkinResult = await db.executeSql(
-        'SELECT * FROM checkins WHERE id = ? AND status IN (?, ?)',
-        [checkinId, CHECKIN_STATUS.ACTIVE, CHECKIN_STATUS.EXTENDED]
-      );
+      const { data: checkin, error: checkinError } = await supabase
+        .from('checkins')
+        .select('*')
+        .eq('id', checkinId)
+        .in('status', [CHECKIN_STATUS.ACTIVE, CHECKIN_STATUS.EXTENDED])
+        .single();
 
-      if (checkinResult[0].rows.length === 0) {
+      if (checkinError || !checkin) {
         return {
           success: false,
           message: 'Checkin tidak ditemukan atau sudah selesai',
         };
       }
 
-      const checkin = checkinResult[0].rows.item(0);
+      const now = new Date().toISOString();
 
       // Update status checkin menjadi early_checkout
-      await db.executeSql(
-        `UPDATE checkins 
-         SET status = 'early_checkout', updated_at = CURRENT_TIMESTAMP
-         WHERE id = ?`,
-        [checkinId]
-      );
+      const { error: updateError } = await supabase
+        .from('checkins')
+        .update({
+          status: CHECKIN_STATUS.EARLY_CHECKOUT,
+          updated_at: now
+        })
+        .eq('id', checkinId);
 
-      // Update status unit menjadi cleaning
+      if (updateError) {
+        throw updateError;
+      }
+
+      // Update status unit menjadi cleaning dengan timer
       await UnitService.updateUnitStatus(checkin.unit_id, UNIT_STATUS.CLEANING, userId, userType);
+
+      // Start cleaning timer
+      const CleaningService = require('./CleaningService').default;
+      await CleaningService.startCleaning(checkin.unit_id, userId, userType);
 
       // Log aktivitas
       await ActivityLogService.logActivity(
@@ -245,7 +256,7 @@ class CheckinService {
 
       return {
         success: true,
-        message: 'Early checkout berhasil',
+        message: 'Early checkout berhasil, unit dalam proses cleaning',
       };
     } catch (error) {
       console.error('Error early checkout:', error);

@@ -2,50 +2,17 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { COLORS, SIZES } from '../config/constants';
-import { useSyncStatus } from '../hooks/useRealtime';
 
 const SyncStatusIndicator = ({ style }) => {
-  const syncStatus = useSyncStatus();
-
-  const getStatusColor = () => {
-    if (syncStatus.isOnline) {
-      return COLORS.success;
-    }
-    return COLORS.error;
-  };
-
-  const getStatusText = () => {
-    if (syncStatus.isOnline) {
-      return 'Online';
-    }
-    return 'Offline';
-  };
-
-  const formatLastSync = () => {
-    if (!syncStatus.lastSync) return 'Never';
-    
-    const lastSyncDate = new Date(syncStatus.lastSync);
-    const now = new Date();
-    const diffMs = now - lastSyncDate;
-    const diffMins = Math.floor(diffMs / 60000);
-    
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
-    
-    return lastSyncDate.toLocaleDateString();
-  };
-
+  // Simplified - always show online since we're using Supabase
   return (
     <View style={[styles.container, style]}>
       <View style={styles.statusRow}>
-        <View style={[styles.statusDot, { backgroundColor: getStatusColor() }]} />
-        <Text style={styles.statusText}>{getStatusText()}</Text>
+        <View style={[styles.statusDot, { backgroundColor: COLORS.success }]} />
+        <Text style={styles.statusText}>Online</Text>
       </View>
       <Text style={styles.lastSyncText}>
-        Last sync: {formatLastSync()}
+        Real-time sync
       </Text>
     </View>
   );

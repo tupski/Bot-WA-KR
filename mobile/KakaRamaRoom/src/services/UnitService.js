@@ -49,6 +49,55 @@ class UnitService {
     }
   }
 
+  // Get available units only (untuk checkin)
+  async getAvailableUnits(apartmentId = null) {
+    try {
+      let query = supabase
+        .from('units')
+        .select(`
+          *,
+          apartments (
+            name,
+            code
+          )
+        `)
+        .eq('status', UNIT_STATUS.AVAILABLE)
+        .order('unit_number', { ascending: true });
+
+      if (apartmentId) {
+        query = query.eq('apartment_id', apartmentId);
+      }
+
+      const { data: units, error } = await query;
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          return { success: true, data: [] };
+        }
+        throw error;
+      }
+
+      // Transform data to match expected format
+      const transformedUnits = units?.map(unit => ({
+        ...unit,
+        apartment_name: unit.apartments?.name,
+        apartment_code: unit.apartments?.code,
+        isSelectable: true, // Available units are always selectable
+      })) || [];
+
+      return {
+        success: true,
+        data: transformedUnits,
+      };
+    } catch (error) {
+      console.error('Error getting available units:', error);
+      return {
+        success: false,
+        message: 'Gagal mengambil data unit tersedia',
+      };
+    }
+  }
+
   // Get units by apartment ID
   async getUnitsByApartmentId(apartmentId) {
     try {
