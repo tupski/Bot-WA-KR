@@ -112,18 +112,12 @@ class AuthService {
   }
 
   // Login untuk Tim Lapangan (menerima username/email/phone)
-  async loginFieldTeam(email, password) {
+  async loginFieldTeam(identifier, password) {
     try {
-      console.log('AuthService: Attempting field team login for:', email);
+      console.log('AuthService: Attempting field team login for:', identifier);
 
-      // Sign in ke Supabase Auth
-      const authRes = await this.signInSupabase(email, password);
-      if (!authRes.success) {
-        return authRes;
-      }
-
-      // Ambil profil field team berdasarkan email
-      const { data: ftRow, error: ftError } = await supabase
+      // Coba cari field team berdasarkan username, email, atau phone
+      const { data: ftRows, error: ftError } = await supabase
         .from('field_teams')
         .select(`
           *,
@@ -135,69 +129,58 @@ class AuthService {
             )
           )
         `)
-        .eq('email', email)
-        .eq('status', 'active')
-        .single();
+        .or(`username.eq.${identifier},email.eq.${identifier},phone.eq.${identifier}`)
+        .eq('status', 'active');
 
-      console.log('AuthService: Field team query result:', { ftRow, ftError });
+      console.log('AuthService: Field team query result:', { ftRows, ftError });
 
       if (ftError) {
-        if (ftError.code === 'PGRST116') {
-          return { success: false, message: 'Akun tidak ditemukan/aktif' };
-        }
         throw ftError;
       }
 
-      if (ftRow) {
-        // Wajib ada email untuk Supabase Auth
-        if (!ftRow.email) {
-          return { success: false, message: 'Email tim lapangan tidak terdaftar' };
-        }
-
-        // Sign in ke Supabase Auth
-        const authRes = await this.signInSupabase(ftRow.email, password);
-        if (!authRes.success) {
-          return authRes;
-        }
-
-        // Extract apartment data
-        const apartmentIds = ftRow.team_apartment_assignments?.map(
-          assignment => assignment.apartments?.id
-        ).filter(Boolean) || [];
-
-        const apartmentNames = ftRow.team_apartment_assignments?.map(
-          assignment => assignment.apartments?.name
-        ).filter(Boolean) || [];
-
-        const userData = {
-          id: ftRow.id,
-          username: ftRow.username || ftRow.phone || ftRow.email,
-          fullName: ftRow.full_name,
-          email: ftRow.email || null,
-          phone: ftRow.phone || null,
-          role: USER_ROLES.FIELD_TEAM,
-          apartmentIds,
-          apartmentNames,
-          loginTime: new Date().toISOString(),
-        };
-
-        await this.setCurrentUser(userData);
-        await this.startSession();
-
-        await ActivityLogService.logActivity(
-          ftRow.id,
-          USER_ROLES.FIELD_TEAM,
-          'login',
-          `Tim lapangan ${userData.username} berhasil login`
-        );
-
-        return { success: true, user: userData };
-      } else {
-        return {
-          success: false,
-          message: 'Nomor WhatsApp tidak ditemukan atau akun tidak aktif',
-        };
+      if (!ftRows || ftRows.length === 0) {
+        return { success: false, message: 'Akun tidak ditemukan atau tidak aktif' };
       }
+
+      const ftRow = ftRows[0]; // Ambil yang pertama jika ada multiple match
+
+      // Verifikasi password (untuk sementara plain text, nanti bisa di-hash)
+      if (ftRow.password !== password) {
+        return { success: false, message: 'Password salah' };
+      }
+
+      // Extract apartment data
+      const apartmentIds = ftRow.team_apartment_assignments?.map(
+        assignment => assignment.apartments?.id
+      ).filter(Boolean) || [];
+
+      const apartmentNames = ftRow.team_apartment_assignments?.map(
+        assignment => assignment.apartments?.name
+      ).filter(Boolean) || [];
+
+      const userData = {
+        id: ftRow.id,
+        username: ftRow.username || ftRow.phone || ftRow.email,
+        fullName: ftRow.full_name,
+        email: ftRow.email || null,
+        phone: ftRow.phone || null,
+        role: USER_ROLES.FIELD_TEAM,
+        apartmentIds,
+        apartmentNames,
+        loginTime: new Date().toISOString(),
+      };
+
+      await this.setCurrentUser(userData);
+      await this.startSession();
+
+      await ActivityLogService.logActivity(
+        ftRow.id,
+        USER_ROLES.FIELD_TEAM,
+        'login',
+        `Tim lapangan ${userData.username} berhasil login`
+      );
+
+      return { success: true, user: userData };
     } catch (error) {
       console.error('Login field team error:', error);
       return {

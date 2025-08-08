@@ -109,13 +109,17 @@ class FieldTeamService {
       const { username, password, fullName, phone, email, apartmentIds } = teamData;
 
       // Check if username already exists
-      const db = DatabaseManager.getDatabase();
-      const existingResult = await db.executeSql(
-        'SELECT id FROM field_teams WHERE username = ?',
-        [username]
-      );
+      const { data: existing, error: checkError } = await supabase
+        .from('field_teams')
+        .select('id')
+        .eq('username', username)
+        .single();
 
-      if (existingResult[0].rows.length > 0) {
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      if (existing) {
         return {
           success: false,
           message: 'Username sudah digunakan',
@@ -123,13 +127,24 @@ class FieldTeamService {
       }
 
       // Insert new field team
-      const result = await db.executeSql(
-        `INSERT INTO field_teams (username, password, full_name, phone, email, status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-        [username, password, fullName, phone, email]
-      );
+      const { data: newTeam, error: insertError } = await supabase
+        .from('field_teams')
+        .insert([{
+          username,
+          password,
+          full_name: fullName,
+          phone,
+          email,
+          status: 'active'
+        }])
+        .select()
+        .single();
 
-      const teamId = result[0].insertId;
+      if (insertError) {
+        throw insertError;
+      }
+
+      const teamId = newTeam.id;
 
       // Assign apartments if provided
       if (apartmentIds && apartmentIds.length > 0) {
@@ -140,7 +155,7 @@ class FieldTeamService {
       await ActivityLogService.logActivity(
         userId,
         'admin',
-        ACTIVITY_ACTIONS.CREATE_TEAM,
+        'create_team',
         `Membuat tim lapangan baru: ${fullName} (${username})`,
         'field_teams',
         teamId
@@ -166,36 +181,51 @@ class FieldTeamService {
       const { username, password, fullName, phone, email, status, apartmentIds } = teamData;
 
       // Check if username already exists (exclude current team)
-      const db = DatabaseManager.getDatabase();
-      const existingResult = await db.executeSql(
-        'SELECT id FROM field_teams WHERE username = ? AND id != ?',
-        [username, id]
-      );
+      const { data: existing, error: checkError } = await supabase
+        .from('field_teams')
+        .select('id')
+        .eq('username', username)
+        .neq('id', id)
+        .single();
 
-      if (existingResult[0].rows.length > 0) {
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      if (existing) {
         return {
           success: false,
           message: 'Username sudah digunakan',
         };
       }
 
-      // Update field team
-      let updateQuery = `UPDATE field_teams 
-                        SET username = ?, full_name = ?, phone = ?, email = ?, status = ?, updated_at = CURRENT_TIMESTAMP
-                        WHERE id = ?`;
-      let updateParams = [username, fullName, phone, email, status, id];
+      // Prepare update data
+      let updateData = {
+        username,
+        full_name: fullName,
+        phone,
+        email,
+        status
+      };
 
       // Update password if provided
       if (password && password.trim() !== '') {
-        updateQuery = `UPDATE field_teams 
-                      SET username = ?, password = ?, full_name = ?, phone = ?, email = ?, status = ?, updated_at = CURRENT_TIMESTAMP
-                      WHERE id = ?`;
-        updateParams = [username, password, fullName, phone, email, status, id];
+        updateData.password = password;
       }
 
-      const result = await db.executeSql(updateQuery, updateParams);
+      // Update field team
+      const { data: updatedTeam, error: updateError } = await supabase
+        .from('field_teams')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
 
-      if (result[0].rowsAffected > 0) {
+      if (updateError) {
+        throw updateError;
+      }
+
+      if (updatedTeam) {
         // Update apartment assignments
         if (apartmentIds !== undefined) {
           await this.updateApartmentAssignments(id, apartmentIds);
@@ -205,7 +235,7 @@ class FieldTeamService {
         await ActivityLogService.logActivity(
           userId,
           'admin',
-          ACTIVITY_ACTIONS.UPDATE_TEAM,
+          'update_team',
           `Memperbarui tim lapangan: ${fullName} (${username})`,
           'field_teams',
           id
@@ -302,15 +332,22 @@ class FieldTeamService {
   // Assign apartments to team
   async assignApartments(teamId, apartmentIds) {
     try {
-      const db = DatabaseManager.getDatabase();
+      // Prepare assignments data
+      const assignments = apartmentIds.map(apartmentId => ({
+        team_id: teamId,
+        apartment_id: apartmentId
+      }));
 
-      // Insert assignments
-      for (const apartmentId of apartmentIds) {
-        await db.executeSql(
-          `INSERT OR IGNORE INTO team_apartment_assignments (team_id, apartment_id, assigned_at)
-           VALUES (?, ?, CURRENT_TIMESTAMP)`,
-          [teamId, apartmentId]
-        );
+      // Insert assignments (upsert to handle duplicates)
+      const { error } = await supabase
+        .from('team_apartment_assignments')
+        .upsert(assignments, {
+          onConflict: 'team_id,apartment_id',
+          ignoreDuplicates: true
+        });
+
+      if (error) {
+        throw error;
       }
 
       return { success: true };
@@ -326,13 +363,15 @@ class FieldTeamService {
   // Update apartment assignments
   async updateApartmentAssignments(teamId, apartmentIds) {
     try {
-      const db = DatabaseManager.getDatabase();
-
       // Delete existing assignments
-      await db.executeSql(
-        'DELETE FROM team_apartment_assignments WHERE team_id = ?',
-        [teamId]
-      );
+      const { error: deleteError } = await supabase
+        .from('team_apartment_assignments')
+        .delete()
+        .eq('team_id', teamId);
+
+      if (deleteError) {
+        throw deleteError;
+      }
 
       // Insert new assignments
       if (apartmentIds && apartmentIds.length > 0) {
@@ -352,31 +391,37 @@ class FieldTeamService {
   // Get team statistics
   async getTeamStatistics() {
     try {
-      const db = DatabaseManager.getDatabase();
-      
       // Get total teams
-      const totalResult = await db.executeSql(
-        'SELECT COUNT(*) as total FROM field_teams'
-      );
+      const { count: total, error: totalError } = await supabase
+        .from('field_teams')
+        .select('*', { count: 'exact', head: true });
+
+      if (totalError) throw totalError;
 
       // Get active teams
-      const activeResult = await db.executeSql(
-        "SELECT COUNT(*) as active FROM field_teams WHERE status = 'active'"
-      );
+      const { count: active, error: activeError } = await supabase
+        .from('field_teams')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'active');
+
+      if (activeError) throw activeError;
 
       // Get teams with assignments
-      const withAssignmentsResult = await db.executeSql(
-        `SELECT COUNT(DISTINCT ft.id) as with_assignments 
-         FROM field_teams ft 
-         INNER JOIN team_apartment_assignments taa ON ft.id = taa.team_id`
-      );
+      const { data: withAssignmentsData, error: assignmentsError } = await supabase
+        .from('team_apartment_assignments')
+        .select('team_id')
+        .distinct();
+
+      if (assignmentsError) throw assignmentsError;
+
+      const withAssignments = withAssignmentsData?.length || 0;
 
       return {
         success: true,
         data: {
-          total: totalResult[0].rows.item(0).total,
-          active: activeResult[0].rows.item(0).active,
-          withAssignments: withAssignmentsResult[0].rows.item(0).with_assignments,
+          total: total || 0,
+          active: active || 0,
+          withAssignments,
         },
       };
     } catch (error) {
@@ -391,33 +436,41 @@ class FieldTeamService {
   // Search field teams
   async searchFieldTeams(searchTerm) {
     try {
-      const db = DatabaseManager.getDatabase();
-      const result = await db.executeSql(
-        `SELECT ft.*, 
-                GROUP_CONCAT(a.name) as apartment_names,
-                GROUP_CONCAT(a.id) as apartment_ids
-         FROM field_teams ft
-         LEFT JOIN team_apartment_assignments taa ON ft.id = taa.team_id
-         LEFT JOIN apartments a ON taa.apartment_id = a.id
-         WHERE ft.full_name LIKE ? OR ft.username LIKE ? OR ft.phone LIKE ?
-         GROUP BY ft.id
-         ORDER BY ft.full_name ASC`,
-        [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`]
-      );
+      const { data: teams, error } = await supabase
+        .from('field_teams')
+        .select(`
+          *,
+          team_apartment_assignments (
+            apartment_id,
+            apartments (
+              id,
+              name
+            )
+          )
+        `)
+        .or(`full_name.ilike.%${searchTerm}%,username.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%`)
+        .order('full_name', { ascending: true });
 
-      const teams = [];
-      for (let i = 0; i < result[0].rows.length; i++) {
-        const team = result[0].rows.item(i);
-        teams.push({
-          ...team,
-          apartmentNames: team.apartment_names ? team.apartment_names.split(',') : [],
-          apartmentIds: team.apartment_ids ? team.apartment_ids.split(',').map(id => parseInt(id)) : [],
-        });
+      if (error) {
+        throw error;
       }
+
+      // Transform data to include apartment names and IDs
+      const transformedTeams = teams?.map(team => {
+        const assignments = team.team_apartment_assignments || [];
+        const apartmentNames = assignments.map(a => a.apartments?.name).filter(Boolean);
+        const apartmentIds = assignments.map(a => a.apartments?.id).filter(Boolean);
+
+        return {
+          ...team,
+          apartmentNames,
+          apartmentIds,
+        };
+      }) || [];
 
       return {
         success: true,
-        data: teams,
+        data: transformedTeams,
       };
     } catch (error) {
       console.error('Error searching field teams:', error);
