@@ -1,7 +1,7 @@
 // App Constants
 export const APP_CONFIG = {
   name: 'KakaRama Room',
-  version: '2.0.0',
+  version: '2.1.0',
   company: 'KakaRama Room',
   website: 'https://kakaramaroom.com',
   logo: require('../assets/images/logo-placeholder.png'), // Placeholder
@@ -9,7 +9,7 @@ export const APP_CONFIG = {
 
 export const APP_INFO = {
   name: 'KakaRama Room',
-  version: '2.0.0',
+  version: '2.1.0',
   buildNumber: '20250108',
   developer: 'Angga Artupas',
   description: 'Aplikasi manajemen kamar apartemen untuk check-in, check-out, dan monitoring unit secara real-time.',
@@ -24,6 +24,23 @@ export const APP_INFO = {
     'Business Day Reporting'
   ],
   changelog: [
+    {
+      version: '2.1.0',
+      date: '8 Januari 2025',
+      changes: [
+        'Perbaiki force close saat melihat data checkin',
+        'Perbaiki pengambilan data tim lapangan dari Supabase',
+        'Perbaiki navigasi setelah login dan logout',
+        'Perbaiki log aktivitas di pengaturan admin',
+        'Perbaiki force close saat admin input data checkin',
+        'Perbaiki error "Gagal memuat data apartemen"',
+        'Perbaiki error "Gagal membuat unit"',
+        'Migrasi lengkap dari SQLite ke Supabase',
+        'Tambah error handling dan null safety',
+        'Perbaiki validasi input dan feedback error',
+        'Optimasi performa dan stabilitas aplikasi'
+      ]
+    },
     {
       version: '2.0.0',
       date: '8 Januari 2025',
