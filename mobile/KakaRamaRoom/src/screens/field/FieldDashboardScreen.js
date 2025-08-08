@@ -254,22 +254,21 @@ const FieldDashboardScreen = ({ navigation }) => {
       {/* Quick Actions */}
       <View style={styles.menuContainer}>
         <Text style={styles.sectionTitle}>Aksi Cepat</Text>
-        {quickActions.map((item, index) => (
-          <TouchableOpacity
-            key={index}
-            style={styles.menuItem}
-            onPress={item.onPress}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: item.color }]}>
-              <Icon name={item.icon} size={24} color={COLORS.background} />
-            </View>
-            <View style={styles.menuContent}>
-              <Text style={styles.menuTitle}>{item.title}</Text>
-              <Text style={styles.menuSubtitle}>{item.subtitle}</Text>
-            </View>
-            <Icon name="chevron-right" size={24} color={COLORS.gray400} />
-          </TouchableOpacity>
-        ))}
+        <View style={styles.gridContainer}>
+          {quickActions.map((item, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.gridItem}
+              onPress={item.onPress}
+            >
+              <View style={[styles.gridIcon, { backgroundColor: item.color }]}>
+                <Icon name={item.icon} size={28} color={COLORS.background} />
+              </View>
+              <Text style={styles.gridTitle}>{item.title}</Text>
+              <Text style={styles.gridSubtitle}>{item.subtitle}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
       {/* Active Checkins */}
@@ -581,6 +580,46 @@ const styles = StyleSheet.create({
     color: COLORS.background,
     fontWeight: '600',
     marginLeft: SIZES.xs,
+  },
+  // Grid styles for quick actions
+  gridContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: SIZES.sm,
+  },
+  gridItem: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    borderRadius: SIZES.radius,
+    padding: SIZES.md,
+    marginHorizontal: SIZES.xs,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  gridIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SIZES.sm,
+  },
+  gridTitle: {
+    fontSize: SIZES.body,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    textAlign: 'center',
+    marginBottom: SIZES.xs,
+  },
+  gridSubtitle: {
+    fontSize: SIZES.caption,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 16,
   },
 });
 
