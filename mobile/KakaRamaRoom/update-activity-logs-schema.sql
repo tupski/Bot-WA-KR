@@ -63,9 +63,9 @@ SELECT
     u.unit_number,
     u.status as unit_status,
     CASE
-        WHEN al.user_type = 'admin' THEN 'Admin'
-        WHEN al.user_type = 'field_team' THEN 'Tim Lapangan'
-        ELSE al.user_type
+        WHEN al.user_type = 'admin' THEN 'Administrator'::text
+        WHEN al.user_type = 'field_team' THEN 'Tim Lapangan'::text
+        ELSE al.user_type::text
     END as user_type_label,
     DATE(al.created_at) as activity_date,
     TO_CHAR(al.created_at AT TIME ZONE 'Asia/Jakarta', 'HH24:MI:SS') as activity_time,

@@ -109,22 +109,22 @@ class ActivityLogService {
         return {
           fullName: userData.full_name || userData.username,
           username: userData.username,
-          role: userType === 'admin' ? 'Administrator' : 'Tim Lapangan',
+          role: userType === 'admin' ? 'Admin' : 'Tim Lapangan',
         };
       }
 
       // Ultimate fallback
       return {
-        fullName: userType === 'admin' ? 'Administrator' : 'Tim Lapangan',
+        fullName: userType === 'admin' ? 'Admin' : 'Tim Lapangan',
         username: `user_${userId}`,
-        role: userType === 'admin' ? 'Administrator' : 'Tim Lapangan',
+        role: userType === 'admin' ? 'Admin' : 'Tim Lapangan',
       };
     } catch (error) {
       console.error('Error getting user info for logging:', error);
       return {
-        fullName: userType === 'admin' ? 'Administrator' : 'Tim Lapangan',
+        fullName: userType === 'admin' ? 'Admin' : 'Tim Lapangan',
         username: `user_${userId}`,
-        role: userType === 'admin' ? 'Administrator' : 'Tim Lapangan',
+        role: userType === 'admin' ? 'Admin' : 'Tim Lapangan',
       };
     }
   }
