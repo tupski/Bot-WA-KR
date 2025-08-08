@@ -94,24 +94,9 @@ const LoginScreen = ({ navigation }) => {
       if (result && result.success) {
         console.log('Login successful, user data:', JSON.stringify(result.user, null, 2));
 
-        // Show success alert and navigate immediately
-        Alert.alert(
-          'Login Berhasil',
-          `Selamat datang, ${result.user.fullName || result.user.username}!`,
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                console.log('Navigating to home...');
-                // Use setTimeout to ensure alert is dismissed before navigation
-                setTimeout(() => {
-                  navigateToHome(result.user);
-                }, 100);
-              }
-            }
-          ],
-          { cancelable: false }
-        );
+        // Navigate immediately without alert
+        console.log('Navigating to home...');
+        navigateToHome(result.user);
       } else {
         const errorMessage = result?.message || 'Login gagal tanpa pesan error';
         console.log('Login failed:', errorMessage);

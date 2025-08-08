@@ -118,7 +118,11 @@ const AdminDashboardScreen = ({ navigation }) => {
           onPress: async () => {
             const result = await AuthService.logout();
             if (result.success) {
-              navigation.replace('Login');
+              // Reset navigation stack to login screen
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Login' }],
+              });
             }
           },
         },

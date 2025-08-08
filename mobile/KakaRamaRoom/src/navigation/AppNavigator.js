@@ -229,6 +229,15 @@ const AppNavigator = () => {
     checkAuthState();
   }, []);
 
+  // Listen for navigation state changes to update auth state
+  const onStateChange = () => {
+    const user = AuthService.getCurrentUser();
+    if (user !== currentUser) {
+      console.log('AppNavigator: Auth state updated:', user);
+      setCurrentUser(user);
+    }
+  };
+
   const checkAuthState = async () => {
     try {
       const user = await AuthService.loadUserFromStorage();
@@ -248,7 +257,7 @@ const AppNavigator = () => {
   console.log('AppNavigator: Rendering with currentUser:', currentUser);
 
   return (
-    <NavigationContainer>
+    <NavigationContainer onStateChange={onStateChange}>
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
