@@ -890,9 +890,21 @@ class ExcelExporter {
                 { formula: `SUM(D${currentRow - csSummary.length + 1}:D${currentRow})` }
             ]);
 
+            // Merge cells A and B for TOTAL label to make it wider
+            worksheet.mergeCells(`A${totalRow.number}:B${totalRow.number}`);
+
             totalRow.font = { bold: true };
             totalRow.getCell(4).numFmt = 'Rp #,##0';
-            // No background for total row
+
+            // Add background color to make total row more visible in protected view
+            totalRow.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFE6CC' } // Light orange background
+            };
+
+            // Center align the TOTAL text
+            totalRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
         } else {
             worksheet.addRow(['', 'Tidak ada data CS pada tanggal ini']);
             worksheet.mergeCells(`A${currentRow + 1}:D${currentRow + 1}`);
@@ -1105,18 +1117,7 @@ class ExcelExporter {
             fgColor: { argb: 'E7E6E6' }
         };
 
-        worksheet.addRow([]);
-
-        // Add headers
-        const headerRow = worksheet.getRow(3);
-        headerRow.values = ['No', 'Waktu', 'Lokasi', 'Unit', 'Check Out', 'Durasi', 'Pembayaran', 'CS', 'Jumlah', 'Komisi'];
-        headerRow.font = { bold: true, color: { argb: 'FFFFFF' } };
-        headerRow.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: '366092' }
-        };
-        headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
+        // Remove the empty row and unused header - start directly with apartment data
 
         if (cashTransactions.length === 0) {
             worksheet.addRow(['Tidak ada transaksi tunai pada periode ini.']);
@@ -1154,7 +1155,7 @@ class ExcelExporter {
             let currentRowNumber = 1;
             let totalAmount = 0;
             let totalCommission = 0;
-            let currentRow = 4; // Start after main header
+            let currentRow = 2; // Start after main title
 
             // Process apartments in order
             apartmentOrder.forEach(apartmentName => {
@@ -1164,7 +1165,7 @@ class ExcelExporter {
                     // Add apartment name header
                     const colors = getApartmentColors(apartmentName);
                     const apartmentNameRow = worksheet.addRow([apartmentName]);
-                    worksheet.mergeCells(`A${currentRow}:J${currentRow}`);
+                    worksheet.mergeCells(`A${currentRow}:K${currentRow}`);
                     apartmentNameRow.font = { bold: true, color: { argb: colors.font } };
                     apartmentNameRow.fill = {
                         type: 'pattern',
@@ -1209,6 +1210,10 @@ class ExcelExporter {
 
                     currentRow++;
 
+                    // Track apartment totals
+                    let apartmentAmount = 0;
+                    let apartmentCommission = 0;
+
                     apartmentGroups[apartmentName].forEach((transaction) => {
                         const amount = parseFloat(transaction.amount || 0);
                         const commission = parseFloat(transaction.commission || 0);
@@ -1228,7 +1233,7 @@ class ExcelExporter {
 
                         // Format currency columns
                         row.getCell(9).numFmt = 'Rp #,##0';
-                        row.getCell(10).numFmt = 'Rp #,##0';
+                        row.getCell(11).numFmt = 'Rp #,##0';
 
                         // Add zebra stripe
                         if (currentRowNumber % 2 === 0) {
@@ -1239,11 +1244,28 @@ class ExcelExporter {
                             };
                         }
 
+                        apartmentAmount += amount;
+                        apartmentCommission += commission;
                         totalAmount += amount;
                         totalCommission += commission;
                         currentRowNumber++;
                         currentRow++;
                     });
+
+                    // Add apartment total row
+                    const apartmentTotalRow = worksheet.addRow([
+                        '', '', '', '', '', '', '', `TOTAL ${apartmentName}:`, apartmentAmount, '', apartmentCommission
+                    ]);
+                    apartmentTotalRow.font = { bold: true };
+                    apartmentTotalRow.getCell(8).alignment = { horizontal: 'center' };
+                    apartmentTotalRow.getCell(9).numFmt = 'Rp #,##0';
+                    apartmentTotalRow.getCell(11).numFmt = 'Rp #,##0';
+                    apartmentTotalRow.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: 'E8F4FD' } // Light blue background for apartment total
+                    };
+                    currentRow++;
 
                     // Add empty row between apartments
                     worksheet.addRow([]);
@@ -1254,12 +1276,11 @@ class ExcelExporter {
             // Process any remaining apartments not in the predefined order
             Object.keys(apartmentGroups).forEach(apartmentName => {
                 if (!apartmentOrder.includes(apartmentName)) {
-                    const apartmentTransactions = apartmentGroups[apartmentName];
 
                     // Add apartment name header
                     const colors = getApartmentColors(apartmentName);
                     const apartmentNameRow = worksheet.addRow([apartmentName]);
-                    worksheet.mergeCells(`A${currentRow}:J${currentRow}`);
+                    worksheet.mergeCells(`A${currentRow}:K${currentRow}`);
                     apartmentNameRow.font = { bold: true, color: { argb: colors.font } };
                     apartmentNameRow.fill = {
                         type: 'pattern',
@@ -1304,6 +1325,10 @@ class ExcelExporter {
 
                     currentRow++;
 
+                    // Track apartment totals
+                    let apartmentAmount = 0;
+                    let apartmentCommission = 0;
+
                     apartmentGroups[apartmentName].forEach((transaction) => {
                         const amount = parseFloat(transaction.amount || 0);
                         const commission = parseFloat(transaction.commission || 0);
@@ -1323,7 +1348,7 @@ class ExcelExporter {
 
                         // Format currency columns
                         row.getCell(9).numFmt = 'Rp #,##0';
-                        row.getCell(10).numFmt = 'Rp #,##0';
+                        row.getCell(11).numFmt = 'Rp #,##0';
 
                         // Add zebra stripe
                         if (currentRowNumber % 2 === 0) {
@@ -1334,11 +1359,28 @@ class ExcelExporter {
                             };
                         }
 
+                        apartmentAmount += amount;
+                        apartmentCommission += commission;
                         totalAmount += amount;
                         totalCommission += commission;
                         currentRowNumber++;
                         currentRow++;
                     });
+
+                    // Add apartment total row
+                    const apartmentTotalRow = worksheet.addRow([
+                        '', '', '', '', '', '', '', `TOTAL ${apartmentName}:`, apartmentAmount, '', apartmentCommission
+                    ]);
+                    apartmentTotalRow.font = { bold: true };
+                    apartmentTotalRow.getCell(8).alignment = { horizontal: 'center' };
+                    apartmentTotalRow.getCell(9).numFmt = 'Rp #,##0';
+                    apartmentTotalRow.getCell(11).numFmt = 'Rp #,##0';
+                    apartmentTotalRow.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: 'E8F4FD' } // Light blue background for apartment total
+                    };
+                    currentRow++;
 
                     // Add empty row between apartments
                     worksheet.addRow([]);
@@ -1346,21 +1388,21 @@ class ExcelExporter {
                 }
             });
 
-            // Add summary row
+            // Add grand total row
             worksheet.addRow([]);
             const summaryRow = worksheet.addRow([
-                '', '', '', '', '', '', '', 'TOTAL:', totalAmount, totalCommission
+                '', '', '', '', '', '', '', 'GRAND TOTAL:', totalAmount, '', totalCommission
             ]);
 
-            summaryRow.font = { bold: true };
+            summaryRow.font = { bold: true, size: 12 };
             summaryRow.getCell(8).alignment = { horizontal: 'center' };
             summaryRow.getCell(9).numFmt = 'Rp #,##0';
-            summaryRow.getCell(10).numFmt = 'Rp #,##0';
+            summaryRow.getCell(11).numFmt = 'Rp #,##0';
 
             summaryRow.fill = {
                 type: 'pattern',
                 pattern: 'solid',
-                fgColor: { argb: 'D4E6F1' }
+                fgColor: { argb: 'FFD700' } // Gold background for grand total
             };
         }
 
