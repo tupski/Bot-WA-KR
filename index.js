@@ -943,8 +943,6 @@ async function handleCommand(message, apartmentName) {
                 }
 
                 const apartmentText = apartmentName ? ` untuk ${apartmentName}` : '';
-                await bot.sendMessage(message.from, `📊 Memproses export laporan${apartmentText} untuk ${displayDate}...\n⏳ Mohon tunggu, proses ini memakan waktu beberapa menit.`);
-
                 logger.info(`Generating Excel export for date range: ${startDate} - ${endDate}${apartmentText}`);
 
                 // Generate Excel dengan business day range
@@ -3227,6 +3225,9 @@ async function createCashReportSheetForExport(workbook, transactions, displayDat
 
                 currentRow++;
 
+                let apartmentTotalAmount = 0;
+                let apartmentTotalCommission = 0;
+
                 apartmentGroups[apartmentName].forEach((transaction) => {
                     const moment = require('moment-timezone');
                     const createdAt = moment(transaction.created_at).tz('Asia/Jakarta');
@@ -3280,11 +3281,51 @@ async function createCashReportSheetForExport(workbook, transactions, displayDat
                         };
                     });
 
+                    apartmentTotalAmount += amount;
+                    apartmentTotalCommission += commission;
                     totalAmount += amount;
                     totalCommission += commission;
                     currentRowNumber++;
                     currentRow++;
                 });
+
+                // Add apartment total row
+                const apartmentTotalRow = worksheet.addRow([
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    `TOTAL ${apartmentName}:`,
+                    apartmentTotalAmount,
+                    '',
+                    apartmentTotalCommission
+                ]);
+
+                // Style apartment total row
+                apartmentTotalRow.font = { bold: true };
+                apartmentTotalRow.getCell(8).alignment = { horizontal: 'right' }; // Label
+                apartmentTotalRow.getCell(9).numFmt = 'Rp #,##0'; // Amount
+                apartmentTotalRow.getCell(11).numFmt = 'Rp #,##0'; // Komisi
+                apartmentTotalRow.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'E8F4FD' }
+                };
+
+                // Add borders to apartment total row
+                apartmentTotalRow.eachCell((cell) => {
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' }
+                    };
+                });
+
+                currentRow++;
 
                 // Add empty row between apartments
                 worksheet.addRow([]);
@@ -3345,6 +3386,9 @@ async function createCashReportSheetForExport(workbook, transactions, displayDat
 
                 currentRow++;
 
+                let apartmentTotalAmount = 0;
+                let apartmentTotalCommission = 0;
+
                 apartmentGroups[apartmentName].forEach((transaction) => {
                     const moment = require('moment-timezone');
                     const createdAt = moment(transaction.created_at).tz('Asia/Jakarta');
@@ -3398,11 +3442,51 @@ async function createCashReportSheetForExport(workbook, transactions, displayDat
                         };
                     });
 
+                    apartmentTotalAmount += amount;
+                    apartmentTotalCommission += commission;
                     totalAmount += amount;
                     totalCommission += commission;
                     currentRowNumber++;
                     currentRow++;
                 });
+
+                // Add apartment total row
+                const apartmentTotalRow = worksheet.addRow([
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    `TOTAL ${apartmentName}:`,
+                    apartmentTotalAmount,
+                    '',
+                    apartmentTotalCommission
+                ]);
+
+                // Style apartment total row
+                apartmentTotalRow.font = { bold: true };
+                apartmentTotalRow.getCell(8).alignment = { horizontal: 'right' }; // Label
+                apartmentTotalRow.getCell(9).numFmt = 'Rp #,##0'; // Amount
+                apartmentTotalRow.getCell(11).numFmt = 'Rp #,##0'; // Komisi
+                apartmentTotalRow.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'E8F4FD' }
+                };
+
+                // Add borders to apartment total row
+                apartmentTotalRow.eachCell((cell) => {
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' }
+                    };
+                });
+
+                currentRow++;
 
                 // Add empty row between apartments
                 worksheet.addRow([]);

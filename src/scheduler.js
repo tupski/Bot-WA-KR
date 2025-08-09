@@ -23,12 +23,15 @@ class Scheduler {
             // Daily report at 12:00 WIB
             this.scheduleDailyReport();
 
+            // Daily notification to owners at 12:00 WIB
+            this.scheduleOwnerNotification();
+
             // Monthly report on 1st day of month at 10:00 WIB
             this.scheduleMonthlyReport();
-            
+
             // Database cleanup every Sunday at 02:00 WIB
             this.scheduleDatabaseCleanup();
-            
+
             // Health check every hour
             this.scheduleHealthCheck();
 
@@ -67,6 +70,15 @@ class Scheduler {
                     } else {
                         logger.error('Gagal mengirim laporan harian dengan attachment ke grup WhatsApp');
                     }
+
+                    // Send daily reports with Excel attachment to owner numbers
+                    const ownersSent = await this.bot.sendDailyReportsToOwners(excelPath);
+
+                    if (ownersSent) {
+                        logger.info('Laporan harian dengan attachment berhasil dikirim ke owner numbers');
+                    } else {
+                        logger.error('Gagal mengirim laporan harian dengan attachment ke owner numbers');
+                    }
                 } else {
                     logger.error('Gagal membuat file Excel untuk laporan harian');
 
@@ -93,6 +105,60 @@ class Scheduler {
 
         this.scheduledTasks.set('dailyReport', task);
         logger.info(`Laporan harian dijadwalkan untuk ${config.report.dailyReportTime} ${this.timezone}`);
+    }
+
+    /**
+     * Schedule daily notification to owners at 12:00 WIB
+     */
+    scheduleOwnerNotification() {
+        const task = cron.schedule('0 12 * * *', async () => {
+            try {
+                logger.info('Mengirim notifikasi harian ke owner numbers...');
+
+                const moment = require('moment-timezone');
+                const displayDate = moment().tz(this.timezone).format('DD/MM/YYYY');
+                const displayTime = moment().tz(this.timezone).format('HH:mm');
+
+                // Check if owner numbers are configured
+                if (!config.owner || !config.owner.allowedNumbers || config.owner.allowedNumbers.length === 0) {
+                    logger.warn('No owner numbers configured for daily notification');
+                    return;
+                }
+
+                const notificationMessage = `🔔 *NOTIFIKASI HARIAN*\n\n📅 Tanggal: ${displayDate}\n⏰ Waktu: ${displayTime} WIB\n\n✅ Laporan harian telah dikirim via email dan attachment WhatsApp\n📊 Silakan cek email dan file Excel untuk detail lengkap\n\n🏢 KAKARAMA ROOM`;
+
+                let successCount = 0;
+                for (const ownerNumber of config.owner.allowedNumbers) {
+                    try {
+                        // Format owner number untuk WhatsApp
+                        const formattedNumber = ownerNumber.includes('@') ? ownerNumber : `${ownerNumber}@c.us`;
+
+                        const success = await this.bot.sendMessage(formattedNumber, notificationMessage);
+                        if (success) {
+                            successCount++;
+                            logger.info(`✅ Notifikasi harian berhasil dikirim ke owner: ${ownerNumber}`);
+                        } else {
+                            logger.error(`❌ Gagal mengirim notifikasi harian ke owner: ${ownerNumber}`);
+                        }
+
+                        // Delay antar pengiriman
+                        await new Promise(resolve => setTimeout(resolve, config.whatsapp.messageDelay || 1000));
+                    } catch (error) {
+                        logger.error(`Error mengirim notifikasi ke owner ${ownerNumber}:`, error);
+                    }
+                }
+
+                logger.info(`Notifikasi harian selesai: ${successCount}/${config.owner.allowedNumbers.length} owner berhasil`);
+
+            } catch (error) {
+                logger.error('Error dalam notifikasi harian ke owner:', error);
+            }
+        }, {
+            timezone: this.timezone
+        });
+
+        this.scheduledTasks.set('ownerNotification', task);
+        logger.info(`Notifikasi harian ke owner dijadwalkan untuk 12:00 ${this.timezone}`);
     }
 
     /**

@@ -783,6 +783,72 @@ class WhatsAppBot {
     }
 
     /**
+     * Kirim laporan harian dengan Excel attachment ke owner numbers
+     */
+    async sendDailyReportsToOwners(excelFilePath) {
+        try {
+            if (!config.owner || !config.owner.allowedNumbers || config.owner.allowedNumbers.length === 0) {
+                logger.error('No owner numbers configured');
+                return false;
+            }
+
+            if (!excelFilePath || !fs.existsSync(excelFilePath)) {
+                logger.error('Excel file not found for WhatsApp attachment');
+                return false;
+            }
+
+            let successCount = 0;
+            let totalOwners = config.owner.allowedNumbers.length;
+
+            logger.info(`Mengirim laporan harian dengan attachment ke ${totalOwners} owner numbers...`);
+
+            const reportGenerator = require('./reportGenerator');
+            const moment = require('moment-timezone');
+
+            // Generate comprehensive report for owners (all apartments)
+            const report = await reportGenerator.generateDailyReport();
+
+            for (const ownerNumber of config.owner.allowedNumbers) {
+                try {
+                    // Format owner number untuk WhatsApp
+                    const formattedNumber = ownerNumber.includes('@') ? ownerNumber : `${ownerNumber}@c.us`;
+
+                    if (report) {
+                        // Kirim laporan dengan attachment
+                        const success = await this.sendReportWithAttachment(formattedNumber, report, excelFilePath);
+                        if (success) {
+                            successCount++;
+                            logger.info(`✅ Laporan harian dengan attachment berhasil dikirim ke owner: ${ownerNumber}`);
+                        } else {
+                            logger.error(`❌ Gagal mengirim laporan harian dengan attachment ke owner: ${ownerNumber}`);
+                        }
+                    } else {
+                        // Send no data message dengan attachment
+                        const displayDate = moment().tz(this.timezone).format('DD/MM/YYYY');
+                        const noDataMessage = `📊 *REKAP LAPORAN ${displayDate}*\n🏢 KAKARAMA ROOM\n\n❌ Tidak ada transaksi pada periode ini.`;
+                        const success = await this.sendReportWithAttachment(formattedNumber, noDataMessage, excelFilePath);
+                        if (success) {
+                            successCount++;
+                            logger.info(`✅ Pesan "tidak ada data" dengan attachment berhasil dikirim ke owner: ${ownerNumber}`);
+                        }
+                    }
+
+                    // Delay antar pengiriman untuk menghindari rate limiting
+                    await new Promise(resolve => setTimeout(resolve, config.whatsapp.messageDelay || 2000));
+                } catch (error) {
+                    logger.error(`Error mengirim laporan harian dengan attachment ke owner ${ownerNumber}:`, error);
+                }
+            }
+
+            logger.info(`Pengiriman laporan harian ke owners selesai: ${successCount}/${totalOwners} owner berhasil`);
+            return successCount > 0;
+        } catch (error) {
+            logger.error('Error dalam sendDailyReportsToOwners:', error);
+            return false;
+        }
+    }
+
+    /**
      * Kirim laporan harian dengan Excel attachment ke semua grup yang enabled
      */
     async sendDailyReportsWithAttachment(excelFilePath) {
