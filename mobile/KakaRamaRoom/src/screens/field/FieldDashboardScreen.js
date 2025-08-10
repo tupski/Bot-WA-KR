@@ -8,6 +8,7 @@ import {
   RefreshControl,
   Alert,
   FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { COLORS, SIZES, CHECKIN_STATUS } from '../../config/constants';
@@ -350,8 +351,13 @@ const FieldDashboardScreen = ({ navigation }) => {
 
       {/* Active Checkins */}
       <View style={styles.menuContainer}>
-        <Text style={styles.sectionTitle}>Checkin Aktif</Text>
-        {activeCheckins.length > 0 ? (
+        <Text style={styles.sectionTitle}>Checkin Aktif ({activeCheckins?.length || 0})</Text>
+        {loading ? (
+          <View style={styles.loadingState}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={styles.loadingText}>Memuat checkin aktif...</Text>
+          </View>
+        ) : activeCheckins && activeCheckins.length > 0 ? (
           <FlatList
             data={activeCheckins}
             keyExtractor={(item) => item.id.toString()}
@@ -429,10 +435,17 @@ const FieldDashboardScreen = ({ navigation }) => {
         ) : (
           <View style={styles.emptyState}>
             <Icon name="check-circle" size={48} color={COLORS.gray400} />
-            <Text style={styles.emptyText}>Tidak ada checkin aktif</Text>
+            <Text style={styles.emptyText}>Belum ada checkin aktif</Text>
             <Text style={styles.emptySubtext}>
-              Checkin aktif akan muncul di sini
+              Checkin yang sedang berlangsung akan muncul di sini
             </Text>
+            <TouchableOpacity
+              style={styles.createCheckinButton}
+              onPress={() => navigation.navigate('FieldCheckin')}
+            >
+              <Icon name="add" size={20} color={COLORS.white} />
+              <Text style={styles.createCheckinText}>Buat Checkin Baru</Text>
+            </TouchableOpacity>
           </View>
         )}
       </View>
@@ -702,6 +715,32 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     textAlign: 'center',
     lineHeight: 16,
+  },
+  loadingState: {
+    padding: SIZES.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: SIZES.md,
+    fontSize: SIZES.body,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+  },
+  createCheckinButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SIZES.lg,
+    paddingVertical: SIZES.md,
+    borderRadius: SIZES.radius,
+    marginTop: SIZES.lg,
+  },
+  createCheckinText: {
+    marginLeft: SIZES.sm,
+    fontSize: SIZES.body,
+    fontWeight: '600',
+    color: COLORS.white,
   },
 });
 
