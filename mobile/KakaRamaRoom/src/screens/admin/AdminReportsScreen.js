@@ -517,43 +517,66 @@ const AdminReportsScreen = () => {
         <Text style={styles.sectionTitle}>Statistik per Apartemen (Business Day)</Text>
         {apartmentStats.length > 0 ? (
           <FlatList
-            data={apartmentStats}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => (
-              <View style={styles.apartmentCard}>
-                <View style={styles.apartmentHeader}>
-                  <Text style={styles.apartmentName}>{item.name}</Text>
-                  <Text style={styles.apartmentCode}>{item.code}</Text>
-                </View>
+            data={apartmentStats || []}
+            keyExtractor={(item, index) => {
+              try {
+                return item?.id ? item.id.toString() : `apartment-${index}`;
+              } catch (error) {
+                console.warn('AdminReportsScreen: Error generating key for apartment:', error);
+                return `apartment-fallback-${index}`;
+              }
+            }}
+            renderItem={({ item }) => {
+              try {
+                // Validate item data
+                if (!item) {
+                  console.warn('AdminReportsScreen: Invalid apartment item:', item);
+                  return null;
+                }
 
-                <View style={styles.apartmentStats}>
-                  <View style={styles.apartmentStatItem}>
-                    <Icon name="home" size={20} color={COLORS.primary} />
-                    <Text style={styles.apartmentStatNumber}>
-                      {formatNumber(item.total_units)}
-                    </Text>
-                    <Text style={styles.apartmentStatLabel}>Total Unit</Text>
-                  </View>
+                return (
+                  <View style={styles.apartmentCard}>
+                    <View style={styles.apartmentHeader}>
+                      <Text style={styles.apartmentName}>{item.name || 'N/A'}</Text>
+                      <Text style={styles.apartmentCode}>{item.code || 'N/A'}</Text>
+                    </View>
 
-                  <View style={styles.apartmentStatItem}>
-                    <Icon name="check-circle" size={20} color={COLORS.success} />
-                    <Text style={styles.apartmentStatNumber}>
-                      {formatNumber(item.active_checkins)}
-                    </Text>
-                    <Text style={styles.apartmentStatLabel}>Checkin Aktif</Text>
-                  </View>
+                    <View style={styles.apartmentStats}>
+                      <View style={styles.apartmentStatItem}>
+                        <Icon name="home" size={20} color={COLORS.primary} />
+                        <Text style={styles.apartmentStatNumber}>
+                          {formatNumber(item.total_units || 0)}
+                        </Text>
+                        <Text style={styles.apartmentStatLabel}>Total Unit</Text>
+                      </View>
 
-                  <View style={styles.apartmentStatItem}>
-                    <Icon name="attach-money" size={20} color={COLORS.warning} />
-                    <Text style={styles.apartmentStatNumber}>
-                      {formatCurrency(item.total_revenue)}
-                    </Text>
-                    <Text style={styles.apartmentStatLabel}>Pendapatan</Text>
+                      <View style={styles.apartmentStatItem}>
+                        <Icon name="check-circle" size={20} color={COLORS.success} />
+                        <Text style={styles.apartmentStatNumber}>
+                          {formatNumber(item.active_checkins || 0)}
+                        </Text>
+                        <Text style={styles.apartmentStatLabel}>Checkin Aktif</Text>
+                      </View>
+
+                      <View style={styles.apartmentStatItem}>
+                        <Icon name="attach-money" size={20} color={COLORS.warning} />
+                        <Text style={styles.apartmentStatNumber}>
+                          {formatCurrency(item.total_revenue || 0)}
+                        </Text>
+                        <Text style={styles.apartmentStatLabel}>Pendapatan</Text>
+                      </View>
+                    </View>
                   </View>
-                </View>
-              </View>
-            )}
+                );
+              } catch (error) {
+                console.error('AdminReportsScreen: Error rendering apartment item:', error);
+                return null;
+              }
+            }}
             scrollEnabled={false}
+            onError={(error) => {
+              console.error('AdminReportsScreen: Apartment FlatList error:', error);
+            }}
           />
         ) : (
           <View style={styles.emptyState}>
@@ -568,26 +591,49 @@ const AdminReportsScreen = () => {
         <Text style={styles.sectionTitle}>Marketing Terbaik (Business Day)</Text>
         {topMarketing.length > 0 ? (
           <FlatList
-            data={topMarketing}
-            keyExtractor={(item, index) => index.toString()}
-            renderItem={({ item, index }) => (
-              <View style={styles.marketingCard}>
-                <View style={styles.marketingRank}>
-                  <Text style={styles.rankNumber}>{index + 1}</Text>
-                </View>
+            data={topMarketing || []}
+            keyExtractor={(item, index) => {
+              try {
+                return item?.marketing_name ? `marketing-${item.marketing_name}-${index}` : `marketing-${index}`;
+              } catch (error) {
+                console.warn('AdminReportsScreen: Error generating key for marketing:', error);
+                return `marketing-fallback-${index}`;
+              }
+            }}
+            renderItem={({ item, index }) => {
+              try {
+                // Validate item data
+                if (!item) {
+                  console.warn('AdminReportsScreen: Invalid marketing item:', item);
+                  return null;
+                }
 
-                <View style={styles.marketingInfo}>
-                  <Text style={styles.marketingName}>{item.marketing_name}</Text>
-                  <Text style={styles.marketingStats}>
-                    {formatNumber(item.total_checkins)} checkin • {formatCurrency(item.total_revenue)}
-                  </Text>
-                  <Text style={styles.marketingApartments}>
-                    {item.apartments_served} apartemen
-                  </Text>
-                </View>
-              </View>
-            )}
+                return (
+                  <View style={styles.marketingCard}>
+                    <View style={styles.marketingRank}>
+                      <Text style={styles.rankNumber}>{index + 1}</Text>
+                    </View>
+
+                    <View style={styles.marketingInfo}>
+                      <Text style={styles.marketingName}>{item.marketing_name || 'N/A'}</Text>
+                      <Text style={styles.marketingStats}>
+                        {formatNumber(item.total_checkins || 0)} checkin • {formatCurrency(item.total_revenue || 0)}
+                      </Text>
+                      <Text style={styles.marketingApartments}>
+                        {item.apartments_served || 0} apartemen
+                      </Text>
+                    </View>
+                  </View>
+                );
+              } catch (error) {
+                console.error('AdminReportsScreen: Error rendering marketing item:', error);
+                return null;
+              }
+            }}
             scrollEnabled={false}
+            onError={(error) => {
+              console.error('AdminReportsScreen: Marketing FlatList error:', error);
+            }}
           />
         ) : (
           <View style={styles.emptyState}>
@@ -612,34 +658,55 @@ const AdminReportsScreen = () => {
           </View>
 
           <FlatList
-            data={[{ id: null, name: 'Semua Apartemen' }, ...apartments]}
-            keyExtractor={(item) => item.id?.toString() || 'all'}
+            data={[{ id: null, name: 'Semua Apartemen' }, ...(apartments || [])]}
+            keyExtractor={(item, index) => {
+              try {
+                return item?.id ? item.id.toString() : `apartment-modal-${index}`;
+              } catch (error) {
+                console.warn('AdminReportsScreen: Error generating key for apartment modal:', error);
+                return `apartment-modal-fallback-${index}`;
+              }
+            }}
             renderItem={({ item }) => {
-              const isSelected = item.id
-                ? selectedApartments.some(apt => apt.id === item.id)
-                : selectedApartments.length === 0;
+              try {
+                // Validate item data
+                if (!item || !item.name) {
+                  console.warn('AdminReportsScreen: Invalid apartment modal item:', item);
+                  return null;
+                }
 
-              return (
-                <TouchableOpacity
-                  style={[
-                    styles.modalItem,
-                    isSelected && styles.modalItemSelected
-                  ]}
-                  onPress={() => toggleApartment(item)}
-                >
-                  <Text style={[
-                    styles.modalItemText,
-                    isSelected && styles.modalItemTextSelected
-                  ]}>
-                    {item.name}
-                  </Text>
-                  {isSelected && (
-                    <Icon name="check" size={20} color={COLORS.background} />
-                  )}
-                </TouchableOpacity>
-              );
+                const isSelected = item.id
+                  ? selectedApartments.some(apt => apt.id === item.id)
+                  : selectedApartments.length === 0;
+
+                return (
+                  <TouchableOpacity
+                    style={[
+                      styles.modalItem,
+                      isSelected && styles.modalItemSelected
+                    ]}
+                    onPress={() => toggleApartment(item)}
+                  >
+                    <Text style={[
+                      styles.modalItemText,
+                      isSelected && styles.modalItemTextSelected
+                    ]}>
+                      {item.name}
+                    </Text>
+                    {isSelected && (
+                      <Icon name="check" size={20} color={COLORS.background} />
+                    )}
+                  </TouchableOpacity>
+                );
+              } catch (error) {
+                console.error('AdminReportsScreen: Error rendering apartment modal item:', error);
+                return null;
+              }
             }}
             contentContainerStyle={styles.modalContent}
+            onError={(error) => {
+              console.error('AdminReportsScreen: Apartment modal FlatList error:', error);
+            }}
           />
 
           {/* Modal Actions */}
