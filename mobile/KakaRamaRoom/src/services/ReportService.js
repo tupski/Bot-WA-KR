@@ -458,6 +458,8 @@ class ReportService {
       }
       if (filters.apartmentId) {
         totalQuery = totalQuery.eq('apartment_id', filters.apartmentId);
+      } else if (filters.apartmentIds && filters.apartmentIds.length > 0) {
+        totalQuery = totalQuery.in('apartment_id', filters.apartmentIds);
       }
 
       // Get today's checkins
@@ -469,6 +471,8 @@ class ReportService {
 
       if (filters.apartmentId) {
         todayQuery = todayQuery.eq('apartment_id', filters.apartmentId);
+      } else if (filters.apartmentIds && filters.apartmentIds.length > 0) {
+        todayQuery = todayQuery.in('apartment_id', filters.apartmentIds);
       }
 
       // Get active checkins
@@ -479,6 +483,8 @@ class ReportService {
 
       if (filters.apartmentId) {
         activeQuery = activeQuery.eq('apartment_id', filters.apartmentId);
+      } else if (filters.apartmentIds && filters.apartmentIds.length > 0) {
+        activeQuery = activeQuery.in('apartment_id', filters.apartmentIds);
       }
 
       // Get total revenue
@@ -495,6 +501,8 @@ class ReportService {
       }
       if (filters.apartmentId) {
         revenueQuery = revenueQuery.eq('apartment_id', filters.apartmentId);
+      } else if (filters.apartmentIds && filters.apartmentIds.length > 0) {
+        revenueQuery = revenueQuery.in('apartment_id', filters.apartmentIds);
       }
 
       // Execute queries

@@ -754,6 +754,7 @@ const styles = StyleSheet.create({
   apartmentStatItem: {
     alignItems: 'center',
     gap: SIZES.xs,
+    flex: 1,
   },
   apartmentStatNumber: {
     fontSize: SIZES.h6,
