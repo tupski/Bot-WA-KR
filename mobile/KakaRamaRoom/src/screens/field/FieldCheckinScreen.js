@@ -20,12 +20,16 @@ import ImagePickerService from '../../services/ImagePickerService';
 import TeamAssignmentService from '../../services/TeamAssignmentService';
 import CurrencyInput from '../../components/CurrencyInput';
 import ModernModal from '../../components/ModernModal';
+import { useModernAlert } from '../../components/ModernAlert';
 
 /**
  * Screen untuk form checkin tim lapangan
  * Fitur: Input data checkin dengan validasi, upload bukti transfer, kalkulasi checkout time
  */
 const FieldCheckinScreen = ({ navigation }) => {
+  // Modern Alert Hook
+  const { showAlert, AlertComponent } = useModernAlert();
+
   // State untuk data form
   const [formData, setFormData] = useState({
     apartmentId: '',
@@ -469,41 +473,46 @@ const FieldCheckinScreen = ({ navigation }) => {
       );
 
       if (result.success) {
-        Alert.alert(
-          'Sukses',
-          'Checkin berhasil dibuat!',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                // Reset form
-                setFormData({
-                  apartmentId: '',
-                  unitId: '',
-                  durationHours: '3',
-                  paymentMethod: 'cash',
-                  paymentAmount: '',
-                  marketingCommission: '',
-                  marketingName: '',
-                  notes: '',
-                });
-                setPaymentProofs([]);
+        showAlert({
+          type: 'success',
+          title: 'Sukses',
+          message: 'Checkin berhasil dibuat!',
+          onDismiss: () => {
+            // Reset form
+            setFormData({
+              apartmentId: '',
+              unitId: '',
+              durationHours: '3',
+              paymentMethod: 'cash',
+              paymentAmount: '',
+              marketingCommission: '',
+              marketingName: '',
+              notes: '',
+            });
+            setPaymentProofs([]);
 
-                // Refresh data
-                loadInitialData();
+            // Refresh data
+            loadInitialData();
 
-                // Navigate back to dashboard
-                navigation.goBack();
-              },
-            },
-          ]
-        );
+            // Navigate back to dashboard
+            navigation.goBack();
+          },
+        });
       } else {
-        Alert.alert('Error', result.message);
+        // Show detailed error message
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: result.message || 'Gagal membuat checkin',
+        });
       }
     } catch (error) {
-      console.error('Submit checkin error:', error);
-      Alert.alert('Error', 'Gagal membuat checkin');
+      console.error('FieldCheckinScreen: Submit checkin error:', error);
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: `Gagal membuat checkin: ${error.message || 'Unknown error'}`,
+      });
     } finally {
       setLoading(false);
     }
@@ -957,6 +966,9 @@ const FieldCheckinScreen = ({ navigation }) => {
           </View>
         </View>
       </Modal>
+
+      {/* Modern Alert Component */}
+      <AlertComponent />
     </ScrollView>
   );
 };

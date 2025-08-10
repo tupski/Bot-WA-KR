@@ -52,13 +52,29 @@ class CheckinService {
         };
       }
 
-      // Validate access untuk tim lapangan
+      // Validate access untuk tim lapangan dengan error handling yang lebih baik
       if (userType === 'field_team') {
-        const canAccess = await TeamAssignmentService.validateAccess('apartment', apartmentId);
-        if (!canAccess) {
+        try {
+          console.log('CheckinService: Validating apartment access for field team:', userId, apartmentId);
+
+          const canAccess = await TeamAssignmentService.validateAccess('apartment', apartmentId);
+          console.log('CheckinService: Access validation result:', canAccess);
+
+          if (!canAccess) {
+            // Get user's accessible apartments for better error message
+            const userApartmentIds = await TeamAssignmentService.getCurrentUserApartmentIdsAsync();
+            console.log('CheckinService: User accessible apartments:', userApartmentIds);
+
+            return {
+              success: false,
+              message: `Tidak memiliki akses ke apartemen ini. Tim lapangan hanya dapat mengakses apartemen yang telah ditugaskan. Apartemen yang dapat diakses: ${Array.isArray(userApartmentIds) ? userApartmentIds.join(', ') : 'Belum ada assignment'}`,
+            };
+          }
+        } catch (accessError) {
+          console.error('CheckinService: Error validating apartment access:', accessError);
           return {
             success: false,
-            message: 'Tidak memiliki akses ke apartemen ini',
+            message: 'Gagal memvalidasi akses apartemen. Silakan coba lagi atau hubungi administrator.',
           };
         }
       }

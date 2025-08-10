@@ -4,7 +4,7 @@ import AuthService from './AuthService';
 class TeamAssignmentService {
   /**
    * Get apartment IDs yang bisa diakses oleh user saat ini
-   * @returns {Array} Array of apartment IDs
+   * @returns {Array|null} Array of apartment IDs atau null untuk admin (akses semua)
    */
   getCurrentUserApartmentIds() {
     try {
@@ -25,13 +25,32 @@ class TeamAssignmentService {
 
       // Tim lapangan hanya bisa akses apartemen yang di-assign
       if (currentUser.role === 'field_team') {
-        const apartmentIds = currentUser.apartmentIds || [];
+        // Check multiple possible sources for apartment assignments
+        let apartmentIds = [];
+
+        // Source 1: apartmentIds array
+        if (currentUser.apartmentIds && Array.isArray(currentUser.apartmentIds)) {
+          apartmentIds = currentUser.apartmentIds;
+        }
+
+        // Source 2: apartment_ids array (alternative naming)
+        if (apartmentIds.length === 0 && currentUser.apartment_ids && Array.isArray(currentUser.apartment_ids)) {
+          apartmentIds = currentUser.apartment_ids;
+        }
+
+        // Source 3: assignments array with apartment_id
+        if (apartmentIds.length === 0 && currentUser.assignments && Array.isArray(currentUser.assignments)) {
+          apartmentIds = currentUser.assignments.map(assignment => assignment.apartment_id).filter(Boolean);
+        }
+
         console.log('TeamAssignmentService: Field team user - apartment IDs:', apartmentIds);
 
-        // Jika tidak ada assignment, berikan akses ke semua apartemen sebagai fallback
+        // Jika masih tidak ada assignment, coba load dari database
         if (apartmentIds.length === 0) {
-          console.warn('TeamAssignmentService: Field team has no apartment assignments, allowing access to all');
-          return null;
+          console.warn('TeamAssignmentService: Field team has no apartment assignments in user data');
+          // Return empty array instead of null to prevent access to all apartments
+          // This will trigger the validation to fail, which is correct behavior
+          return [];
         }
 
         return apartmentIds;
@@ -41,6 +60,77 @@ class TeamAssignmentService {
       return [];
     } catch (error) {
       console.error('TeamAssignmentService: Error in getCurrentUserApartmentIds:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Load apartment assignments dari database untuk field team
+   * @param {string} teamId - ID tim lapangan
+   * @returns {Promise<Array>} Array of apartment IDs
+   */
+  async loadApartmentAssignments(teamId) {
+    try {
+      console.log('TeamAssignmentService: Loading apartment assignments for team:', teamId);
+
+      const { data: assignments, error } = await supabase
+        .from('team_apartment_assignments')
+        .select('apartment_id')
+        .eq('team_id', teamId)
+        .eq('status', 'active');
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          console.log('TeamAssignmentService: Team assignments table not found');
+          return [];
+        }
+        throw error;
+      }
+
+      const apartmentIds = assignments?.map(assignment => assignment.apartment_id) || [];
+      console.log('TeamAssignmentService: Loaded apartment assignments:', apartmentIds);
+
+      return apartmentIds;
+    } catch (error) {
+      console.error('TeamAssignmentService: Error loading apartment assignments:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get apartment IDs dengan fallback ke database
+   * @returns {Promise<Array|null>} Array of apartment IDs atau null untuk admin
+   */
+  async getCurrentUserApartmentIdsAsync() {
+    try {
+      const currentUser = AuthService.getCurrentUser();
+
+      if (!currentUser) {
+        console.warn('TeamAssignmentService: No current user found');
+        return [];
+      }
+
+      // Admin bisa akses semua apartemen
+      if (currentUser.role === 'admin') {
+        return null;
+      }
+
+      // Tim lapangan - coba dari user data dulu
+      if (currentUser.role === 'field_team') {
+        let apartmentIds = this.getCurrentUserApartmentIds();
+
+        // Jika tidak ada di user data, load dari database
+        if (Array.isArray(apartmentIds) && apartmentIds.length === 0) {
+          console.log('TeamAssignmentService: Loading assignments from database');
+          apartmentIds = await this.loadApartmentAssignments(currentUser.id);
+        }
+
+        return apartmentIds;
+      }
+
+      return [];
+    } catch (error) {
+      console.error('TeamAssignmentService: Error in getCurrentUserApartmentIdsAsync:', error);
       return [];
     }
   }
@@ -336,21 +426,48 @@ class TeamAssignmentService {
   }
 
   /**
-   * Validate access before performing action
+   * Validate access before performing action dengan database fallback
    * @param {string} resourceType - Type of resource (apartment, unit, checkin)
    * @param {string} resourceId - ID of resource
    * @returns {Promise<boolean>}
    */
   async validateAccess(resourceType, resourceId) {
-    switch (resourceType) {
-      case 'apartment':
-        return this.canAccessApartment(resourceId);
-      case 'unit':
-        return await this.canAccessUnit(resourceId);
-      case 'checkin':
-        return await this.canAccessCheckin(resourceId);
-      default:
-        return false;
+    try {
+      switch (resourceType) {
+        case 'apartment':
+          return await this.canAccessApartmentAsync(resourceId);
+        case 'unit':
+          return await this.canAccessUnit(resourceId);
+        case 'checkin':
+          return await this.canAccessCheckin(resourceId);
+        default:
+          return false;
+      }
+    } catch (error) {
+      console.error('TeamAssignmentService: Error validating access:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Check apakah user bisa akses apartemen tertentu dengan database fallback
+   * @param {string} apartmentId - ID apartemen
+   * @returns {Promise<boolean>}
+   */
+  async canAccessApartmentAsync(apartmentId) {
+    try {
+      const apartmentIds = await this.getCurrentUserApartmentIdsAsync();
+
+      // Admin bisa akses semua
+      if (apartmentIds === null) {
+        return true;
+      }
+
+      // Tim lapangan cek assignment
+      return Array.isArray(apartmentIds) && apartmentIds.includes(apartmentId);
+    } catch (error) {
+      console.error('TeamAssignmentService: Error checking apartment access:', error);
+      return false;
     }
   }
 }
