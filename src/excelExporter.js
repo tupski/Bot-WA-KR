@@ -1094,24 +1094,30 @@ class ExcelExporter {
             return paymentMethod === 'cash';
         });
 
-        // Set column widths
+        // Set column widths (adjusted for new column positions starting from B)
         worksheet.columns = [
-            { header: 'No', key: 'no', width: 5 },
-            { header: 'Waktu', key: 'time', width: 20 },
-            { header: 'Lokasi', key: 'location', width: 15 },
-            { header: 'Unit', key: 'unit', width: 10 },
-            { header: 'Check Out', key: 'checkout', width: 12 },
-            { header: 'Durasi', key: 'duration', width: 10 },
-            { header: 'Pembayaran', key: 'payment', width: 12 },
-            { header: 'CS', key: 'cs', width: 10 },
-            { header: 'Jumlah', key: 'amount', width: 15 },
-            { header: 'Komisi', key: 'commission', width: 15 }
+            { width: 3 },   // Column A (empty)
+            { width: 5 },   // Column B (No)
+            { width: 12 },  // Column C (Tanggal)
+            { width: 8 },   // Column D (Waktu)
+            { width: 20 },  // Column E (Apartemen)
+            { width: 10 },  // Column F (Unit)
+            { width: 12 },  // Column G (Check Out)
+            { width: 10 },  // Column H (Durasi)
+            { width: 12 },  // Column I (Pembayaran)
+            { width: 15 },  // Column J (Jumlah)
+            { width: 10 },  // Column K (CS)
+            { width: 15 }   // Column L (Komisi)
         ];
 
-        // Add title
-        worksheet.addRow([`Laporan Cash - ${date}`]);
-        worksheet.mergeCells('A1:J1');
-        const titleRow = worksheet.getRow(1);
+        // Add empty rows to start from B3
+        worksheet.addRow([]);
+        worksheet.addRow([]);
+
+        // Add title starting from B3
+        worksheet.getCell('B3').value = `Laporan Cash - ${date}`;
+        worksheet.mergeCells('B3:K3');
+        const titleRow = worksheet.getRow(3);
         titleRow.font = { bold: true, size: 16 };
         titleRow.alignment = { horizontal: 'center' };
         titleRow.fill = {
@@ -1123,8 +1129,8 @@ class ExcelExporter {
         // Remove the empty row and unused header - start directly with apartment data
 
         if (cashTransactions.length === 0) {
-            worksheet.addRow(['Tidak ada transaksi tunai pada periode ini.']);
-            worksheet.mergeCells('A4:J4');
+            worksheet.addRow(['', 'Tidak ada transaksi tunai pada periode ini.']);
+            worksheet.mergeCells('B4:K4');
             const noDataRow = worksheet.getRow(4);
             noDataRow.alignment = { horizontal: 'center' };
             noDataRow.font = { italic: true };
@@ -1158,17 +1164,17 @@ class ExcelExporter {
             let currentRowNumber = 1;
             let totalAmount = 0;
             let totalCommission = 0;
-            let currentRow = 2; // Start after main title
+            let currentRow = 4; // Start after main title (B3) with empty row
 
             // Process apartments in order
             apartmentOrder.forEach(apartmentName => {
                 if (apartmentGroups[apartmentName]) {
                     const apartmentTransactions = apartmentGroups[apartmentName];
 
-                    // Add apartment name header
+                    // Add apartment name header starting from column B
                     const colors = getApartmentColors(apartmentName);
-                    const apartmentNameRow = worksheet.addRow([apartmentName]);
-                    worksheet.mergeCells(`A${currentRow}:K${currentRow}`);
+                    const apartmentNameRow = worksheet.addRow(['', apartmentName]);
+                    worksheet.mergeCells(`B${currentRow}:K${currentRow}`);
                     apartmentNameRow.font = { bold: true, color: { argb: colors.font } };
                     apartmentNameRow.fill = {
                         type: 'pattern',
@@ -1189,9 +1195,9 @@ class ExcelExporter {
 
                     currentRow++;
 
-                    // Add column headers
+                    // Add column headers starting from column B
                     const apartmentHeaderRow = worksheet.addRow([
-                        'No', 'Tanggal', 'Waktu', 'Apartemen', 'Unit', 'Check Out', 'Durasi', 'Pembayaran', 'Jumlah', 'CS', 'Komisi'
+                        '', 'No', 'Tanggal', 'Waktu', 'Apartemen', 'Unit', 'Check Out', 'Durasi', 'Pembayaran', 'Jumlah', 'CS', 'Komisi'
                     ]);
                     apartmentHeaderRow.font = { bold: true, color: { argb: colors.font } };
                     apartmentHeaderRow.fill = {
@@ -1221,22 +1227,24 @@ class ExcelExporter {
                         const amount = parseFloat(transaction.amount || 0);
                         const commission = parseFloat(transaction.commission || 0);
 
-                        const row = worksheet.addRow({
-                            no: currentRowNumber,
-                            time: moment(transaction.created_at).tz(this.timezone).format('DD/MM/YYYY HH:mm'),
-                            location: transaction.location || '-',
-                            unit: transaction.unit || '-',
-                            checkout: transaction.checkout_time || '-',
-                            duration: transaction.duration || '-',
-                            payment: transaction.payment_method || '-',
-                            cs: transaction.cs_name || '-',
-                            amount: amount,
-                            commission: commission
-                        });
+                        const row = worksheet.addRow([
+                            '', // Empty column A
+                            currentRowNumber,
+                            moment(transaction.created_at).tz(this.timezone).format('DD/MM/YYYY'),
+                            moment(transaction.created_at).tz(this.timezone).format('HH:mm'),
+                            transaction.location || '-',
+                            transaction.unit || '-',
+                            transaction.checkout_time || '-',
+                            transaction.duration || '-',
+                            transaction.payment_method || '-',
+                            amount,
+                            transaction.cs_name || '-',
+                            commission
+                        ]);
 
-                        // Format currency columns
-                        row.getCell(9).numFmt = 'Rp #,##0';
-                        row.getCell(11).numFmt = 'Rp #,##0';
+                        // Format currency columns (adjusted for new column positions)
+                        row.getCell(10).numFmt = 'Rp #,##0'; // Jumlah
+                        row.getCell(12).numFmt = 'Rp #,##0'; // Komisi
 
                         // Add zebra stripe
                         if (currentRowNumber % 2 === 0) {
@@ -1255,14 +1263,14 @@ class ExcelExporter {
                         currentRow++;
                     });
 
-                    // Add apartment total row
+                    // Add apartment total row (adjusted for new column positions)
                     const apartmentTotalRow = worksheet.addRow([
-                        '', '', '', '', '', '', '', `TOTAL ${apartmentName}:`, apartmentAmount, '', apartmentCommission
+                        '', '', '', '', '', '', '', '', `TOTAL ${apartmentName}:`, apartmentAmount, '', apartmentCommission
                     ]);
                     apartmentTotalRow.font = { bold: true };
-                    apartmentTotalRow.getCell(8).alignment = { horizontal: 'center' };
-                    apartmentTotalRow.getCell(9).numFmt = 'Rp #,##0';
-                    apartmentTotalRow.getCell(11).numFmt = 'Rp #,##0';
+                    apartmentTotalRow.getCell(9).alignment = { horizontal: 'center' };
+                    apartmentTotalRow.getCell(10).numFmt = 'Rp #,##0';
+                    apartmentTotalRow.getCell(12).numFmt = 'Rp #,##0';
                     apartmentTotalRow.fill = {
                         type: 'pattern',
                         pattern: 'solid',
@@ -1280,10 +1288,10 @@ class ExcelExporter {
             Object.keys(apartmentGroups).forEach(apartmentName => {
                 if (!apartmentOrder.includes(apartmentName)) {
 
-                    // Add apartment name header
+                    // Add apartment name header starting from column B
                     const colors = getApartmentColors(apartmentName);
-                    const apartmentNameRow = worksheet.addRow([apartmentName]);
-                    worksheet.mergeCells(`A${currentRow}:K${currentRow}`);
+                    const apartmentNameRow = worksheet.addRow(['', apartmentName]);
+                    worksheet.mergeCells(`B${currentRow}:K${currentRow}`);
                     apartmentNameRow.font = { bold: true, color: { argb: colors.font } };
                     apartmentNameRow.fill = {
                         type: 'pattern',
@@ -1304,9 +1312,9 @@ class ExcelExporter {
 
                     currentRow++;
 
-                    // Add column headers
+                    // Add column headers starting from column B
                     const apartmentHeaderRow = worksheet.addRow([
-                        'No', 'Tanggal', 'Waktu', 'Apartemen', 'Unit', 'Check Out', 'Durasi', 'Pembayaran', 'Jumlah', 'CS', 'Komisi'
+                        '', 'No', 'Tanggal', 'Waktu', 'Apartemen', 'Unit', 'Check Out', 'Durasi', 'Pembayaran', 'Jumlah', 'CS', 'Komisi'
                     ]);
                     apartmentHeaderRow.font = { bold: true, color: { argb: colors.font } };
                     apartmentHeaderRow.fill = {
@@ -1336,22 +1344,24 @@ class ExcelExporter {
                         const amount = parseFloat(transaction.amount || 0);
                         const commission = parseFloat(transaction.commission || 0);
 
-                        const row = worksheet.addRow({
-                            no: currentRowNumber,
-                            time: moment(transaction.created_at).tz(this.timezone).format('DD/MM/YYYY HH:mm'),
-                            location: transaction.location || '-',
-                            unit: transaction.unit || '-',
-                            checkout: transaction.checkout_time || '-',
-                            duration: transaction.duration || '-',
-                            payment: transaction.payment_method || '-',
-                            cs: transaction.cs_name || '-',
-                            amount: amount,
-                            commission: commission
-                        });
+                        const row = worksheet.addRow([
+                            '', // Empty column A
+                            currentRowNumber,
+                            moment(transaction.created_at).tz(this.timezone).format('DD/MM/YYYY'),
+                            moment(transaction.created_at).tz(this.timezone).format('HH:mm'),
+                            transaction.location || '-',
+                            transaction.unit || '-',
+                            transaction.checkout_time || '-',
+                            transaction.duration || '-',
+                            transaction.payment_method || '-',
+                            amount,
+                            transaction.cs_name || '-',
+                            commission
+                        ]);
 
-                        // Format currency columns
-                        row.getCell(9).numFmt = 'Rp #,##0';
-                        row.getCell(11).numFmt = 'Rp #,##0';
+                        // Format currency columns (adjusted for new column positions)
+                        row.getCell(10).numFmt = 'Rp #,##0'; // Jumlah
+                        row.getCell(12).numFmt = 'Rp #,##0'; // Komisi
 
                         // Add zebra stripe
                         if (currentRowNumber % 2 === 0) {
@@ -1370,14 +1380,14 @@ class ExcelExporter {
                         currentRow++;
                     });
 
-                    // Add apartment total row
+                    // Add apartment total row (adjusted for new column positions)
                     const apartmentTotalRow = worksheet.addRow([
-                        '', '', '', '', '', '', '', `TOTAL ${apartmentName}:`, apartmentAmount, '', apartmentCommission
+                        '', '', '', '', '', '', '', '', `TOTAL ${apartmentName}:`, apartmentAmount, '', apartmentCommission
                     ]);
                     apartmentTotalRow.font = { bold: true };
-                    apartmentTotalRow.getCell(8).alignment = { horizontal: 'center' };
-                    apartmentTotalRow.getCell(9).numFmt = 'Rp #,##0';
-                    apartmentTotalRow.getCell(11).numFmt = 'Rp #,##0';
+                    apartmentTotalRow.getCell(9).alignment = { horizontal: 'center' };
+                    apartmentTotalRow.getCell(10).numFmt = 'Rp #,##0';
+                    apartmentTotalRow.getCell(12).numFmt = 'Rp #,##0';
                     apartmentTotalRow.fill = {
                         type: 'pattern',
                         pattern: 'solid',
@@ -1391,16 +1401,16 @@ class ExcelExporter {
                 }
             });
 
-            // Add grand total row
+            // Add grand total row (adjusted for new column positions)
             worksheet.addRow([]);
             const summaryRow = worksheet.addRow([
-                '', '', '', '', '', '', '', 'GRAND TOTAL:', totalAmount, '', totalCommission
+                '', '', '', '', '', '', '', '', 'GRAND TOTAL:', totalAmount, '', totalCommission
             ]);
 
             summaryRow.font = { bold: true, size: 12 };
-            summaryRow.getCell(8).alignment = { horizontal: 'center' };
-            summaryRow.getCell(9).numFmt = 'Rp #,##0';
-            summaryRow.getCell(11).numFmt = 'Rp #,##0';
+            summaryRow.getCell(9).alignment = { horizontal: 'center' };
+            summaryRow.getCell(10).numFmt = 'Rp #,##0';
+            summaryRow.getCell(12).numFmt = 'Rp #,##0';
 
             summaryRow.fill = {
                 type: 'pattern',
