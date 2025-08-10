@@ -9,18 +9,23 @@ import {
   Modal,
   FlatList,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { COLORS, SIZES } from '../../config/constants';
 import ReportService from '../../services/ReportService';
 import ApartmentService from '../../services/ApartmentService';
 import BusinessDayService from '../../services/BusinessDayService';
+import { useModernAlert } from '../../components/ModernAlert';
 
 /**
  * Screen dashboard laporan untuk admin
  * Fitur: Statistik checkin, filter apartemen, laporan harian, top marketing
  */
 const AdminReportsScreen = () => {
+  // Modern Alert Hook
+  const { showAlert, AlertComponent } = useModernAlert();
+
   // State untuk data laporan
   const [summaryStats, setSummaryStats] = useState({
     totalCheckins: 0,
@@ -112,13 +117,21 @@ const AdminReportsScreen = () => {
         await loadReportData();
       } catch (reportError) {
         console.error('AdminReportsScreen: Report data loading error:', reportError);
-        Alert.alert('Error', 'Gagal memuat data laporan');
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: 'Gagal memuat data laporan. Silakan coba lagi.',
+        });
       }
 
       console.log('AdminReportsScreen: Finished loadInitialData');
     } catch (error) {
       console.error('AdminReportsScreen: Critical error in loadInitialData:', error);
-      Alert.alert('Error', 'Gagal memuat data awal');
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: 'Gagal memuat data awal. Silakan restart aplikasi.',
+      });
     } finally {
       setLoading(false);
     }
@@ -242,7 +255,11 @@ const AdminReportsScreen = () => {
       console.log('AdminReportsScreen: Finished loadReportData successfully');
     } catch (error) {
       console.error('AdminReportsScreen: Critical error in loadReportData:', error);
-      Alert.alert('Error', 'Terjadi kesalahan saat memuat data laporan');
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: 'Terjadi kesalahan saat memuat data laporan. Data mungkin tidak lengkap.',
+      });
     }
   };
 
@@ -328,14 +345,26 @@ const AdminReportsScreen = () => {
     return new Intl.NumberFormat('id-ID').format(number);
   };
 
+  // Show loading indicator saat pertama kali load
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loadingText}>Memuat data laporan...</Text>
+        <AlertComponent />
+      </View>
+    );
+  }
+
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-      showsVerticalScrollIndicator={false}
-    >
+    <>
+      <ScrollView
+        style={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        showsVerticalScrollIndicator={false}
+      >
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Dashboard Laporan</Text>
@@ -709,7 +738,11 @@ const AdminReportsScreen = () => {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+      </ScrollView>
+
+      {/* Modern Alert Component */}
+      <AlertComponent />
+    </>
   );
 };
 
@@ -1105,6 +1138,19 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     fontWeight: '600',
     marginTop: SIZES.xs,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.gray100,
+    padding: SIZES.lg,
+  },
+  loadingText: {
+    fontSize: SIZES.body,
+    color: COLORS.textSecondary,
+    marginTop: SIZES.md,
+    textAlign: 'center',
   },
 });
 
