@@ -46,7 +46,7 @@ class ExcelExporter {
             if (date) {
                 // Jika tanggal spesifik diberikan, gunakan tanggal tersebut
                 reportDate = date;
-                displayDate = moment(reportDate).format('YYYY-MM-DD');
+                displayDate = moment(reportDate).format('DD/MM/YYYY');
 
                 // Get data from database untuk tanggal spesifik
                 const [transactions, csSummary, marketingCommissionByApartment] = await Promise.all([
@@ -79,25 +79,17 @@ class ExcelExporter {
                 return filepath;
             } else {
                 // Default: gunakan business day range (untuk laporan harian otomatis)
+                // Laporan harian jam 12:00 adalah untuk periode kemarin jam 12:00 - hari ini jam 11:59
                 const now = moment().tz(this.timezone);
+                const businessDay = now.clone().subtract(1, 'day');
 
-                // Tentukan business day berdasarkan jam saat ini
-                let businessDay;
-                if (now.hour() < 12) {
-                    // Sebelum jam 12:00 - masih business day kemarin
-                    businessDay = now.clone().subtract(1, 'day');
-                } else {
-                    // Setelah jam 12:00 - sudah business day hari ini
-                    businessDay = now.clone();
-                }
-
-                // Rentang waktu: business day jam 12:00 - business day+1 jam 11:59
+                // Rentang waktu: kemarin jam 12:00 - hari ini jam 11:59
                 const startTime = businessDay.hour(12).minute(0).second(0);
-                const endTime = businessDay.clone().add(1, 'day').hour(11).minute(59).second(59);
+                const endTime = now.clone().hour(11).minute(59).second(59);
 
                 startDate = startTime.format('YYYY-MM-DD HH:mm:ss');
                 endDate = endTime.format('YYYY-MM-DD HH:mm:ss');
-                displayDate = businessDay.format('YYYY-MM-DD');
+                displayDate = businessDay.format('DD/MM/YYYY');
 
                 logger.info(`Membuat laporan Excel untuk business day range: ${startDate} - ${endDate}`);
 
@@ -120,8 +112,9 @@ class ExcelExporter {
                 await this.createCashReportSheet(workbook, transactions, `${displayDate} (Business Day Range)`);
                 await this.createCombinedSummarySheet(workbook, csSummary, marketingCommission, `${displayDate} (Business Day Range)`);
 
-                // Save file
-                const filename = `Laporan_KAKARAMA_ROOM_${displayDate}_BusinessDay.xlsx`;
+                // Save file dengan format tanggal yang benar untuk filename
+                const filenameDateFormat = businessDay.format('YYYY-MM-DD');
+                const filename = `Laporan_KAKARAMA_ROOM_${filenameDateFormat}_BusinessDay.xlsx`;
                 const filepath = path.join(this.exportDir, filename);
 
                 await workbook.xlsx.writeFile(filepath);

@@ -587,6 +587,83 @@ async function handleCommand(message, apartmentName) {
                 await bot.sendMessage(message.from, '❌ Terjadi error saat mengambil status bot.');
             }
 
+        } else if (message.body.startsWith('!kirimulang')) {
+            // Command !kirimulang - hanya untuk owner di private message
+            logger.info(`Memproses command kirimulang dari ${message.from}: ${message.body}`);
+
+            const isFromGroup = message.from.includes('@g.us');
+
+            if (isFromGroup) {
+                await bot.sendMessage(message.from, '❌ Command !kirimulang hanya bisa digunakan di private message.');
+                return;
+            }
+
+            if (!isOwner) {
+                await bot.sendMessage(message.from, '❌ Hanya owner yang dapat menggunakan command ini.');
+                return;
+            }
+
+            try {
+                await bot.sendMessage(message.from, '🔄 Mengirim ulang laporan kemarin...');
+
+                // Generate Excel file untuk kemarin
+                const excelExporter = require('./src/excelExporter');
+                const moment = require('moment-timezone');
+
+                // Kemarin
+                const yesterday = moment().tz('Asia/Jakarta').subtract(1, 'day');
+                const excelPath = await excelExporter.generateDailyExcel(yesterday.format('YYYY-MM-DD'));
+
+                if (excelPath) {
+                    // Send email with Excel attachment
+                    const emailService = require('./src/emailService');
+                    const emailSent = await emailService.sendDailyReport(excelPath);
+
+                    if (emailSent) {
+                        logger.info('Laporan Excel kemarin berhasil dikirim ulang via email');
+                    } else {
+                        logger.error('Gagal mengirim ulang laporan Excel kemarin via email');
+                    }
+
+                    // Send apartment-specific reports with Excel attachment to each group
+                    const whatsappSent = await bot.sendDailyReportsWithAttachment(excelPath);
+
+                    if (whatsappSent) {
+                        logger.info('Laporan kemarin dengan attachment berhasil dikirim ulang ke semua grup WhatsApp yang enabled');
+                    } else {
+                        logger.error('Gagal mengirim ulang laporan kemarin dengan attachment ke grup WhatsApp');
+                    }
+
+                    // Send daily reports with Excel attachment to owner numbers
+                    const ownersSent = await bot.sendDailyReportsToOwners(excelPath);
+
+                    if (ownersSent) {
+                        logger.info('Laporan kemarin dengan attachment berhasil dikirim ulang ke owner numbers');
+                    } else {
+                        logger.error('Gagal mengirim ulang laporan kemarin dengan attachment ke owner numbers');
+                    }
+
+                    await bot.sendMessage(message.from, '✅ Laporan kemarin berhasil dikirim ulang ke semua grup dan owner.');
+                } else {
+                    logger.error('Gagal membuat file Excel untuk laporan kemarin');
+
+                    // Fallback: Send text-only reports to WhatsApp groups
+                    const messageSent = await bot.sendDailyReportsToGroups();
+
+                    if (messageSent) {
+                        logger.info('Laporan kemarin teks berhasil dikirim ulang ke semua grup WhatsApp yang enabled (tanpa attachment)');
+                        await bot.sendMessage(message.from, '⚠️ Laporan kemarin berhasil dikirim ulang (tanpa attachment Excel).');
+                    } else {
+                        logger.error('Gagal mengirim ulang laporan kemarin ke grup WhatsApp');
+                        await bot.sendMessage(message.from, '❌ Gagal mengirim ulang laporan kemarin.');
+                    }
+                }
+
+            } catch (error) {
+                logger.error('Error dalam command kirimulang:', error);
+                await bot.sendMessage(message.from, '❌ Terjadi error saat mengirim ulang laporan kemarin.');
+            }
+
         } else if (message.body.startsWith('!help')) {
             logger.info(`Memproses command help dari ${message.from}: ${message.body}`);
 
@@ -652,7 +729,8 @@ async function handleCommand(message, apartmentName) {
                     helpMessage += `• \`!debug\` - Informasi debug sistem\n`;
                     helpMessage += `• \`!reload\` - Reload konfigurasi grup\n`;
                     helpMessage += `• \`!mapping\` - Lihat mapping grup aktif\n`;
-                    helpMessage += `• \`!rekapulang\` - Reprocess semua pesan\n\n`;
+                    helpMessage += `• \`!rekapulang\` - Reprocess semua pesan\n`;
+                    helpMessage += `• \`!kirimulang\` - Kirim ulang laporan kemarin ke grup & owner\n\n`;
 
                     helpMessage += `🔄 *RECOVERY & TESTING*\n`;
                     helpMessage += `• \`!forcereload\` - Force reload konfigurasi\n`;

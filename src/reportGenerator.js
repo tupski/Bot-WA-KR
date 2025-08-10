@@ -511,44 +511,52 @@ ${commissionSection}`;
 
         let report = `📊 REKAP LAPORAN ${reportDate}\n`;
         report += `🏢 KAKARAMA ROOM\n`;
-        report += `📅 ${reportDate} 12:00 - 11:59 WIB\n\n`;
+        if (apartmentName) {
+            report += `🏠 ${apartmentName}\n`;
+        }
+        report += `📅 ${reportDate} 12:00 - ${now.format('HH:mm')} WIB\n\n`;
 
-        // Total CS
+        // 👥 TOTAL CS
         report += `👥 TOTAL CS\n`;
 
-        // Tampilkan CS berdasarkan nama asli dari database
-        const csDetailSummary = {};
+        // Kelompokkan CS berdasarkan mapping (amel, apk, kr)
+        const csMappedSummary = { amel: 0, apk: 0, kr: 0 };
         Object.entries(stats.csSummary).forEach(([csName, data]) => {
-            const lowerCsName = csName.toLowerCase();
-            csDetailSummary[lowerCsName] = data.count;
+            if (csName.toLowerCase() === 'amel') {
+                csMappedSummary.amel += data.count;
+            } else if (csName.toLowerCase() === 'apk') {
+                csMappedSummary.apk += data.count;
+            } else {
+                csMappedSummary.kr += data.count;
+            }
         });
 
-        // Tampilkan sesuai format yang diminta
-        if (csDetailSummary.amel > 0) report += `- total cs amel: ${csDetailSummary.amel}\n`;
-        if (csDetailSummary.apk > 0) report += `- total cs apk: ${csDetailSummary.apk}\n`;
-        if (csDetailSummary.kr > 0) report += `- total cs kr: ${csDetailSummary.kr}\n`;
+        // Tampilkan sesuai format !rekap
+        if (csMappedSummary.amel > 0) report += `- total cs amel: ${csMappedSummary.amel}\n`;
+        if (csMappedSummary.apk > 0) report += `- total cs apk: ${csMappedSummary.apk}\n`;
+        if (csMappedSummary.kr > 0) report += `- total cs kr: ${csMappedSummary.kr}\n`;
 
         const totalCS = Object.values(stats.csSummary).reduce((sum, data) => sum + data.count, 0);
         report += `\n- Jumlah CS: ${totalCS}\n`;
         report += `----------------------\n\n`;
 
-        // Keuangan
+        // 💰 KEUANGAN
         report += `💰 KEUANGAN\n`;
 
-        // Hitung cash dan transfer per CS
+        // Hitung cash dan transfer per CS berdasarkan mapping
         const cashAmel = stats.csPaymentBreakdown?.amel?.cash || 0;
         const cashKr = stats.csPaymentBreakdown?.kr?.cash || 0;
         const tfKr = stats.csPaymentBreakdown?.kr?.transfer || 0;
 
+        // Tampilkan sesuai format !rekap
         if (cashAmel > 0) report += `- total cash amel: ${numberFormatter.formatCurrency(cashAmel, 'whatsapp')}\n`;
         if (cashKr > 0) report += `- total cash kr: ${numberFormatter.formatCurrency(cashKr, 'whatsapp')}\n`;
         if (tfKr > 0) report += `- total tf KR: ${numberFormatter.formatCurrency(tfKr, 'whatsapp')}\n\n`;
 
-        report += `- total kotor: ${numberFormatter.formatCurrency(stats.totalAmount, 'whatsapp')}\n`;
-        report += `-----------\n\n`;
+        report += `- total kotor: ${numberFormatter.formatCurrency(stats.totalAmount, 'whatsapp')}\n\n`;
 
-        // Komisi Marketing
-        report += `💼 KOMISI MARKETING\n\n`;
+        // 💼 KOMISI MARKETING
+        report += `💼 KOMISI MARKETING\n`;
 
         // Group by marketing (semua CS termasuk APK dan Amel)
         const marketingStats = {};

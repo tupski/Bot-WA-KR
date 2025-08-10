@@ -49,8 +49,12 @@ class Scheduler {
             try {
                 logger.info('Memulai pembuatan laporan harian terjadwal...');
                 
-                // Generate Excel file first
-                const excelPath = await excelExporter.generateDailyExcel();
+                // Generate Excel file first untuk kemarin (business day logic)
+                const moment = require('moment-timezone');
+                const now = moment().tz('Asia/Jakarta');
+                const businessDay = now.clone().subtract(1, 'day');
+
+                const excelPath = await excelExporter.generateDailyExcel(businessDay.format('YYYY-MM-DD'));
 
                 if (excelPath) {
                     // Send email with Excel attachment

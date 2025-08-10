@@ -805,8 +805,23 @@ class WhatsAppBot {
             const reportGenerator = require('./reportGenerator');
             const moment = require('moment-timezone');
 
-            // Generate comprehensive report for owners (all apartments)
-            const report = await reportGenerator.generateDailyReport();
+            // Generate comprehensive report for owners (all apartments) using business day logic
+            const now = moment().tz('Asia/Jakarta');
+
+            // Tentukan business day kemarin (karena laporan jam 12:00 untuk hari sebelumnya)
+            const businessDay = now.clone().subtract(1, 'day');
+
+            // Rentang waktu: business day kemarin jam 12:00 - hari ini jam 11:59
+            const startDate = businessDay.format('YYYY-MM-DD') + ' 12:00:00';
+            const endDate = now.format('YYYY-MM-DD') + ' 11:59:59';
+            const displayDate = businessDay.format('DD/MM/YYYY');
+
+            const report = await reportGenerator.generateReportByDateRange(
+                startDate,
+                endDate,
+                displayDate,
+                null // null = semua apartemen untuk owner
+            );
 
             for (const ownerNumber of config.owner.allowedNumbers) {
                 try {
@@ -873,10 +888,32 @@ class WhatsAppBot {
 
             for (const groupId of config.apartments.allowedGroups) {
                 try {
-                    const apartmentName = config.apartments.groupMapping[groupId] || 'Unknown';
+                    const apartmentName = config.apartments.groupMapping[groupId];
+                    if (!apartmentName) {
+                        logger.warn(`No apartment mapping found for group ${groupId}`);
+                        continue;
+                    }
 
-                    // Generate text report untuk grup ini
-                    const report = await reportGenerator.generateDailyReport();
+                    logger.info(`Generating daily report for ${apartmentName}...`);
+
+                    // Generate report specific to this apartment using business day logic
+                    const moment = require('moment-timezone');
+                    const now = moment().tz('Asia/Jakarta');
+
+                    // Tentukan business day kemarin (karena laporan jam 12:00 untuk hari sebelumnya)
+                    const businessDay = now.clone().subtract(1, 'day');
+
+                    // Rentang waktu: business day kemarin jam 12:00 - hari ini jam 11:59
+                    const startDate = businessDay.format('YYYY-MM-DD') + ' 12:00:00';
+                    const endDate = now.format('YYYY-MM-DD') + ' 11:59:59';
+                    const displayDate = businessDay.format('DD/MM/YYYY');
+
+                    const report = await reportGenerator.generateReportByDateRange(
+                        startDate,
+                        endDate,
+                        displayDate,
+                        apartmentName
+                    );
 
                     if (report) {
                         // Kirim laporan dengan attachment
@@ -889,8 +926,7 @@ class WhatsAppBot {
                         }
                     } else {
                         // Send no data message dengan attachment
-                        const displayDate = moment().tz(this.timezone).format('DD/MM/YYYY');
-                        const noDataMessage = `📊 *REKAP LAPORAN ${displayDate}*\n🏢 KAKARAMA ROOM\n🏠 ${apartmentName}\n\n❌ Tidak ada transaksi pada periode ini.`;
+                        const noDataMessage = `📊 REKAP LAPORAN ${displayDate}\n🏢 KAKARAMA ROOM\n\n❌ Tidak ada transaksi pada periode ini.`;
                         const success = await this.sendReportWithAttachment(groupId, noDataMessage, excelFilePath);
                         if (success) {
                             successCount++;
