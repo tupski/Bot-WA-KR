@@ -140,6 +140,73 @@ class ExcelExporter {
     }
 
     /**
+     * Export laporan Excel untuk apartemen tertentu
+     */
+    async exportApartmentReport(reportDate, apartmentName) {
+        try {
+            const moment = require('moment-timezone');
+
+            if (!reportDate) {
+                // Gunakan business day logic untuk tanggal default
+                const now = moment().tz(this.timezone);
+                const businessDay = now.clone().subtract(1, 'day');
+                reportDate = businessDay.format('YYYY-MM-DD');
+            }
+
+            const displayDate = moment(reportDate).format('DD/MM/YYYY');
+
+            // Rentang waktu: business day jam 12:00 - business day+1 jam 11:59
+            const businessDay = moment.tz(reportDate, 'YYYY-MM-DD', this.timezone);
+            const startTime = businessDay.hour(12).minute(0).second(0);
+            const endTime = businessDay.clone().add(1, 'day').hour(11).minute(59).second(59);
+
+            const startDate = startTime.format('YYYY-MM-DD HH:mm:ss');
+            const endDate = endTime.format('YYYY-MM-DD HH:mm:ss');
+
+            logger.info(`Membuat laporan Excel untuk apartemen: ${apartmentName}, tanggal: ${reportDate}`);
+
+            // Get data from database untuk apartemen tertentu
+            const transactions = await database.getTransactionsByDateRange(startDate, endDate, apartmentName);
+
+            if (!transactions || transactions.length === 0) {
+                logger.warn(`Tidak ada transaksi untuk apartemen ${apartmentName} pada tanggal ${reportDate}`);
+                return null;
+            }
+
+            // Hitung summary dari transactions untuk apartemen ini
+            const csSummary = this.calculateCSSummaryFromTransactions(transactions);
+            const marketingCommission = this.calculateMarketingCommissionFromTransactions(transactions);
+
+            // Create workbook
+            const workbook = new ExcelJS.Workbook();
+            workbook.creator = 'KAKARAMA ROOM';
+            workbook.lastModifiedBy = 'WhatsApp Bot';
+            workbook.created = new Date();
+            workbook.modified = new Date();
+
+            // Create sheets dengan data apartemen tertentu
+            await this.createTransactionsSheet(workbook, transactions, `${displayDate} - ${apartmentName}`);
+            await this.createCashReportSheet(workbook, transactions, `${displayDate} - ${apartmentName}`);
+            await this.createCombinedSummarySheet(workbook, csSummary, marketingCommission, `${displayDate} - ${apartmentName}`);
+
+            // Save file dengan nama apartemen
+            const filenameDateFormat = moment(reportDate).format('YYYY-MM-DD');
+            const safeApartmentName = apartmentName.replace(/[^a-zA-Z0-9]/g, '_');
+            const filename = `Laporan_${safeApartmentName}_${filenameDateFormat}.xlsx`;
+            const filepath = path.join(this.exportDir, filename);
+
+            await workbook.xlsx.writeFile(filepath);
+
+            logger.info(`Laporan Excel apartemen disimpan: ${filepath}`);
+            return filepath;
+
+        } catch (error) {
+            logger.error('Error membuat laporan Excel apartemen:', error);
+            throw error;
+        }
+    }
+
+    /**
      * Normalize marketing name untuk konsistensi case
      */
     normalizeMarketingName(name) {

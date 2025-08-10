@@ -680,12 +680,16 @@ async function handleCommand(message, apartmentName) {
                 helpMessage += `• \`!rekap\` - Rekap hari ini (business day)\n`;
                 helpMessage += `• \`!rekap DDMMYYYY\` - Rekap tanggal tertentu\n`;
                 helpMessage += `• \`!detailrekap\` - Detail transaksi hari ini\n`;
-                helpMessage += `• \`!detailrekap DDMMYYYY\` - Detail tanggal tertentu\n\n`;
+                helpMessage += `• \`!detailrekap DDMMYYYY\` - Detail tanggal tertentu\n`;
+                helpMessage += `• \`!exportapartemen\` - Export Excel apartemen ini (business day kemarin)\n`;
+                helpMessage += `• \`!exportapartemen DDMMYYYY\` - Export Excel tanggal tertentu\n\n`;
 
                 helpMessage += `📝 *CONTOH PENGGUNAAN*\n`;
                 helpMessage += `• \`!rekap\` - Rekap hari ini\n`;
                 helpMessage += `• \`!rekap 08082025\` - Rekap 8 Agustus 2025\n`;
-                helpMessage += `• \`!detailrekap\` - Detail hari ini\n\n`;
+                helpMessage += `• \`!detailrekap\` - Detail hari ini\n`;
+                helpMessage += `• \`!exportapartemen\` - Export Excel business day kemarin\n`;
+                helpMessage += `• \`!exportapartemen 08082025\` - Export Excel 8 Agustus 2025\n\n`;
 
                 helpMessage += `📋 *FORMAT BOOKING*\n`;
                 helpMessage += `Kirim pesan dengan format, contoh:\n`;
@@ -1093,6 +1097,89 @@ async function handleCommand(message, apartmentName) {
             } catch (error) {
                 logger.error('Error dalam export laporan:', error);
                 await bot.sendMessage(message.from, '❌ Terjadi error saat export laporan. Silakan coba lagi atau hubungi WA Om Tupas 082211219993.');
+            }
+
+        } else if (message.body.startsWith('!exportapartemen')) {
+            logger.info(`Memproses command exportapartemen dari ${message.from}: ${message.body}`);
+
+            // Hanya bisa dipanggil dari grup apartemen
+            const isFromGroup = message.from.includes('@g.us');
+            if (!isFromGroup) {
+                await bot.sendMessage(message.from, '❌ Command !exportapartemen hanya bisa digunakan di grup apartemen.');
+                return;
+            }
+
+            const apartmentName = bot.getApartmentName(message.from);
+            if (!apartmentName) {
+                await bot.sendMessage(message.from, '❌ Grup ini tidak terdaftar sebagai grup apartemen.');
+                return;
+            }
+
+            try {
+                const moment = require('moment-timezone');
+                const excelExporter = require('./src/excelExporter');
+
+                // Parse command dengan berbagai format
+                const parts = message.body.trim().split(' ');
+                let targetDate = null;
+
+                if (parts.length === 1) {
+                    // !exportapartemen - Default: business day kemarin
+                    const now = moment().tz('Asia/Jakarta');
+                    const businessDay = now.clone().subtract(1, 'day');
+                    targetDate = businessDay.format('YYYY-MM-DD');
+                } else if (parts.length === 2) {
+                    const param = parts[1];
+
+                    // Check if it's a date (DDMMYYYY format)
+                    if (param.length === 8 && /^\d{8}$/.test(param)) {
+                        const day = param.substring(0, 2);
+                        const month = param.substring(2, 4);
+                        const year = param.substring(4, 8);
+
+                        // Validate date
+                        const parsedDate = moment(`${year}-${month}-${day}`, 'YYYY-MM-DD').tz('Asia/Jakarta');
+                        if (!parsedDate.isValid()) {
+                            await bot.sendMessage(message.from, '❌ Format tanggal tidak valid. Gunakan DDMMYYYY (contoh: 08082025 untuk 8 Agustus 2025)');
+                            return;
+                        }
+
+                        targetDate = parsedDate.format('YYYY-MM-DD');
+                    } else {
+                        await bot.sendMessage(message.from, '❌ Format tidak valid. Gunakan:\n- `!exportapartemen` (business day kemarin)\n- `!exportapartemen DDMMYYYY` (tanggal tertentu)');
+                        return;
+                    }
+                } else {
+                    await bot.sendMessage(message.from, '❌ Format command tidak valid.\n\nGunakan:\n- `!exportapartemen` (business day kemarin)\n- `!exportapartemen DDMMYYYY` (tanggal tertentu)');
+                    return;
+                }
+
+                await bot.sendMessage(message.from, `🔄 Membuat laporan Excel untuk ${apartmentName}...`);
+
+                // Generate Excel file untuk apartemen ini
+                const excelPath = await excelExporter.exportApartmentReport(targetDate, apartmentName);
+
+                if (!excelPath) {
+                    const displayDate = moment(targetDate).format('DD/MM/YYYY');
+                    await bot.sendMessage(message.from, `❌ Tidak ada transaksi untuk ${apartmentName} pada tanggal ${displayDate}.`);
+                    return;
+                }
+
+                // Kirim file Excel ke grup
+                const displayDate = moment(targetDate).format('DD/MM/YYYY');
+                const reportSummary = `📊 *LAPORAN EXCEL ${apartmentName.toUpperCase()}*\n\n📅 Tanggal: ${displayDate}\n📁 File Excel telah dibuat`;
+
+                const success = await bot.sendReportWithAttachment(message.from, reportSummary, excelPath);
+
+                if (success) {
+                    logger.info(`✅ Laporan Excel apartemen berhasil dikirim ke grup: ${apartmentName}`);
+                } else {
+                    await bot.sendMessage(message.from, '❌ Gagal mengirim file Excel. Silakan coba lagi.');
+                }
+
+            } catch (error) {
+                logger.error('Error dalam export laporan apartemen:', error);
+                await bot.sendMessage(message.from, '❌ Terjadi error saat membuat laporan Excel. Silakan coba lagi.');
             }
 
         } else if (message.body.startsWith('!fixenv')) {
