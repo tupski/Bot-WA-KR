@@ -17,6 +17,7 @@ import { useAutoRefresh } from '../../hooks/useRealtime';
 import ApartmentService from '../../services/ApartmentService';
 import UnitService from '../../services/UnitService';
 import CheckinService from '../../services/CheckinService';
+import BusinessDayService from '../../services/BusinessDayService';
 
 const AdminDashboardScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
@@ -38,30 +39,15 @@ const AdminDashboardScreen = ({ navigation }) => {
   };
 
   /**
-   * Get business day range (12:00 today to 11:59 tomorrow)
+   * Get business day range menggunakan BusinessDayService
    */
   const getBusinessDayRange = () => {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    // Business day starts at 12:00 today
-    const startTime = new Date(today);
-    startTime.setHours(12, 0, 0, 0);
-
-    // Business day ends at 11:59 tomorrow
-    const endTime = new Date(today);
-    endTime.setDate(endTime.getDate() + 1);
-    endTime.setHours(11, 59, 59, 999);
-
-    // If current time is before 12:00, use previous business day
-    if (now.getHours() < 12) {
-      startTime.setDate(startTime.getDate() - 1);
-      endTime.setDate(endTime.getDate() - 1);
-    }
-
+    const businessDayRange = BusinessDayService.getCurrentBusinessDayRange();
     return {
-      start: startTime.toISOString(),
-      end: endTime.toISOString(),
+      start: businessDayRange.start,
+      end: businessDayRange.end,
+      businessDate: businessDayRange.businessDate,
+      businessDateString: businessDayRange.businessDateString,
     };
   };
 

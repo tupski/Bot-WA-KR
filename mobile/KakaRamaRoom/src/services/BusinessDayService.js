@@ -2,35 +2,44 @@ import { supabase } from '../config/supabase';
 
 class BusinessDayService {
   /**
-   * Get business day range (12:00 WIB hari ini sampai 11:59 WIB hari berikutnya)
+   * Get business day range berdasarkan sistem closing harian jam 12 siang
+   * Contoh: 9 Agustus 12:00 - 10 Agustus 11:59 = laporan tanggal 9 Agustus
    * @param {Date} date - Tanggal referensi (default: hari ini)
    * @returns {Object} - Start dan end time untuk business day
    */
   getBusinessDayRange(date = new Date()) {
-    // Set timezone ke WIB (UTC+7)
-    const wibOffset = 7 * 60; // 7 hours in minutes
-    const localOffset = date.getTimezoneOffset();
-    const wibTime = new Date(date.getTime() + (wibOffset + localOffset) * 60 * 1000);
-    
-    // Business day start: 12:00 WIB hari ini
-    const startTime = new Date(wibTime);
+    // Convert to WIB timezone
+    const wibTime = new Date(date.toLocaleString("en-US", {timeZone: "Asia/Jakarta"}));
+    const currentHour = wibTime.getHours();
+
+    // Tentukan business date berdasarkan jam saat ini
+    let businessDate = new Date(wibTime);
+
+    // Jika sekarang sebelum jam 12:00, maka business day adalah hari sebelumnya
+    if (currentHour < 12) {
+      businessDate.setDate(businessDate.getDate() - 1);
+    }
+
+    // Business day start: jam 12:00 WIB pada business date
+    const startTime = new Date(businessDate);
     startTime.setHours(12, 0, 0, 0);
-    
-    // Business day end: 11:59:59 WIB hari berikutnya
-    const endTime = new Date(startTime);
+
+    // Business day end: jam 11:59:59 WIB hari berikutnya
+    const endTime = new Date(businessDate);
     endTime.setDate(endTime.getDate() + 1);
     endTime.setHours(11, 59, 59, 999);
-    
-    // Convert back to UTC for database
-    const startUTC = new Date(startTime.getTime() - wibOffset * 60 * 1000);
-    const endUTC = new Date(endTime.getTime() - wibOffset * 60 * 1000);
-    
+
+    // Convert to UTC for database storage
+    const startUTC = new Date(startTime.getTime() - (7 * 60 * 60 * 1000)); // WIB is UTC+7
+    const endUTC = new Date(endTime.getTime() - (7 * 60 * 60 * 1000));
+
     return {
       start: startUTC.toISOString(),
       end: endUTC.toISOString(),
       startWIB: startTime.toISOString(),
       endWIB: endTime.toISOString(),
-      businessDate: this.formatBusinessDate(wibTime),
+      businessDate: this.formatBusinessDate(businessDate),
+      businessDateString: businessDate.toISOString().split('T')[0], // YYYY-MM-DD format
     };
   }
 
@@ -50,6 +59,33 @@ class BusinessDayService {
    */
   getCurrentBusinessDayRange() {
     return this.getBusinessDayRange();
+  }
+
+  /**
+   * Get business date untuk waktu tertentu
+   * @param {Date} date - Tanggal dan waktu (default: sekarang)
+   * @returns {string} - Business date dalam format YYYY-MM-DD
+   */
+  getBusinessDate(date = new Date()) {
+    const wibTime = new Date(date.toLocaleString("en-US", {timeZone: "Asia/Jakarta"}));
+    const currentHour = wibTime.getHours();
+
+    // Jika sekarang sebelum jam 12:00, maka business date adalah hari sebelumnya
+    if (currentHour < 12) {
+      wibTime.setDate(wibTime.getDate() - 1);
+    }
+
+    return wibTime.toISOString().split('T')[0]; // YYYY-MM-DD format
+  }
+
+  /**
+   * Check apakah sekarang masih dalam business day yang sama
+   * @param {string} businessDateString - Business date dalam format YYYY-MM-DD
+   * @returns {boolean}
+   */
+  isCurrentBusinessDay(businessDateString) {
+    const currentBusinessDate = this.getBusinessDate();
+    return currentBusinessDate === businessDateString;
   }
 
   /**
