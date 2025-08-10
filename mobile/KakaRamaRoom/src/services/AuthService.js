@@ -250,13 +250,24 @@ class AuthService {
       console.log('AuthService: Clearing user data');
       this.currentUser = null;
 
-      // Clear AsyncStorage synchronously if possible
+      // Clear AsyncStorage with multiple attempts
       try {
-        await AsyncStorage.removeItem('currentUser');
+        await AsyncStorage.multiRemove(['currentUser', 'user_session']);
         console.log('AuthService: AsyncStorage cleared successfully');
       } catch (storageError) {
         console.warn('AuthService: Failed to clear AsyncStorage:', storageError);
-        // Continue with logout even if storage clear fails
+        // Try individual removal
+        try {
+          await AsyncStorage.removeItem('currentUser');
+          await AsyncStorage.removeItem('user_session');
+        } catch (fallbackError) {
+          console.error('AuthService: Fallback storage clear failed:', fallbackError);
+        }
+      }
+
+      // Force garbage collection if available
+      if (global.gc) {
+        global.gc();
       }
 
       console.log('AuthService: Logout completed successfully');
@@ -267,7 +278,7 @@ class AuthService {
       // Force clear user data even on error
       this.currentUser = null;
       try {
-        await AsyncStorage.removeItem('currentUser');
+        await AsyncStorage.multiRemove(['currentUser', 'user_session']);
       } catch (storageError) {
         console.error('AuthService: Failed to clear storage on error:', storageError);
       }

@@ -265,19 +265,20 @@ const AppSettingsScreen = ({ navigation }) => {
                 return;
               }
 
-              // Perform logout immediately without loading state to prevent flicker
-              console.log('AppSettingsScreen: Calling AuthService.logout');
-              const result = await AuthService.logout();
-
-              console.log('AppSettingsScreen: Logout result:', result);
-
-              // Always navigate to login regardless of result to prevent flicker
-              console.log('AppSettingsScreen: Navigating to login');
+              // Navigate to login immediately to prevent flicker
+              console.log('AppSettingsScreen: Navigating to login immediately');
               navigation.reset({
                 index: 0,
                 routes: [{ name: 'Login' }],
               });
-              console.log('AppSettingsScreen: Navigation reset successful');
+
+              // Perform logout in background
+              console.log('AppSettingsScreen: Calling AuthService.logout in background');
+              AuthService.logout().then(result => {
+                console.log('AppSettingsScreen: Background logout result:', result);
+              }).catch(error => {
+                console.error('AppSettingsScreen: Background logout error:', error);
+              });
 
             } catch (error) {
               console.error('AppSettingsScreen: Logout error:', error);
