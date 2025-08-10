@@ -34,6 +34,7 @@ const AdminCheckinScreen = ({ navigation }) => {
   const [unitModalVisible, setUnitModalVisible] = useState(false);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [marketingModalVisible, setMarketingModalVisible] = useState(false);
+  const [durationModalVisible, setDurationModalVisible] = useState(false);
 
   // Marketing search
   const [marketingSearchQuery, setMarketingSearchQuery] = useState('');
@@ -254,9 +255,18 @@ const AdminCheckinScreen = ({ navigation }) => {
       }
       checkoutTime.setHours(checkoutTime.getHours() + durationHours);
 
+      // Validate apartmentId and unitId are valid UUIDs or numbers
+      const apartmentId = formData.apartmentId;
+      const unitId = formData.unitId;
+
+      if (!apartmentId || !unitId) {
+        Alert.alert('Error', 'Apartemen dan unit harus dipilih');
+        return;
+      }
+
       const checkinData = {
-        apartmentId: parseInt(formData.apartmentId),
-        unitId: parseInt(formData.unitId),
+        apartmentId: apartmentId, // Keep as string (UUID)
+        unitId: unitId, // Keep as string (UUID)
         durationHours: durationHours,
         checkoutTime: checkoutTime.toISOString(),
         paymentMethod: formData.paymentMethod || 'cash',
@@ -269,30 +279,44 @@ const AdminCheckinScreen = ({ navigation }) => {
       };
 
       console.log('AdminCheckinScreen: Submitting checkin data:', checkinData);
-      const result = await CheckinService.createCheckin(checkinData);
+      const result = await CheckinService.createCheckin(checkinData, currentUser.id, 'admin');
 
       console.log('AdminCheckinScreen: Checkin result:', result);
 
       if (result && result.success) {
         console.log('AdminCheckinScreen: Checkin successful, resetting form');
-        // Reset form immediately
-        setFormData({
-          apartmentId: '',
-          unitId: '',
-          durationHours: '3',
-          paymentMethod: 'cash',
-          paymentAmount: '',
-          marketingCommission: '',
-          marketingName: '',
-          notes: '',
-        });
-        setPaymentProof(null);
 
-        // Show success message and navigate back
+        // Show success message first
         Alert.alert('Sukses', 'Checkin berhasil dibuat!', [
           {
             text: 'OK',
-            onPress: () => navigation.goBack()
+            onPress: () => {
+              // Reset form after user acknowledges success
+              try {
+                setFormData({
+                  apartmentId: '',
+                  unitId: '',
+                  durationHours: '3',
+                  paymentMethod: 'cash',
+                  paymentAmount: '',
+                  marketingCommission: '',
+                  marketingName: '',
+                  notes: '',
+                });
+                setPaymentProof(null);
+
+                // Navigate back safely
+                if (navigation && navigation.goBack) {
+                  navigation.goBack();
+                }
+              } catch (resetError) {
+                console.error('AdminCheckinScreen: Error during reset:', resetError);
+                // Still try to navigate back even if reset fails
+                if (navigation && navigation.goBack) {
+                  navigation.goBack();
+                }
+              }
+            }
           }
         ]);
       } else {
@@ -302,11 +326,27 @@ const AdminCheckinScreen = ({ navigation }) => {
       }
     } catch (error) {
       console.error('AdminCheckinScreen: Submit checkin error:', error);
-      console.error('AdminCheckinScreen: Error stack:', error.stack);
-      Alert.alert('Error', `Gagal membuat checkin: ${error.message || 'Unknown error'}`);
+      console.error('AdminCheckinScreen: Error stack:', error?.stack);
+
+      // More specific error handling
+      let errorMessage = 'Terjadi kesalahan yang tidak diketahui';
+
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error?.code) {
+        errorMessage = `Database error: ${error.code}`;
+      }
+
+      Alert.alert('Error', `Gagal membuat checkin: ${errorMessage}`);
     } finally {
       console.log('AdminCheckinScreen: Setting submitting to false');
-      setSubmitting(false);
+      try {
+        setSubmitting(false);
+      } catch (finallyError) {
+        console.error('AdminCheckinScreen: Error in finally block:', finallyError);
+      }
     }
   };
 
