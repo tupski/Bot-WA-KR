@@ -8,7 +8,6 @@ import {
   RefreshControl,
   Modal,
   FlatList,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -72,12 +71,18 @@ const AdminReportsScreen = () => {
 
   // Update current date/time dan business date
   const updateDateTime = () => {
-    const now = new Date();
-    setCurrentDateTime(now);
+    try {
+      const now = new Date();
+      setCurrentDateTime(now);
 
-    const businessDateString = BusinessDayService.getBusinessDate(now);
-    const businessDayRange = BusinessDayService.getCurrentBusinessDayRange();
-    setBusinessDate(businessDayRange.businessDate);
+      const businessDayRange = BusinessDayService.getCurrentBusinessDayRange();
+      setBusinessDate(businessDayRange.businessDate);
+    } catch (error) {
+      console.error('AdminReportsScreen: Error updating date time:', error);
+      // Set fallback date
+      setCurrentDateTime(new Date());
+      setBusinessDate(new Date().toISOString().split('T')[0]);
+    }
   };
 
   // Reload data saat filter berubah
@@ -373,12 +378,21 @@ const AdminReportsScreen = () => {
    * @returns {string} - Format currency
    */
   const formatCurrency = (amount) => {
-    if (!amount) return 'Rp 0';
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-    }).format(amount);
+    try {
+      if (amount === null || amount === undefined || isNaN(amount)) {
+        return 'Rp 0';
+      }
+      const numAmount = parseFloat(amount) || 0;
+      return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(numAmount);
+    } catch (error) {
+      console.warn('AdminReportsScreen: Error formatting currency:', error);
+      return 'Rp 0';
+    }
   };
 
   /**
@@ -387,8 +401,16 @@ const AdminReportsScreen = () => {
    * @returns {string} - Format number
    */
   const formatNumber = (number) => {
-    if (!number) return '0';
-    return new Intl.NumberFormat('id-ID').format(number);
+    try {
+      if (number === null || number === undefined || isNaN(number)) {
+        return '0';
+      }
+      const numValue = parseFloat(number) || 0;
+      return new Intl.NumberFormat('id-ID').format(numValue);
+    } catch (error) {
+      console.warn('AdminReportsScreen: Error formatting number:', error);
+      return '0';
+    }
   };
 
   // Show loading indicator saat pertama kali load
