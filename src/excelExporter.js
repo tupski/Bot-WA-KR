@@ -44,16 +44,25 @@ class ExcelExporter {
             let startDate, endDate, displayDate, reportDate;
 
             if (date) {
-                // Jika tanggal spesifik diberikan, gunakan tanggal tersebut
+                // Jika tanggal spesifik diberikan, gunakan business day range yang sama dengan WhatsApp
                 reportDate = date;
                 displayDate = moment(reportDate).format('DD/MM/YYYY');
 
-                // Get data from database untuk tanggal spesifik
-                const [transactions, csSummary, marketingCommissionByApartment] = await Promise.all([
-                    database.getTransactions(reportDate),
-                    database.getCSSummary(reportDate),
-                    database.getMarketingCommissionByApartment(reportDate)
-                ]);
+                // Buat datetime range yang sama dengan laporan WhatsApp
+                const businessDay = moment(reportDate);
+                const nextDay = businessDay.clone().add(1, 'day');
+
+                const startDate = businessDay.format('YYYY-MM-DD') + ' 12:00:00';
+                const endDate = nextDay.format('YYYY-MM-DD') + ' 11:59:59';
+
+                logger.info(`Membuat laporan Excel untuk tanggal spesifik dengan range: ${startDate} - ${endDate}`);
+
+                // Get data from database berdasarkan datetime range (sama dengan WhatsApp)
+                const transactions = await database.getTransactionsByDateRange(startDate, endDate);
+
+                // Hitung summary dari transactions (sama seperti WhatsApp)
+                const csSummary = this.calculateCSSummaryFromTransactions(transactions);
+                const marketingCommission = this.calculateMarketingCommissionFromTransactions(transactions);
 
                 logger.info(`Membuat laporan Excel untuk tanggal spesifik: ${reportDate}`);
 
@@ -67,7 +76,7 @@ class ExcelExporter {
                 // Create sheets
                 await this.createTransactionsSheet(workbook, transactions, displayDate);
                 await this.createCashReportSheet(workbook, transactions, displayDate);
-                await this.createCombinedSummarySheet(workbook, csSummary, marketingCommissionByApartment, displayDate);
+                await this.createCombinedSummarySheet(workbook, csSummary, marketingCommission, displayDate);
 
                 // Save file dengan format tanggal yang aman untuk filename
                 const filenameDateFormat = moment(reportDate).format('YYYY-MM-DD');
