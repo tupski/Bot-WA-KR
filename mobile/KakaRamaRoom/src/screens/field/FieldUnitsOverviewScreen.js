@@ -193,14 +193,27 @@ const FieldUnitsOverviewScreen = ({ navigation }) => {
     }
   };
 
-  const handleUnitPress = (unit) => {
+  const handleUnitPress = async (unit) => {
     try {
       if (!unit) {
         console.warn('FieldUnitsOverviewScreen: Invalid unit data');
         return;
       }
 
-      showUnitDetails(unit);
+      // Jika unit terisi (occupied), navigasi ke detail checkin
+      if (unit.status === UNIT_STATUS.OCCUPIED) {
+        console.log('FieldUnitsOverviewScreen: Navigating to checkin detail for occupied unit:', unit.id);
+
+        // Navigasi ke CheckinDetailScreen dengan unitId
+        navigation.navigate('CheckinDetail', {
+          unitId: unit.id,
+          unitNumber: unit.unit_number,
+          apartmentName: unit.apartments?.name
+        });
+      } else {
+        // Untuk unit yang tidak terisi, tampilkan detail unit
+        showUnitDetails(unit);
+      }
     } catch (error) {
       console.error('FieldUnitsOverviewScreen: Error in handleUnitPress:', error);
       showAlert({
@@ -296,6 +309,13 @@ const FieldUnitsOverviewScreen = ({ navigation }) => {
                 <View style={styles.availableActions}>
                   <Icon name="touch-app" size={16} color={COLORS.success} />
                   <Text style={styles.availableText}>Tap untuk detail</Text>
+                </View>
+              )}
+
+              {item?.status === UNIT_STATUS.OCCUPIED && (
+                <View style={styles.occupiedActions}>
+                  <Icon name="visibility" size={16} color={COLORS.primary} />
+                  <Text style={styles.occupiedText}>Tap untuk detail checkin</Text>
                 </View>
               )}
 
@@ -446,6 +466,18 @@ const styles = StyleSheet.create({
     color: COLORS.success,
     marginLeft: SIZES.xs,
     fontStyle: 'italic',
+  },
+  occupiedActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: SIZES.xs,
+  },
+  occupiedText: {
+    fontSize: SIZES.caption,
+    color: COLORS.primary,
+    marginLeft: SIZES.xs,
+    fontStyle: 'italic',
+    fontWeight: '600',
   },
   priceText: {
     fontSize: SIZES.body,
