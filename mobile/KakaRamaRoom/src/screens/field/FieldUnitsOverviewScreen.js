@@ -16,6 +16,8 @@ import { COLORS, SIZES, UNIT_STATUS } from '../../config/constants';
 import TeamAssignmentService from '../../services/TeamAssignmentService';
 import CheckinService from '../../services/CheckinService';
 import AuthService from '../../services/AuthService';
+import ImagePickerService from '../../services/ImagePickerService';
+import CurrencyInput from '../../components/CurrencyInput';
 
 const FieldUnitsOverviewScreen = ({ navigation }) => {
   const [units, setUnits] = useState([]);
@@ -30,6 +32,11 @@ const FieldUnitsOverviewScreen = ({ navigation }) => {
   const [marketingName, setMarketingName] = useState('');
   const [notes, setNotes] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
+
+  // Additional booking fields to match FieldCheckinScreen
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [marketingCommission, setMarketingCommission] = useState('');
+  const [paymentProofs, setPaymentProofs] = useState([]);
 
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState('');
@@ -155,13 +162,19 @@ const FieldUnitsOverviewScreen = ({ navigation }) => {
 
   const handleBooking = async () => {
     try {
+      // Validation
       if (!duration || isNaN(parseInt(duration))) {
         Alert.alert('Error', 'Masukkan durasi yang valid');
         return;
       }
 
-      const durationHours = bookingType === 'daily' ? 24 : parseInt(duration);
-      
+      if (!paymentAmount || parseFloat(paymentAmount.replace(/[^\d]/g, '')) <= 0) {
+        Alert.alert('Error', 'Masukkan jumlah pembayaran yang valid');
+        return;
+      }
+
+      const durationHours = bookingType === 'daily' ? parseInt(duration) : parseInt(duration);
+
       if (bookingType === 'transit' && (durationHours < 1 || durationHours > 12)) {
         Alert.alert('Error', 'Durasi transit harus antara 1-12 jam');
         return;
@@ -172,14 +185,22 @@ const FieldUnitsOverviewScreen = ({ navigation }) => {
         return;
       }
 
+      // Parse payment amount
+      const parsedPaymentAmount = parseFloat(paymentAmount.replace(/[^\d]/g, ''));
+      const parsedMarketingCommission = marketingCommission
+        ? parseFloat(marketingCommission.replace(/[^\d]/g, ''))
+        : 0;
+
       const checkinData = {
         apartmentId: selectedUnit.apartment_id,
         unitId: selectedUnit.id,
         durationHours: durationHours,
         paymentMethod: paymentMethod,
-        paymentAmount: 0, // Will be calculated by service
-        marketingName: marketingName,
-        notes: notes,
+        paymentAmount: parsedPaymentAmount,
+        marketingCommission: parsedMarketingCommission,
+        marketingName: marketingName?.trim() || null,
+        notes: notes?.trim() || null,
+        paymentProof: paymentProofs.length > 0 ? paymentProofs : null,
       };
 
       setLoading(true);
@@ -204,6 +225,7 @@ const FieldUnitsOverviewScreen = ({ navigation }) => {
         Alert.alert('Error', result.message);
       }
     } catch (error) {
+      console.error('Booking error:', error);
       Alert.alert('Error', 'Gagal membuat booking');
     } finally {
       setLoading(false);
@@ -215,8 +237,63 @@ const FieldUnitsOverviewScreen = ({ navigation }) => {
     setBookingType('transit');
     setDuration('3');
     setPaymentMethod('cash');
+    setPaymentAmount('');
+    setMarketingCommission('');
     setMarketingName('');
     setNotes('');
+    setPaymentProofs([]);
+  };
+
+  // Payment proof functionality
+  const selectPaymentProof = async () => {
+    try {
+      const result = await ImagePickerService.showMultipleImagePicker();
+
+      if (result.success && result.images) {
+        // Validate images
+        const validation = ImagePickerService.validateMultipleImages(result.images);
+        if (!validation.valid) {
+          Alert.alert('Error', validation.message);
+          return;
+        }
+
+        // Add new images to existing ones (max 5 total)
+        const currentCount = paymentProofs.length;
+        const newCount = result.images.length;
+
+        if (currentCount + newCount > 5) {
+          Alert.alert('Error', `Maksimal 5 foto. Anda sudah memiliki ${currentCount} foto.`);
+          return;
+        }
+
+        setPaymentProofs(prev => [...prev, ...result.images]);
+        Alert.alert('Berhasil', `${result.images.length} foto berhasil ditambahkan`);
+      } else if (result.error) {
+        Alert.alert('Error', result.error);
+      }
+    } catch (error) {
+      console.error('Select payment proof error:', error);
+      Alert.alert('Error', 'Gagal memilih foto');
+    }
+  };
+
+  const removePaymentProof = (index) => {
+    setPaymentProofs(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeAllPaymentProofs = () => {
+    Alert.alert(
+      'Hapus Semua Foto',
+      'Apakah Anda yakin ingin menghapus semua foto bukti pembayaran?',
+      [
+        { text: 'Batal', style: 'cancel' },
+        {
+          text: 'Hapus',
+          style: 'destructive',
+          onPress: () => setPaymentProofs([])
+        },
+      ]
+    );
   };
 
   // Status update functions
@@ -427,6 +504,17 @@ const FieldUnitsOverviewScreen = ({ navigation }) => {
               </View>
             </View>
 
+            {/* Payment Amount */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Jumlah Pembayaran *</Text>
+              <CurrencyInput
+                value={paymentAmount}
+                onChangeText={setPaymentAmount}
+                placeholder="Masukkan jumlah pembayaran"
+                style={styles.currencyInput}
+              />
+            </View>
+
             {/* Marketing */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Sumber Marketing (Opsional)</Text>
@@ -435,6 +523,17 @@ const FieldUnitsOverviewScreen = ({ navigation }) => {
                 value={marketingName}
                 onChangeText={setMarketingName}
                 placeholder="Instagram, Facebook, dll"
+              />
+            </View>
+
+            {/* Marketing Commission */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Komisi Marketing (Opsional)</Text>
+              <CurrencyInput
+                value={marketingCommission}
+                onChangeText={setMarketingCommission}
+                placeholder="Masukkan komisi marketing"
+                style={styles.currencyInput}
               />
             </View>
 
@@ -449,6 +548,67 @@ const FieldUnitsOverviewScreen = ({ navigation }) => {
                 multiline
                 numberOfLines={3}
               />
+            </View>
+
+            {/* Payment Proof Upload */}
+            <View style={styles.section}>
+              <View style={styles.labelRow}>
+                <Text style={styles.sectionTitle}>Bukti Pembayaran</Text>
+                {paymentProofs.length > 0 && (
+                  <Text style={styles.photoCount}>
+                    {paymentProofs.length}/5 foto
+                  </Text>
+                )}
+              </View>
+
+              {paymentProofs.length > 0 ? (
+                <View style={styles.paymentProofsContainer}>
+                  {paymentProofs.map((proof, index) => (
+                    <View key={index} style={styles.paymentProofItem}>
+                      <View style={styles.paymentProofInfo}>
+                        <Icon name="image" size={20} color={COLORS.primary} />
+                        <Text style={styles.paymentProofName} numberOfLines={1}>
+                          {proof.name || `Foto ${index + 1}`}
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.removeProofButton}
+                        onPress={() => removePaymentProof(index)}
+                      >
+                        <Icon name="close" size={16} color={COLORS.error} />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+
+                  <View style={styles.proofActions}>
+                    {paymentProofs.length < 5 && (
+                      <TouchableOpacity
+                        style={styles.addMoreButton}
+                        onPress={selectPaymentProof}
+                      >
+                        <Icon name="add" size={20} color={COLORS.primary} />
+                        <Text style={styles.addMoreText}>Tambah Foto</Text>
+                      </TouchableOpacity>
+                    )}
+
+                    <TouchableOpacity
+                      style={styles.removeAllButton}
+                      onPress={removeAllPaymentProofs}
+                    >
+                      <Icon name="delete" size={20} color={COLORS.error} />
+                      <Text style={styles.removeAllText}>Hapus Semua</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.uploadButton}
+                  onPress={selectPaymentProof}
+                >
+                  <Icon name="cloud-upload" size={24} color={COLORS.primary} />
+                  <Text style={styles.uploadButtonText}>Upload Bukti Pembayaran (Maks 5 Foto)</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </ScrollView>
 
@@ -894,6 +1054,202 @@ const styles = StyleSheet.create({
   statusOptionText: {
     marginLeft: SIZES.sm,
     fontSize: SIZES.body,
+    fontWeight: '500',
+  },
+  // Currency input styles
+  currencyInput: {
+    borderWidth: 0,
+  },
+  // Payment proof styles
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SIZES.sm,
+  },
+  photoCount: {
+    fontSize: SIZES.caption,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  paymentProofsContainer: {
+    gap: SIZES.sm,
+  },
+  paymentProofItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.gray100,
+    padding: SIZES.sm,
+    borderRadius: SIZES.radius,
+    borderWidth: 1,
+    borderColor: COLORS.gray300,
+  },
+  paymentProofInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  paymentProofName: {
+    marginLeft: SIZES.sm,
+    fontSize: SIZES.body,
+    color: COLORS.textPrimary,
+    flex: 1,
+  },
+  removeProofButton: {
+    padding: SIZES.xs,
+    borderRadius: SIZES.radius,
+    backgroundColor: COLORS.error + '20',
+  },
+  proofActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: SIZES.sm,
+    gap: SIZES.sm,
+  },
+  addMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary + '10',
+    padding: SIZES.sm,
+    borderRadius: SIZES.radius,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  addMoreText: {
+    marginLeft: SIZES.xs,
+    fontSize: SIZES.body,
+    color: COLORS.primary,
+    fontWeight: '500',
+  },
+  removeAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.error + '10',
+    padding: SIZES.sm,
+    borderRadius: SIZES.radius,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  removeAllText: {
+    marginLeft: SIZES.xs,
+    fontSize: SIZES.body,
+    color: COLORS.error,
+    fontWeight: '500',
+  },
+  uploadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.gray100,
+    padding: SIZES.md,
+    borderRadius: SIZES.radius,
+    borderWidth: 2,
+    borderColor: COLORS.gray300,
+    borderStyle: 'dashed',
+  },
+  uploadButtonText: {
+    marginLeft: SIZES.sm,
+    fontSize: SIZES.body,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  // Currency input styles
+  currencyInput: {
+    borderWidth: 0, // Remove border since CurrencyInput has its own
+  },
+  // Payment proof styles
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SIZES.sm,
+  },
+  photoCount: {
+    fontSize: SIZES.caption,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  paymentProofsContainer: {
+    gap: SIZES.sm,
+  },
+  paymentProofItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.gray100,
+    padding: SIZES.sm,
+    borderRadius: SIZES.radius,
+    borderWidth: 1,
+    borderColor: COLORS.gray300,
+  },
+  paymentProofInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  paymentProofName: {
+    marginLeft: SIZES.sm,
+    fontSize: SIZES.body,
+    color: COLORS.textPrimary,
+    flex: 1,
+  },
+  removeProofButton: {
+    padding: SIZES.xs,
+    borderRadius: SIZES.radius,
+    backgroundColor: COLORS.error + '20',
+  },
+  proofActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: SIZES.sm,
+    gap: SIZES.sm,
+  },
+  addMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary + '10',
+    padding: SIZES.sm,
+    borderRadius: SIZES.radius,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  addMoreText: {
+    marginLeft: SIZES.xs,
+    fontSize: SIZES.body,
+    color: COLORS.primary,
+    fontWeight: '500',
+  },
+  removeAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.error + '10',
+    padding: SIZES.sm,
+    borderRadius: SIZES.radius,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  removeAllText: {
+    marginLeft: SIZES.xs,
+    fontSize: SIZES.body,
+    color: COLORS.error,
+    fontWeight: '500',
+  },
+  uploadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.gray100,
+    padding: SIZES.md,
+    borderRadius: SIZES.radius,
+    borderWidth: 2,
+    borderColor: COLORS.gray300,
+    borderStyle: 'dashed',
+  },
+  uploadButtonText: {
+    marginLeft: SIZES.sm,
+    fontSize: SIZES.body,
+    color: COLORS.textSecondary,
     fontWeight: '500',
   },
 });
