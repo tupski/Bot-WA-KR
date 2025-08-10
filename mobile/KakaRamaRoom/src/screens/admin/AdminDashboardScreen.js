@@ -18,6 +18,7 @@ import ApartmentService from '../../services/ApartmentService';
 import UnitService from '../../services/UnitService';
 import CheckinService from '../../services/CheckinService';
 import BusinessDayService from '../../services/BusinessDayService';
+import { supabase } from '../../config/supabase';
 
 const AdminDashboardScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
@@ -53,25 +54,73 @@ const AdminDashboardScreen = ({ navigation }) => {
 
   const loadDashboardStats = async () => {
     try {
+      console.log('AdminDashboardScreen: Loading dashboard statistics');
+
       // Get total apartments
       const apartmentsResult = await ApartmentService.getAllApartments();
-      const totalApartments = apartmentsResult.success ? apartmentsResult.data.length : 0;
+      const totalApartments = apartmentsResult.success ? (apartmentsResult.data?.length || 0) : 0;
+      console.log('AdminDashboardScreen: Total apartments:', totalApartments);
 
       // Get all units
       const unitsResult = await UnitService.getAllUnits();
-      if (unitsResult.success) {
-        const allUnits = unitsResult.data;
-        const availableUnits = allUnits.filter(unit => unit.status === 'available').length;
-        const occupiedUnits = allUnits.filter(unit => unit.status === 'occupied').length;
+      let availableUnits = 0;
+      let occupiedUnits = 0;
 
-        setStats({
-          totalApartments,
-          availableUnits,
-          occupiedUnits,
-        });
+      if (unitsResult.success && unitsResult.data) {
+        const allUnits = unitsResult.data;
+        console.log('AdminDashboardScreen: Total units:', allUnits.length);
+
+        // Count units by status
+        availableUnits = allUnits.filter(unit => unit.status === 'available').length;
+        occupiedUnits = allUnits.filter(unit => unit.status === 'occupied').length;
+
+        console.log('AdminDashboardScreen: Available units:', availableUnits);
+        console.log('AdminDashboardScreen: Occupied units:', occupiedUnits);
+
+        // Alternative: Get occupied units from active checkins
+        try {
+          const { data: activeCheckins, error: checkinError } = await supabase
+            .from('checkins')
+            .select('unit_id')
+            .eq('status', 'active');
+
+          if (!checkinError && activeCheckins) {
+            const occupiedFromCheckins = activeCheckins.length;
+            const availableFromCheckins = allUnits.length - occupiedFromCheckins;
+
+            console.log('AdminDashboardScreen: Occupied from checkins:', occupiedFromCheckins);
+            console.log('AdminDashboardScreen: Available from checkins:', availableFromCheckins);
+
+            // Use checkin data if it seems more accurate
+            if (occupiedFromCheckins > 0) {
+              occupiedUnits = occupiedFromCheckins;
+              availableUnits = availableFromCheckins;
+            }
+          }
+        } catch (checkinError) {
+          console.warn('AdminDashboardScreen: Error getting checkin data:', checkinError);
+        }
+      } else {
+        console.warn('AdminDashboardScreen: Failed to load units:', unitsResult);
       }
+
+      const newStats = {
+        totalApartments,
+        availableUnits,
+        occupiedUnits,
+      };
+
+      console.log('AdminDashboardScreen: Final stats:', newStats);
+      setStats(newStats);
+
     } catch (error) {
-      console.error('Error loading dashboard stats:', error);
+      console.error('AdminDashboardScreen: Error loading dashboard stats:', error);
+      // Set fallback stats
+      setStats({
+        totalApartments: 0,
+        availableUnits: 0,
+        occupiedUnits: 0,
+      });
     }
   };
 
