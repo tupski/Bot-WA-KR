@@ -33,7 +33,7 @@ const AdminReportsScreen = () => {
   const [apartments, setApartments] = useState([]);
 
   // State untuk filter
-  const [selectedApartment, setSelectedApartment] = useState(null);
+  const [selectedApartments, setSelectedApartments] = useState([]); // Multi-select
   const [dateRange, setDateRange] = useState({
     startDate: null,
     endDate: null,
@@ -43,6 +43,7 @@ const AdminReportsScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [apartmentModalVisible, setApartmentModalVisible] = useState(false);
+  const [dateRangeModalVisible, setDateRangeModalVisible] = useState(false);
 
   // State untuk current date/time
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
@@ -73,7 +74,7 @@ const AdminReportsScreen = () => {
     if (!loading) {
       loadReportData();
     }
-  }, [selectedApartment, dateRange]);
+  }, [selectedApartments, dateRange]);
 
   /**
    * Load data awal (apartemen dan laporan)
@@ -103,7 +104,7 @@ const AdminReportsScreen = () => {
     try {
       // Jika tidak ada filter tanggal, gunakan business day range
       let filters = {
-        apartmentId: selectedApartment?.id,
+        apartmentIds: selectedApartments.length > 0 ? selectedApartments.map(apt => apt.id) : null,
         startDate: dateRange.startDate,
         endDate: dateRange.endDate,
       };
@@ -156,17 +157,49 @@ const AdminReportsScreen = () => {
    * Pilih apartemen untuk filter
    * @param {Object} apartment - Data apartemen yang dipilih
    */
-  const selectApartment = (apartment) => {
-    setSelectedApartment(apartment);
-    setApartmentModalVisible(false);
+  const toggleApartment = (apartment) => {
+    if (!apartment.id) {
+      // "Semua Apartemen" dipilih
+      setSelectedApartments([]);
+      return;
+    }
+
+    const isSelected = selectedApartments.some(apt => apt.id === apartment.id);
+    if (isSelected) {
+      // Remove from selection
+      setSelectedApartments(selectedApartments.filter(apt => apt.id !== apartment.id));
+    } else {
+      // Add to selection
+      setSelectedApartments([...selectedApartments, apartment]);
+    }
   };
 
   /**
    * Reset filter apartemen
    */
   const resetApartmentFilter = () => {
-    setSelectedApartment(null);
-    setApartmentModalVisible(false);
+    setSelectedApartments([]);
+  };
+
+  /**
+   * Set date range filter
+   */
+  const setDateRangeFilter = (startDate, endDate) => {
+    setDateRange({
+      startDate: startDate ? startDate.toISOString() : null,
+      endDate: endDate ? endDate.toISOString() : null,
+    });
+    setDateRangeModalVisible(false);
+  };
+
+  /**
+   * Reset date range filter
+   */
+  const resetDateRangeFilter = () => {
+    setDateRange({
+      startDate: null,
+      endDate: null,
+    });
   };
 
   /**
@@ -204,12 +237,20 @@ const AdminReportsScreen = () => {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Dashboard Laporan</Text>
-        <TouchableOpacity
-          style={styles.filterButton}
-          onPress={() => setApartmentModalVisible(true)}
-        >
-          <Icon name="filter-list" size={24} color={COLORS.primary} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.filterButton}
+            onPress={() => setDateRangeModalVisible(true)}
+          >
+            <Icon name="date-range" size={24} color={COLORS.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.filterButton}
+            onPress={() => setApartmentModalVisible(true)}
+          >
+            <Icon name="filter-list" size={24} color={COLORS.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Date Time Info */}
@@ -244,14 +285,34 @@ const AdminReportsScreen = () => {
       </View>
 
       {/* Filter Info */}
-      {selectedApartment && (
+      {(selectedApartments.length > 0 || dateRange.startDate || dateRange.endDate) && (
         <View style={styles.filterInfo}>
-          <Text style={styles.filterText}>
-            Filter: {selectedApartment.name}
-          </Text>
-          <TouchableOpacity onPress={resetApartmentFilter}>
-            <Icon name="close" size={20} color={COLORS.error} />
-          </TouchableOpacity>
+          <View style={styles.filterTextContainer}>
+            {selectedApartments.length > 0 && (
+              <Text style={styles.filterText}>
+                Apartemen: {selectedApartments.length === 1
+                  ? selectedApartments[0].name
+                  : `${selectedApartments.length} dipilih`}
+              </Text>
+            )}
+            {(dateRange.startDate || dateRange.endDate) && (
+              <Text style={styles.filterText}>
+                Tanggal: {dateRange.startDate ? new Date(dateRange.startDate).toLocaleDateString('id-ID') : 'Tidak ada'} - {dateRange.endDate ? new Date(dateRange.endDate).toLocaleDateString('id-ID') : 'Tidak ada'}
+              </Text>
+            )}
+          </View>
+          <View style={styles.filterActions}>
+            {selectedApartments.length > 0 && (
+              <TouchableOpacity onPress={resetApartmentFilter}>
+                <Icon name="close" size={20} color={COLORS.error} />
+              </TouchableOpacity>
+            )}
+            {(dateRange.startDate || dateRange.endDate) && (
+              <TouchableOpacity onPress={resetDateRangeFilter}>
+                <Icon name="close" size={20} color={COLORS.error} />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       )}
 
@@ -389,29 +450,128 @@ const AdminReportsScreen = () => {
           <FlatList
             data={[{ id: null, name: 'Semua Apartemen' }, ...apartments]}
             keyExtractor={(item) => item.id?.toString() || 'all'}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[
-                  styles.modalItem,
-                  (selectedApartment?.id === item.id || (!selectedApartment && !item.id)) &&
-                    styles.modalItemSelected
-                ]}
-                onPress={() => item.id ? selectApartment(item) : resetApartmentFilter()}
-              >
-                <Text style={[
-                  styles.modalItemText,
-                  (selectedApartment?.id === item.id || (!selectedApartment && !item.id)) &&
-                    styles.modalItemTextSelected
-                ]}>
-                  {item.name}
-                </Text>
-                {(selectedApartment?.id === item.id || (!selectedApartment && !item.id)) && (
-                  <Icon name="check" size={20} color={COLORS.background} />
-                )}
-              </TouchableOpacity>
-            )}
+            renderItem={({ item }) => {
+              const isSelected = item.id
+                ? selectedApartments.some(apt => apt.id === item.id)
+                : selectedApartments.length === 0;
+
+              return (
+                <TouchableOpacity
+                  style={[
+                    styles.modalItem,
+                    isSelected && styles.modalItemSelected
+                  ]}
+                  onPress={() => toggleApartment(item)}
+                >
+                  <Text style={[
+                    styles.modalItemText,
+                    isSelected && styles.modalItemTextSelected
+                  ]}>
+                    {item.name}
+                  </Text>
+                  {isSelected && (
+                    <Icon name="check" size={20} color={COLORS.background} />
+                  )}
+                </TouchableOpacity>
+              );
+            }}
             contentContainerStyle={styles.modalContent}
           />
+
+          {/* Modal Actions */}
+          <View style={styles.modalActions}>
+            <TouchableOpacity
+              style={styles.modalActionButton}
+              onPress={() => setApartmentModalVisible(false)}
+            >
+              <Text style={styles.modalActionText}>Tutup</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Date Range Filter Modal */}
+      <Modal
+        visible={dateRangeModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Filter Rentang Tanggal</Text>
+            <TouchableOpacity onPress={() => setDateRangeModalVisible(false)}>
+              <Icon name="close" size={24} color={COLORS.textPrimary} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.modalContent}>
+            <Text style={styles.dateRangeInfo}>
+              Pilih rentang tanggal untuk laporan. Kosongkan untuk menggunakan business day saat ini.
+            </Text>
+
+            {/* Quick Date Options */}
+            <View style={styles.quickDateOptions}>
+              <TouchableOpacity
+                style={styles.quickDateButton}
+                onPress={() => {
+                  const businessDayRange = BusinessDayService.getCurrentBusinessDayRange();
+                  setDateRangeFilter(new Date(businessDayRange.start), new Date(businessDayRange.end));
+                }}
+              >
+                <Text style={styles.quickDateText}>Hari Ini (Business Day)</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.quickDateButton}
+                onPress={() => {
+                  const today = new Date();
+                  const weekAgo = new Date(today);
+                  weekAgo.setDate(weekAgo.getDate() - 7);
+                  setDateRangeFilter(weekAgo, today);
+                }}
+              >
+                <Text style={styles.quickDateText}>7 Hari Terakhir</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.quickDateButton}
+                onPress={() => {
+                  const today = new Date();
+                  const monthAgo = new Date(today);
+                  monthAgo.setMonth(monthAgo.getMonth() - 1);
+                  setDateRangeFilter(monthAgo, today);
+                }}
+              >
+                <Text style={styles.quickDateText}>30 Hari Terakhir</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Current Date Range Display */}
+            {(dateRange.startDate || dateRange.endDate) && (
+              <View style={styles.currentDateRange}>
+                <Text style={styles.currentDateRangeLabel}>Rentang Saat Ini:</Text>
+                <Text style={styles.currentDateRangeText}>
+                  {dateRange.startDate ? new Date(dateRange.startDate).toLocaleDateString('id-ID') : 'Tidak ada'} - {dateRange.endDate ? new Date(dateRange.endDate).toLocaleDateString('id-ID') : 'Tidak ada'}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Modal Actions */}
+          <View style={styles.modalActions}>
+            <TouchableOpacity
+              style={[styles.modalActionButton, styles.modalActionButtonSecondary]}
+              onPress={resetDateRangeFilter}
+            >
+              <Text style={styles.modalActionTextSecondary}>Reset</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.modalActionButton}
+              onPress={() => setDateRangeModalVisible(false)}
+            >
+              <Text style={styles.modalActionText}>Tutup</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
     </ScrollView>
@@ -443,6 +603,10 @@ const styles = StyleSheet.create({
   filterButton: {
     padding: SIZES.sm,
   },
+  headerActions: {
+    flexDirection: 'row',
+    gap: SIZES.sm,
+  },
   filterInfo: {
     backgroundColor: COLORS.primary + '10',
     flexDirection: 'row',
@@ -457,6 +621,13 @@ const styles = StyleSheet.create({
     fontSize: SIZES.body,
     color: COLORS.primary,
     fontWeight: '500',
+  },
+  filterTextContainer: {
+    flex: 1,
+  },
+  filterActions: {
+    flexDirection: 'row',
+    gap: SIZES.sm,
   },
   summaryContainer: {
     flexDirection: 'row',
@@ -689,6 +860,72 @@ const styles = StyleSheet.create({
   },
   modalItemTextSelected: {
     color: COLORS.background,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    padding: SIZES.lg,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.gray200,
+  },
+  modalActionButton: {
+    paddingHorizontal: SIZES.lg,
+    paddingVertical: SIZES.sm,
+    backgroundColor: COLORS.primary,
+    borderRadius: SIZES.radius,
+  },
+  modalActionText: {
+    color: COLORS.background,
+    fontWeight: '600',
+    fontSize: SIZES.body,
+  },
+  modalActionButtonSecondary: {
+    backgroundColor: COLORS.gray300,
+  },
+  modalActionTextSecondary: {
+    color: COLORS.textPrimary,
+    fontWeight: '600',
+    fontSize: SIZES.body,
+  },
+  dateRangeInfo: {
+    fontSize: SIZES.body,
+    color: COLORS.textSecondary,
+    marginBottom: SIZES.lg,
+    textAlign: 'center',
+  },
+  quickDateOptions: {
+    gap: SIZES.sm,
+    marginBottom: SIZES.lg,
+  },
+  quickDateButton: {
+    backgroundColor: COLORS.primary + '10',
+    padding: SIZES.md,
+    borderRadius: SIZES.radius,
+    borderWidth: 1,
+    borderColor: COLORS.primary + '30',
+  },
+  quickDateText: {
+    color: COLORS.primary,
+    fontWeight: '600',
+    textAlign: 'center',
+    fontSize: SIZES.body,
+  },
+  currentDateRange: {
+    backgroundColor: COLORS.gray100,
+    padding: SIZES.md,
+    borderRadius: SIZES.radius,
+    marginTop: SIZES.lg,
+  },
+  currentDateRangeLabel: {
+    fontSize: SIZES.caption,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  currentDateRangeText: {
+    fontSize: SIZES.body,
+    color: COLORS.textPrimary,
+    fontWeight: '600',
+    marginTop: SIZES.xs,
   },
 });
 
