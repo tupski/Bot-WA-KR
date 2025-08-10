@@ -1,7 +1,7 @@
 import {launchImageLibrary, launchCamera} from 'react-native-image-picker';
 import {request, PERMISSIONS, RESULTS} from 'react-native-permissions';
 import {Platform, Alert} from 'react-native';
-import ImageResizer from 'react-native-image-resizer';
+import ImageResizer from '@bam.tech/react-native-image-resizer';
 
 class ImagePickerService {
   constructor() {
