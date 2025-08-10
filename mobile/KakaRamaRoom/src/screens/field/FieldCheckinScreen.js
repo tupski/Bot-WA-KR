@@ -414,14 +414,7 @@ const FieldCheckinScreen = ({ navigation }) => {
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.content}>
-        {/* Header Info */}
-        <View style={styles.headerInfo}>
-          <Icon name="add-circle" size={32} color={COLORS.primary} />
-          <Text style={styles.headerTitle}>Form Check-in</Text>
-          <Text style={styles.headerSubtitle}>
-            Isi form di bawah untuk membuat checkin baru
-          </Text>
-        </View>
+
 
         {/* Apartemen Selection */}
         <View style={styles.inputGroup}>
