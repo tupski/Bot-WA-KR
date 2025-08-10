@@ -12,6 +12,15 @@ class ImagePickerService {
       maxWidth: 2000,
       quality: 0.8,
     };
+
+    this.multiSelectOptions = {
+      mediaType: 'photo',
+      includeBase64: false,
+      maxHeight: 2000,
+      maxWidth: 2000,
+      quality: 0.8,
+      selectionLimit: 5, // Maksimal 5 foto
+    };
   }
 
   /**
@@ -254,6 +263,102 @@ class ImagePickerService {
   }
 
   /**
+   * Pick multiple images from gallery (max 5)
+   */
+  async pickMultipleImages() {
+    try {
+      // Request storage permission
+      const hasPermission = await this.requestStoragePermission();
+      if (!hasPermission) {
+        Alert.alert('Permission Required', 'Storage permission is required to select images');
+        return { success: false, error: 'Permission denied' };
+      }
+
+      return new Promise((resolve) => {
+        launchImageLibrary(this.multiSelectOptions, (response) => {
+          console.log('ImagePickerService: Multiple image picker response:', response);
+
+          if (response.didCancel) {
+            resolve({ success: false, cancelled: true });
+            return;
+          }
+
+          if (response.errorMessage) {
+            console.error('ImagePickerService: Multiple image picker error:', response.errorMessage);
+            resolve({ success: false, error: response.errorMessage });
+            return;
+          }
+
+          if (response.assets && response.assets.length > 0) {
+            // Process multiple images
+            const processedImages = response.assets.map(asset => ({
+              uri: asset.uri,
+              type: asset.type,
+              name: asset.fileName || `image_${Date.now()}.jpg`,
+              size: asset.fileSize,
+            }));
+
+            resolve({
+              success: true,
+              images: processedImages,
+              count: processedImages.length
+            });
+          } else {
+            resolve({ success: false, error: 'No images selected' });
+          }
+        });
+      });
+    } catch (error) {
+      console.error('ImagePickerService: Multiple image picker error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Show action sheet for multiple image selection
+   */
+  async showMultipleImagePicker() {
+    return new Promise((resolve) => {
+      Alert.alert(
+        'Pilih Foto',
+        'Pilih hingga 5 foto bukti pembayaran',
+        [
+          {
+            text: 'Galeri',
+            onPress: async () => {
+              const result = await this.pickMultipleImages();
+              resolve(result);
+            },
+          },
+          {
+            text: 'Kamera',
+            onPress: async () => {
+              // For camera, we'll take single photo but allow multiple captures
+              const result = await this.pickImageFromCamera();
+              if (result.success) {
+                resolve({
+                  success: true,
+                  images: [result.image],
+                  count: 1,
+                  fromCamera: true
+                });
+              } else {
+                resolve(result);
+              }
+            },
+          },
+          {
+            text: 'Batal',
+            style: 'cancel',
+            onPress: () => resolve({ success: false, cancelled: true }),
+          },
+        ],
+        { cancelable: true }
+      );
+    });
+  }
+
+  /**
    * Validate image file
    */
   validateImage(image) {
@@ -270,6 +375,28 @@ class ImagePickerService {
 
     if (!allowedTypes.includes(image.type)) {
       return {valid: false, message: 'Only JPEG and PNG images are allowed'};
+    }
+
+    return {valid: true};
+  }
+
+  /**
+   * Validate multiple images
+   */
+  validateMultipleImages(images) {
+    if (!images || images.length === 0) {
+      return {valid: false, message: 'No images provided'};
+    }
+
+    if (images.length > 5) {
+      return {valid: false, message: 'Maximum 5 images allowed'};
+    }
+
+    for (let i = 0; i < images.length; i++) {
+      const validation = this.validateImage(images[i]);
+      if (!validation.valid) {
+        return {valid: false, message: `Image ${i + 1}: ${validation.message}`};
+      }
     }
 
     return {valid: true};

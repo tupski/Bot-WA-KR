@@ -18,6 +18,7 @@ import UnitService from '../../services/UnitService';
 import ApartmentService from '../../services/ApartmentService';
 import AuthService from '../../services/AuthService';
 import MarketingSourceService from '../../services/MarketingSourceService';
+import ImagePickerService from '../../services/ImagePickerService';
 import CurrencyInput from '../../components/CurrencyInput';
 
 /**
@@ -56,8 +57,8 @@ const FieldCheckinScreen = ({ navigation }) => {
   const [marketingSearchQuery, setMarketingSearchQuery] = useState('');
   const [filteredMarketingSources, setFilteredMarketingSources] = useState([]);
 
-  // Payment proof
-  const [paymentProof, setPaymentProof] = useState(null);
+  // Payment proof - support multiple images (max 5)
+  const [paymentProofs, setPaymentProofs] = useState([]);
 
   // Load data saat komponen dimount
   useEffect(() => {
@@ -256,30 +257,55 @@ const FieldCheckinScreen = ({ navigation }) => {
   };
 
   // Payment proof functionality
-  const selectPaymentProof = () => {
+  const selectPaymentProof = async () => {
+    try {
+      const result = await ImagePickerService.showMultipleImagePicker();
+
+      if (result.success && result.images) {
+        // Validate images
+        const validation = ImagePickerService.validateMultipleImages(result.images);
+        if (!validation.valid) {
+          Alert.alert('Error', validation.message);
+          return;
+        }
+
+        // Add new images to existing ones (max 5 total)
+        const currentCount = paymentProofs.length;
+        const newCount = result.images.length;
+
+        if (currentCount + newCount > 5) {
+          Alert.alert('Error', `Maksimal 5 foto. Anda sudah memiliki ${currentCount} foto.`);
+          return;
+        }
+
+        setPaymentProofs(prev => [...prev, ...result.images]);
+        Alert.alert('Berhasil', `${result.images.length} foto berhasil ditambahkan`);
+      } else if (result.error) {
+        Alert.alert('Error', result.error);
+      }
+    } catch (error) {
+      console.error('Select payment proof error:', error);
+      Alert.alert('Error', 'Gagal memilih foto');
+    }
+  };
+
+  const removePaymentProof = (index) => {
+    setPaymentProofs(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeAllPaymentProofs = () => {
     Alert.alert(
-      'Pilih Bukti Pembayaran',
-      'Pilih sumber gambar',
+      'Hapus Semua Foto',
+      'Apakah Anda yakin ingin menghapus semua foto bukti pembayaran?',
       [
         { text: 'Batal', style: 'cancel' },
-        { text: 'Kamera', onPress: () => openCamera() },
-        { text: 'Galeri', onPress: () => openGallery() },
+        {
+          text: 'Hapus',
+          style: 'destructive',
+          onPress: () => setPaymentProofs([])
+        },
       ]
     );
-  };
-
-  const openCamera = () => {
-    // Simulasi camera picker - dalam implementasi nyata gunakan react-native-image-picker
-    Alert.alert('Info', 'Fitur kamera akan tersedia setelah instalasi react-native-image-picker');
-  };
-
-  const openGallery = () => {
-    // Simulasi gallery picker - dalam implementasi nyata gunakan react-native-image-picker
-    Alert.alert('Info', 'Fitur galeri akan tersedia setelah instalasi react-native-image-picker');
-  };
-
-  const removePaymentProof = () => {
-    setPaymentProof(null);
   };
 
   /**
@@ -301,12 +327,7 @@ const FieldCheckinScreen = ({ navigation }) => {
     });
   };
 
-  /**
-   * Pilih bukti pembayaran dari file
-   */
-  const selectPaymentProofFile = () => {
-    selectPaymentProof(); // Gunakan fungsi yang sama
-  };
+
 
 
 
@@ -360,7 +381,7 @@ const FieldCheckinScreen = ({ navigation }) => {
         paymentMethod: formData.paymentMethod,
         paymentAmount: parseFloat(formData.paymentAmount),
         marketingCommission: parseFloat(formData.marketingCommission) || 0,
-        paymentProof: paymentProof,
+        paymentProof: paymentProofs.length > 0 ? paymentProofs : null,
         marketingName: formData.marketingName.trim() || null,
         notes: formData.notes.trim() || null,
       };
@@ -390,7 +411,7 @@ const FieldCheckinScreen = ({ navigation }) => {
                   marketingName: '',
                   notes: '',
                 });
-                setPaymentProof(null);
+                setPaymentProofs([]);
 
                 // Refresh data
                 loadInitialData();
@@ -523,29 +544,61 @@ const FieldCheckinScreen = ({ navigation }) => {
 
         {/* Payment Proof Upload */}
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Bukti Pembayaran</Text>
-          {paymentProof ? (
-            <View style={styles.paymentProofContainer}>
-              <View style={styles.paymentProofInfo}>
-                <Icon name="attach-file" size={20} color={COLORS.primary} />
-                <Text style={styles.paymentProofName} numberOfLines={1}>
-                  {paymentProof.name || 'Bukti pembayaran dipilih'}
-                </Text>
+          <View style={styles.labelRow}>
+            <Text style={styles.inputLabel}>Bukti Pembayaran</Text>
+            {paymentProofs.length > 0 && (
+              <Text style={styles.photoCount}>
+                {paymentProofs.length}/5 foto
+              </Text>
+            )}
+          </View>
+
+          {paymentProofs.length > 0 ? (
+            <View style={styles.paymentProofsContainer}>
+              {paymentProofs.map((proof, index) => (
+                <View key={index} style={styles.paymentProofItem}>
+                  <View style={styles.paymentProofInfo}>
+                    <Icon name="image" size={20} color={COLORS.primary} />
+                    <Text style={styles.paymentProofName} numberOfLines={1}>
+                      {proof.name || `Foto ${index + 1}`}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.removeProofButton}
+                    onPress={() => removePaymentProof(index)}
+                  >
+                    <Icon name="close" size={16} color={COLORS.error} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+
+              <View style={styles.proofActions}>
+                {paymentProofs.length < 5 && (
+                  <TouchableOpacity
+                    style={styles.addMoreButton}
+                    onPress={selectPaymentProof}
+                  >
+                    <Icon name="add" size={20} color={COLORS.primary} />
+                    <Text style={styles.addMoreText}>Tambah Foto</Text>
+                  </TouchableOpacity>
+                )}
+
+                <TouchableOpacity
+                  style={styles.removeAllButton}
+                  onPress={removeAllPaymentProofs}
+                >
+                  <Icon name="delete" size={20} color={COLORS.error} />
+                  <Text style={styles.removeAllText}>Hapus Semua</Text>
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity
-                style={styles.removeProofButton}
-                onPress={removePaymentProof}
-              >
-                <Icon name="close" size={20} color={COLORS.error} />
-              </TouchableOpacity>
             </View>
           ) : (
             <TouchableOpacity
               style={styles.uploadButton}
-              onPress={selectPaymentProofFile}
+              onPress={selectPaymentProof}
             >
               <Icon name="cloud-upload" size={24} color={COLORS.primary} />
-              <Text style={styles.uploadButtonText}>Upload Bukti Pembayaran</Text>
+              <Text style={styles.uploadButtonText}>Upload Bukti Pembayaran (Maks 5 Foto)</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -1109,6 +1162,67 @@ const styles = StyleSheet.create({
     fontSize: SIZES.body,
     color: COLORS.textPrimary,
     flex: 1,
+  },
+  // Multiple payment proofs styles
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SIZES.sm,
+  },
+  photoCount: {
+    fontSize: SIZES.caption,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  paymentProofsContainer: {
+    gap: SIZES.sm,
+  },
+  paymentProofItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.gray100,
+    padding: SIZES.sm,
+    borderRadius: SIZES.radius,
+    borderWidth: 1,
+    borderColor: COLORS.gray300,
+  },
+  proofActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: SIZES.sm,
+    gap: SIZES.sm,
+  },
+  addMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary + '10',
+    padding: SIZES.sm,
+    borderRadius: SIZES.radius,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  addMoreText: {
+    marginLeft: SIZES.xs,
+    fontSize: SIZES.body,
+    color: COLORS.primary,
+    fontWeight: '500',
+  },
+  removeAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.error + '10',
+    padding: SIZES.sm,
+    borderRadius: SIZES.radius,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  removeAllText: {
+    marginLeft: SIZES.xs,
+    fontSize: SIZES.body,
+    color: COLORS.error,
+    fontWeight: '500',
   },
   removeProofButton: {
     padding: SIZES.xs,
