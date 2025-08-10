@@ -11,8 +11,12 @@ import {
 } from 'react-native';
 import { COLORS, SIZES, USER_ROLES } from '../../config/constants';
 import ActivityLogService from '../../services/ActivityLogService';
+import { useModernAlert } from '../../components/ModernAlert';
 
 const AdminActivityLogsScreen = () => {
+  // Modern Alert Hook
+  const { showAlert, AlertComponent } = useModernAlert();
+
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -24,20 +28,50 @@ const AdminActivityLogsScreen = () => {
 
   const loadActivityLogs = async () => {
     try {
+      console.log('AdminActivityLogsScreen: Loading activity logs with filter:', filter);
       setLoading(true);
+
+      // Validasi ActivityLogService
+      if (!ActivityLogService || typeof ActivityLogService.getActivityLogs !== 'function') {
+        throw new Error('ActivityLogService tidak tersedia');
+      }
+
       const result = await ActivityLogService.getActivityLogs({
         userType: filter === 'all' ? null : filter,
         limit: 100,
       });
 
-      if (result.success) {
-        setLogs(result.data);
+      console.log('AdminActivityLogsScreen: Activity logs result:', result);
+
+      if (result && result.success) {
+        const logData = Array.isArray(result.data) ? result.data : [];
+        setLogs(logData);
+        console.log(`AdminActivityLogsScreen: Loaded ${logData.length} activity logs`);
+
+        if (logData.length === 0) {
+          showAlert({
+            type: 'info',
+            title: 'Info',
+            message: 'Belum ada log aktivitas yang tersedia.',
+          });
+        }
       } else {
-        Alert.alert('Error', result.message);
+        console.error('AdminActivityLogsScreen: Failed to load logs:', result?.message);
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: result?.message || 'Gagal memuat log aktivitas',
+        });
+        setLogs([]);
       }
     } catch (error) {
-      console.error('Error loading activity logs:', error);
-      Alert.alert('Error', 'Gagal memuat log aktivitas');
+      console.error('AdminActivityLogsScreen: Error loading activity logs:', error);
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: `Gagal memuat log aktivitas: ${error.message || 'Unknown error'}`,
+      });
+      setLogs([]);
     } finally {
       setLoading(false);
     }
@@ -124,6 +158,7 @@ const AdminActivityLogsScreen = () => {
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={COLORS.primary} />
         <Text style={styles.loadingText}>Memuat log aktivitas...</Text>
+        <AlertComponent />
       </View>
     );
   }
@@ -159,6 +194,9 @@ const AdminActivityLogsScreen = () => {
           </View>
         }
       />
+
+      {/* Modern Alert Component */}
+      <AlertComponent />
     </View>
   );
 };

@@ -16,20 +16,49 @@ class ActivityLogService {
    */
   async logActivity(userId, userType, action, description, relatedTable = null, relatedId = null, additionalData = {}) {
     try {
-      // Get user info untuk detail logging
-      const userInfo = await this.getUserInfo(userId, userType);
+      // Validasi input parameters
+      if (!userId || !userType || !action || !description) {
+        console.warn('ActivityLogService: Missing required parameters for logging activity');
+        return { success: false, error: 'Missing required parameters' };
+      }
+
+      // Validasi supabase connection
+      if (!supabase) {
+        console.warn('ActivityLogService: Supabase not available');
+        return { success: false, error: 'Database connection not available' };
+      }
+
+      // Get user info untuk detail logging dengan error handling
+      let userInfo;
+      try {
+        userInfo = await this.getUserInfo(userId, userType);
+      } catch (userInfoError) {
+        console.warn('ActivityLogService: Error getting user info, using fallback:', userInfoError);
+        userInfo = {
+          fullName: `User ${userId}`,
+          username: `user_${userId}`,
+          role: userType === 'admin' ? 'Administrator' : 'Tim Lapangan',
+        };
+      }
+
       const now = new Date();
 
-      // Format timestamp Indonesia
-      const timestamp = now.toLocaleString('id-ID', {
-        timeZone: 'Asia/Jakarta',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-      });
+      // Format timestamp Indonesia dengan error handling
+      let timestamp;
+      try {
+        timestamp = now.toLocaleString('id-ID', {
+          timeZone: 'Asia/Jakarta',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        });
+      } catch (timestampError) {
+        console.warn('ActivityLogService: Error formatting timestamp, using ISO:', timestampError);
+        timestamp = now.toISOString();
+      }
 
       // Enhanced description dengan user info
       const enhancedDescription = `[${timestamp}] ${userInfo.fullName} (${userInfo.role}) - ${description}`;
@@ -43,89 +72,159 @@ class ActivityLogService {
         description: enhancedDescription,
         related_table: relatedTable,
         related_id: relatedId,
-        ip_address: additionalData.ipAddress || null,
-        user_agent: additionalData.userAgent || 'Mobile App',
-        apartment_id: additionalData.apartmentId || null,
-        unit_id: additionalData.unitId || null,
+        ip_address: additionalData?.ipAddress || null,
+        user_agent: additionalData?.userAgent || 'Mobile App',
+        apartment_id: additionalData?.apartmentId || null,
+        unit_id: additionalData?.unitId || null,
         created_at: now.toISOString(),
       };
 
-      const { error } = await supabase
-        .from('activity_logs')
-        .insert(logData);
+      // Attempt to insert to database dengan retry mechanism
+      let insertAttempts = 0;
+      const maxAttempts = 3;
 
-      if (error) {
-        if (error.code === 'PGRST116') {
-          // Table doesn't exist, just log to console
-          console.log(`Activity logged (local): ${enhancedDescription}`);
-          return { success: true };
+      while (insertAttempts < maxAttempts) {
+        try {
+          const { error } = await supabase
+            .from('activity_logs')
+            .insert(logData);
+
+          if (error) {
+            if (error.code === 'PGRST116') {
+              // Table doesn't exist, log locally and return success
+              console.log(`📝 Activity logged (local - table not found): ${enhancedDescription}`);
+              return { success: true, logged_locally: true };
+            }
+
+            if (error.code === 'PGRST301' && insertAttempts < maxAttempts - 1) {
+              // Connection error, retry
+              insertAttempts++;
+              console.warn(`ActivityLogService: Connection error, retrying (${insertAttempts}/${maxAttempts}):`, error);
+              await new Promise(resolve => setTimeout(resolve, 1000 * insertAttempts)); // Exponential backoff
+              continue;
+            }
+
+            throw error;
+          }
+
+          // Success
+          console.log(`✅ Activity logged to database: ${enhancedDescription}`);
+          return { success: true, logged_to_database: true };
+
+        } catch (insertError) {
+          insertAttempts++;
+          if (insertAttempts >= maxAttempts) {
+            throw insertError;
+          }
+          console.warn(`ActivityLogService: Insert error, retrying (${insertAttempts}/${maxAttempts}):`, insertError);
+          await new Promise(resolve => setTimeout(resolve, 1000 * insertAttempts));
         }
-        throw error;
       }
 
-      console.log(`✅ Activity logged: ${enhancedDescription}`);
-      return { success: true };
     } catch (error) {
-      console.error('❌ Error logging activity:', error);
-      return { success: false, error: error.message };
+      console.error('❌ ActivityLogService: Critical error logging activity:', error);
+
+      // Fallback: log to console at minimum
+      const fallbackLog = `[${new Date().toISOString()}] ${userType}:${userId} - ${action} - ${description}`;
+      console.log(`📝 Activity logged (fallback): ${fallbackLog}`);
+
+      return {
+        success: false,
+        error: error.message,
+        logged_locally: true,
+        fallback_log: fallbackLog
+      };
     }
   }
 
   /**
-   * Get user info untuk logging
+   * Get user info untuk logging dengan error handling yang robust
    * @param {string} userId - ID user
    * @param {string} userType - Tipe user
    */
   async getUserInfo(userId, userType) {
     try {
-      // Try to get from current user first
-      const currentUser = AuthService.getCurrentUser();
-      if (currentUser && currentUser.id === userId) {
-        return {
-          fullName: currentUser.fullName || currentUser.username,
-          username: currentUser.username,
-          role: currentUser.role === 'admin' ? 'Administrator' : 'Tim Lapangan',
-        };
+      // Validasi input
+      if (!userId || !userType) {
+        throw new Error('Missing userId or userType');
       }
 
-      // Fallback: get from database
+      // Try to get from current user first dengan validasi
+      try {
+        if (AuthService && typeof AuthService.getCurrentUser === 'function') {
+          const currentUser = AuthService.getCurrentUser();
+          if (currentUser && currentUser.id === userId) {
+            return {
+              fullName: currentUser.fullName || currentUser.username || `User ${userId}`,
+              username: currentUser.username || `user_${userId}`,
+              role: currentUser.role === 'admin' ? 'Administrator' : 'Tim Lapangan',
+            };
+          }
+        }
+      } catch (authError) {
+        console.warn('ActivityLogService: Error getting current user:', authError);
+      }
+
+      // Fallback: get from database dengan error handling
       let userData = null;
-      if (userType === 'admin') {
-        const { data } = await supabase
-          .from('admins')
-          .select('full_name, username')
-          .eq('id', userId)
-          .single();
-        userData = data;
-      } else if (userType === 'field_team') {
-        const { data } = await supabase
-          .from('field_teams')
-          .select('full_name, username')
-          .eq('id', userId)
-          .single();
-        userData = data;
+      try {
+        if (userType === 'admin' || userType === 'system') {
+          const { data, error } = await supabase
+            .from('admins')
+            .select('full_name, username')
+            .eq('id', userId)
+            .single();
+
+          if (error && error.code !== 'PGRST116') {
+            console.warn('ActivityLogService: Error querying admins table:', error);
+          } else {
+            userData = data;
+          }
+        } else if (userType === 'field_team') {
+          const { data, error } = await supabase
+            .from('field_teams')
+            .select('full_name, username')
+            .eq('id', userId)
+            .single();
+
+          if (error && error.code !== 'PGRST116') {
+            console.warn('ActivityLogService: Error querying field_teams table:', error);
+          } else {
+            userData = data;
+          }
+        }
+      } catch (dbError) {
+        console.warn('ActivityLogService: Database error getting user info:', dbError);
       }
 
-      if (userData) {
+      if (userData && userData.full_name) {
         return {
-          fullName: userData.full_name || userData.username,
-          username: userData.username,
-          role: userType === 'admin' ? 'Admin' : 'Tim Lapangan',
+          fullName: userData.full_name || userData.username || `User ${userId}`,
+          username: userData.username || `user_${userId}`,
+          role: userType === 'admin' ? 'Administrator' : 'Tim Lapangan',
         };
       }
 
-      // Ultimate fallback
+      // Ultimate fallback dengan informasi yang lebih spesifik
+      const roleMap = {
+        'admin': 'Administrator',
+        'field_team': 'Tim Lapangan',
+        'system': 'System',
+      };
+
       return {
-        fullName: userType === 'admin' ? 'Admin' : 'Tim Lapangan',
+        fullName: roleMap[userType] || 'Unknown User',
         username: `user_${userId}`,
-        role: userType === 'admin' ? 'Admin' : 'Tim Lapangan',
+        role: roleMap[userType] || 'Unknown Role',
       };
     } catch (error) {
-      console.error('Error getting user info for logging:', error);
+      console.error('ActivityLogService: Critical error getting user info:', error);
+
+      // Emergency fallback
       return {
-        fullName: userType === 'admin' ? 'Admin' : 'Tim Lapangan',
+        fullName: `User ${userId}`,
         username: `user_${userId}`,
-        role: userType === 'admin' ? 'Admin' : 'Tim Lapangan',
+        role: userType === 'admin' ? 'Administrator' : 'Tim Lapangan',
       };
     }
   }
@@ -136,83 +235,155 @@ class ActivityLogService {
    */
   async getActivityLogs(filters = {}) {
     try {
-      let query = supabase
-        .from('activity_logs')
-        .select(`
-          *,
-          apartments (
-            name,
-            code
-          ),
-          units (
-            unit_number,
+      // Validasi supabase connection
+      if (!supabase) {
+        console.warn('ActivityLogService: Supabase not available for getting logs');
+        return { success: true, data: [] };
+      }
+
+      // Build query dengan error handling
+      let query;
+      try {
+        query = supabase
+          .from('activity_logs')
+          .select(`
+            *,
             apartments (
-              name
+              name,
+              code
+            ),
+            units (
+              unit_number,
+              apartments (
+                name
+              )
             )
-          )
-        `)
-        .order('created_at', { ascending: false });
-
-      // Apply filters
-      if (filters.userType) {
-        query = query.eq('user_type', filters.userType);
+          `)
+          .order('created_at', { ascending: false });
+      } catch (queryError) {
+        console.error('ActivityLogService: Error building query:', queryError);
+        return { success: true, data: [] };
       }
 
-      if (filters.userId) {
-        query = query.eq('user_id', filters.userId);
-      }
-
-      if (filters.action) {
-        query = query.eq('action', filters.action);
-      }
-
-      if (filters.apartmentId) {
-        query = query.eq('apartment_id', filters.apartmentId);
-      }
-
-      if (filters.startDate) {
-        query = query.gte('created_at', filters.startDate);
-      }
-
-      if (filters.endDate) {
-        query = query.lte('created_at', filters.endDate);
-      }
-
-      if (filters.limit) {
-        query = query.limit(filters.limit);
-      } else {
-        query = query.limit(100); // Default limit
-      }
-
-      const { data: logs, error } = await query;
-
-      if (error) {
-        if (error.code === 'PGRST116') {
-          return { success: true, data: [] };
+      // Apply filters dengan validasi
+      try {
+        if (filters.userType && typeof filters.userType === 'string') {
+          query = query.eq('user_type', filters.userType);
         }
-        throw error;
+
+        if (filters.userId) {
+          query = query.eq('user_id', filters.userId);
+        }
+
+        if (filters.action && typeof filters.action === 'string') {
+          query = query.eq('action', filters.action);
+        }
+
+        if (filters.apartmentId) {
+          query = query.eq('apartment_id', filters.apartmentId);
+        }
+
+        if (filters.startDate) {
+          try {
+            const startDate = new Date(filters.startDate).toISOString();
+            query = query.gte('created_at', startDate);
+          } catch (dateError) {
+            console.warn('ActivityLogService: Invalid startDate format:', filters.startDate);
+          }
+        }
+
+        if (filters.endDate) {
+          try {
+            const endDate = new Date(filters.endDate).toISOString();
+            query = query.lte('created_at', endDate);
+          } catch (dateError) {
+            console.warn('ActivityLogService: Invalid endDate format:', filters.endDate);
+          }
+        }
+
+        const limit = parseInt(filters.limit) || 100;
+        query = query.limit(Math.min(limit, 500)); // Max 500 records untuk performance
+      } catch (filterError) {
+        console.error('ActivityLogService: Error applying filters:', filterError);
+        // Continue with basic query
       }
 
-      // Transform data untuk display yang lebih baik
-      const transformedLogs = logs?.map(log => ({
-        ...log,
-        displayTime: this.formatDisplayTime(log.created_at),
-        displayDate: this.formatDisplayDate(log.created_at),
-        actionLabel: this.getActionLabel(log.action),
-        userTypeLabel: log.user_type === 'admin' ? 'Administrator' : 'Tim Lapangan',
-        apartmentName: log.apartments?.name || null,
-        unitInfo: log.units ? `${log.units.unit_number} (${log.units.apartments?.name})` : null,
-      })) || [];
+      // Execute query dengan retry mechanism
+      let logs = [];
+      let queryAttempts = 0;
+      const maxQueryAttempts = 3;
 
+      while (queryAttempts < maxQueryAttempts) {
+        try {
+          const { data: queryLogs, error } = await query;
+
+          if (error) {
+            if (error.code === 'PGRST116') {
+              console.log('ActivityLogService: Activity logs table not found, returning empty array');
+              return { success: true, data: [] };
+            }
+
+            if (error.code === 'PGRST301' && queryAttempts < maxQueryAttempts - 1) {
+              // Connection error, retry
+              queryAttempts++;
+              console.warn(`ActivityLogService: Connection error, retrying (${queryAttempts}/${maxQueryAttempts}):`, error);
+              await new Promise(resolve => setTimeout(resolve, 1000 * queryAttempts));
+              continue;
+            }
+
+            throw error;
+          }
+
+          logs = queryLogs || [];
+          break;
+
+        } catch (queryError) {
+          queryAttempts++;
+          if (queryAttempts >= maxQueryAttempts) {
+            throw queryError;
+          }
+          console.warn(`ActivityLogService: Query error, retrying (${queryAttempts}/${maxQueryAttempts}):`, queryError);
+          await new Promise(resolve => setTimeout(resolve, 1000 * queryAttempts));
+        }
+      }
+
+      // Transform data untuk display yang lebih baik dengan safe operations
+      const transformedLogs = logs.map(log => {
+        try {
+          return {
+            ...log,
+            displayTime: this.formatDisplayTime(log.created_at),
+            displayDate: this.formatDisplayDate(log.created_at),
+            actionLabel: this.getActionLabel(log.action),
+            userTypeLabel: this.getUserTypeLabel(log.user_type),
+            apartmentName: log.apartments?.name || null,
+            unitInfo: log.units ? `${log.units.unit_number} (${log.units.apartments?.name || 'Unknown'})` : null,
+          };
+        } catch (transformError) {
+          console.error('ActivityLogService: Error transforming log:', transformError);
+          return {
+            ...log,
+            displayTime: 'Unknown',
+            displayDate: 'Unknown',
+            actionLabel: log.action || 'Unknown',
+            userTypeLabel: log.user_type || 'Unknown',
+            apartmentName: null,
+            unitInfo: null,
+          };
+        }
+      });
+
+      console.log(`ActivityLogService: Retrieved ${transformedLogs.length} activity logs`);
       return {
         success: true,
         data: transformedLogs,
       };
     } catch (error) {
-      console.error('Error getting activity logs:', error);
+      console.error('ActivityLogService: Critical error getting activity logs:', error);
       return {
-        success: false,
-        message: 'Gagal mengambil log aktivitas',
+        success: true, // Return success with empty data instead of failing
+        data: [],
+        message: 'Log aktivitas tidak tersedia karena terjadi kesalahan',
       };
     }
   }
@@ -478,6 +649,20 @@ class ActivityLogService {
     };
 
     return actionLabels[action] || action;
+  }
+
+  /**
+   * Get label untuk user type
+   * @param {string} userType - User type code
+   */
+  getUserTypeLabel(userType) {
+    const userTypeLabels = {
+      'admin': 'Administrator',
+      'field_team': 'Tim Lapangan',
+      'system': 'System',
+    };
+
+    return userTypeLabels[userType] || userType || 'Unknown';
   }
 }
 
