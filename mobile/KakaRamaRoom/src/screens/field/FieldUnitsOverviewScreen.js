@@ -892,6 +892,9 @@ const FieldUnitsOverviewScreen = ({ navigation }) => {
       {renderBookingModal()}
       {renderStatusModal()}
       {renderExtendModal()}
+
+      {/* Modern Alert Component */}
+      <AlertComponent />
     </View>
   );
 
@@ -1063,9 +1066,6 @@ const FieldUnitsOverviewScreen = ({ navigation }) => {
         </View>
       </View>
     </Modal>
-
-    {/* Modern Alert Component */}
-    <AlertComponent />
   );
 };
 
