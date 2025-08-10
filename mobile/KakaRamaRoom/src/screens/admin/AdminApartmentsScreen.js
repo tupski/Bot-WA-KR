@@ -160,11 +160,30 @@ const AdminApartmentsScreen = ({ navigation }) => {
     return APARTMENTS[code]?.color || COLORS.gray500;
   };
 
-  const renderApartmentItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.apartmentCard}
-      onPress={() => navigation.navigate('AdminApartmentDetail', { apartmentId: item.id })}
-    >
+  const renderApartmentItem = ({ item }) => {
+    const handleApartmentPress = () => {
+      try {
+        console.log('AdminApartmentsScreen: Apartment pressed:', item);
+
+        if (!item || !item.id) {
+          console.error('AdminApartmentsScreen: Invalid apartment item:', item);
+          Alert.alert('Error', 'Data apartemen tidak valid');
+          return;
+        }
+
+        console.log('AdminApartmentsScreen: Navigating to detail with ID:', item.id);
+        navigation.navigate('AdminApartmentDetail', { apartmentId: item.id });
+      } catch (error) {
+        console.error('AdminApartmentsScreen: Error navigating to apartment detail:', error);
+        Alert.alert('Error', 'Gagal membuka detail apartemen');
+      }
+    };
+
+    return (
+      <TouchableOpacity
+        style={styles.apartmentCard}
+        onPress={handleApartmentPress}
+      >
       <View style={styles.apartmentHeader}>
         <View style={styles.apartmentInfo}>
           <View
@@ -215,7 +234,8 @@ const AdminApartmentsScreen = ({ navigation }) => {
         <Text style={styles.apartmentDescription}>{item.description}</Text>
       )}
     </TouchableOpacity>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>

@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   ScrollView,
+  Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { COLORS, SIZES, UNIT_STATUS, UNIT_STATUS_LABELS, UNIT_STATUS_COLORS } from '../../config/constants';
@@ -17,7 +18,7 @@ import AuthService from '../../services/AuthService';
  * Screen untuk tim lapangan melihat status unit apartemen yang ditugaskan
  * Fitur: View-only status unit, filter berdasarkan apartemen
  */
-const FieldUnitsScreen = () => {
+const FieldUnitsScreen = ({ navigation }) => {
   // State untuk data unit
   const [units, setUnits] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -112,9 +113,41 @@ const FieldUnitsScreen = () => {
    * @param {Object} unit - Unit data
    */
   const handleUnitPress = (unit) => {
-    if (unit.status === UNIT_STATUS.OCCUPIED) {
-      // Navigate to checkin detail
-      navigation.navigate('CheckinDetail', { unitId: unit.id });
+    try {
+      console.log('FieldUnitsScreen: Unit pressed:', unit.id, unit.status);
+
+      if (unit.status === UNIT_STATUS.OCCUPIED) {
+        console.log('FieldUnitsScreen: Navigating to checkin detail for unit:', unit.id);
+
+        if (navigation && navigation.navigate) {
+          navigation.navigate('CheckinDetail', { unitId: unit.id });
+        } else {
+          console.error('FieldUnitsScreen: Navigation not available');
+          Alert.alert('Error', 'Tidak dapat membuka detail checkin');
+        }
+      } else {
+        // Show unit info for non-occupied units
+        let statusLabel = 'Tidak diketahui';
+        switch (unit.status) {
+          case UNIT_STATUS.AVAILABLE:
+            statusLabel = 'Tersedia';
+            break;
+          case UNIT_STATUS.CLEANING:
+            statusLabel = 'Sedang dibersihkan';
+            break;
+          case UNIT_STATUS.MAINTENANCE:
+            statusLabel = 'Dalam maintenance';
+            break;
+        }
+
+        Alert.alert(
+          'Info Unit',
+          `Unit ${unit.unit_number}\nStatus: ${statusLabel}\n\nUnit ini tidak sedang terisi tamu.`
+        );
+      }
+    } catch (error) {
+      console.error('FieldUnitsScreen: Error in handleUnitPress:', error);
+      Alert.alert('Error', 'Terjadi kesalahan saat membuka detail unit');
     }
   };
 

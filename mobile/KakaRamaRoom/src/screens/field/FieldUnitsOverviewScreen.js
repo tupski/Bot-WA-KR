@@ -885,6 +885,17 @@ const FieldUnitsOverviewScreen = ({ navigation }) => {
                 </Text>
               </TouchableOpacity>
             ))}
+
+            {/* Cancel Button */}
+            <TouchableOpacity
+              style={[styles.statusOption, styles.cancelOption]}
+              onPress={() => setShowStatusModal(false)}
+            >
+              <Icon name="cancel" size={20} color={COLORS.gray600} />
+              <Text style={[styles.statusOptionText, { color: COLORS.gray600 }]}>
+                Batal
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -1120,15 +1131,15 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: COLORS.background,
-    borderRadius: SIZES.radius,
-    width: '95%',
+    backgroundColor: COLORS.white,
+    borderTopLeftRadius: SIZES.radius * 2,
+    borderTopRightRadius: SIZES.radius * 2,
     maxHeight: '90%',
+    minHeight: '50%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1294,7 +1305,7 @@ const styles = StyleSheet.create({
   },
   // Status modal styles
   statusModalContent: {
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.white,
     borderTopLeftRadius: SIZES.radius * 2,
     borderTopRightRadius: SIZES.radius * 2,
     maxHeight: '60%',
@@ -1322,6 +1333,11 @@ const styles = StyleSheet.create({
     marginLeft: SIZES.sm,
     fontSize: SIZES.body,
     fontWeight: '500',
+  },
+  cancelOption: {
+    borderColor: COLORS.gray300,
+    backgroundColor: COLORS.gray100,
+    marginTop: SIZES.sm,
   },
   // Currency input styles
   currencyInput: {

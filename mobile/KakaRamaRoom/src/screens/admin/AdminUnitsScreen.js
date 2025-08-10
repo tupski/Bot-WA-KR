@@ -16,6 +16,7 @@ import { COLORS, SIZES, UNIT_STATUS, UNIT_STATUS_LABELS, UNIT_STATUS_COLORS } fr
 import UnitService from '../../services/UnitService';
 import ApartmentService from '../../services/ApartmentService';
 import AuthService from '../../services/AuthService';
+import CheckinService from '../../services/CheckinService';
 
 /**
  * Screen untuk manajemen unit oleh admin
@@ -290,12 +291,12 @@ const AdminUnitsScreen = () => {
    * Handle unit press - show checkin detail if occupied
    * @param {Object} unit - Unit data
    */
-  const handleUnitPress = (unit) => {
+  const handleUnitPress = async (unit) => {
     try {
       console.log('AdminUnitsScreen: Unit pressed:', unit);
 
       if (unit.status === UNIT_STATUS.OCCUPIED) {
-        console.log('AdminUnitsScreen: Navigating to CheckinDetail with unitId:', unit.id);
+        console.log('AdminUnitsScreen: Checking for active checkin for unit:', unit.id);
 
         // Check if navigation is available
         if (!navigation || !navigation.navigate) {
@@ -304,18 +305,48 @@ const AdminUnitsScreen = () => {
           return;
         }
 
-        // Navigate to checkin detail with proper error handling
-        navigation.navigate('CheckinDetail', {
-          unitId: unit.id,
-          unitNumber: unit.unit_number,
-          apartmentName: unit.apartment_name
-        });
+        // First check if there's an active checkin for this unit
+        try {
+          const checkinResult = await CheckinService.getActiveCheckinByUnit(unit.id);
+
+          if (checkinResult && checkinResult.success) {
+            console.log('AdminUnitsScreen: Found active checkin, navigating to detail');
+            // Navigate to checkin detail with proper error handling
+            navigation.navigate('CheckinDetail', {
+              unitId: unit.id,
+              unitNumber: unit.unit_number,
+              apartmentName: unit.apartment_name
+            });
+          } else {
+            console.warn('AdminUnitsScreen: No active checkin found for occupied unit');
+            Alert.alert(
+              'Info Unit',
+              `Unit: ${unit.unit_number}\nApartemen: ${unit.apartment_name}\nStatus: ${UNIT_STATUS_LABELS[unit.status]}\n\nUnit ini ditandai sebagai terisi, tetapi tidak ada checkin aktif yang ditemukan.`,
+              [
+                { text: 'OK' },
+                {
+                  text: 'Ubah Status',
+                  onPress: () => showStatusMenu(unit)
+                }
+              ]
+            );
+          }
+        } catch (checkinError) {
+          console.error('AdminUnitsScreen: Error checking active checkin:', checkinError);
+          Alert.alert('Error', 'Gagal memeriksa data checkin untuk unit ini');
+        }
       } else {
         // Show unit info for non-occupied units
         Alert.alert(
           'Info Unit',
           `Unit: ${unit.unit_number}\nApartemen: ${unit.apartment_name}\nStatus: ${UNIT_STATUS_LABELS[unit.status]}`,
-          [{ text: 'OK' }]
+          [
+            { text: 'OK' },
+            {
+              text: 'Ubah Status',
+              onPress: () => showStatusMenu(unit)
+            }
+          ]
         );
       }
     } catch (error) {

@@ -223,10 +223,6 @@ const AppSettingsScreen = ({ navigation }) => {
           onPress: async () => {
             try {
               console.log('AppSettingsScreen: Starting logout process');
-              console.log('AppSettingsScreen: Navigation available:', !!navigation);
-
-              // Show loading state
-              setLoading(true);
 
               // Check if navigation is available
               if (!navigation || !navigation.reset) {
@@ -235,35 +231,20 @@ const AppSettingsScreen = ({ navigation }) => {
                 return;
               }
 
-              // Perform logout with timeout
+              // Perform logout immediately without loading state to prevent flicker
               console.log('AppSettingsScreen: Calling AuthService.logout');
-              const logoutPromise = AuthService.logout();
-              const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Logout timeout')), 10000)
-              );
-
-              const result = await Promise.race([logoutPromise, timeoutPromise]);
+              const result = await AuthService.logout();
 
               console.log('AppSettingsScreen: Logout result:', result);
 
-              if (result && result.success) {
-                console.log('AppSettingsScreen: Logout successful, navigating to login');
+              // Always navigate to login regardless of result to prevent flicker
+              console.log('AppSettingsScreen: Navigating to login');
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Login' }],
+              });
+              console.log('AppSettingsScreen: Navigation reset successful');
 
-                // Reset navigation stack to login screen immediately
-                try {
-                  navigation.reset({
-                    index: 0,
-                    routes: [{ name: 'Login' }],
-                  });
-                  console.log('AppSettingsScreen: Navigation reset successful');
-                } catch (navError) {
-                  console.error('AppSettingsScreen: Navigation reset error:', navError);
-                  Alert.alert('Error', 'Gagal navigasi ke halaman login');
-                }
-              } else {
-                console.error('AppSettingsScreen: Logout failed:', result);
-                Alert.alert('Error', 'Gagal logout. Silakan coba lagi.');
-              }
             } catch (error) {
               console.error('AppSettingsScreen: Logout error:', error);
 
@@ -284,8 +265,6 @@ const AppSettingsScreen = ({ navigation }) => {
                 console.error('AppSettingsScreen: Force navigation error:', forceNavError);
                 Alert.alert('Error', 'Tidak dapat logout - silakan restart aplikasi');
               }
-            } finally {
-              setLoading(false);
             }
           },
         },

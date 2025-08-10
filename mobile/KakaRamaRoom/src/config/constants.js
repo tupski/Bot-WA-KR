@@ -269,8 +269,11 @@ export const COLORS = {
   // Background
   background: '#FFFFFF',
   surface: '#FFFFFF',
-  
+  white: '#FFFFFF',
+  black: '#000000',
+
   // Text
+  text: '#212121',
   textPrimary: '#212121',
   textSecondary: '#757575',
   textDisabled: '#BDBDBD',

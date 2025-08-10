@@ -240,33 +240,17 @@ class AuthService {
     try {
       console.log('AuthService: Starting logout process');
 
-      // Try to log activity but don't fail logout if it errors
-      if (this.currentUser) {
-        try {
-          console.log('AuthService: Logging logout activity');
-          await ActivityLogService.logActivity(
-            this.currentUser.id,
-            this.currentUser.role,
-            'logout',
-            `${this.currentUser.role === USER_ROLES.ADMIN ? 'Admin' : 'Tim lapangan'} ${this.currentUser.username} logout`
-          );
-          console.log('AuthService: Logout activity logged successfully');
-        } catch (logError) {
-          console.warn('AuthService: Failed to log logout activity:', logError);
-          // Continue with logout even if logging fails
-        }
-      }
-
-      // Clear session timeout
+      // Clear session timeout immediately
       if (this.sessionTimeout) {
         clearTimeout(this.sessionTimeout);
         this.sessionTimeout = null;
       }
 
-      // Clear user data
+      // Clear user data immediately to prevent flicker
       console.log('AuthService: Clearing user data');
       this.currentUser = null;
 
+      // Clear AsyncStorage synchronously if possible
       try {
         await AsyncStorage.removeItem('currentUser');
         console.log('AuthService: AsyncStorage cleared successfully');

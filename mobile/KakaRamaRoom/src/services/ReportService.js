@@ -505,16 +505,50 @@ class ReportService {
         revenueQuery = revenueQuery.in('apartment_id', filters.apartmentIds);
       }
 
-      // Execute queries
-      const [totalResult, todayResult, activeResult, revenueResult] = await Promise.all([
-        totalQuery,
-        todayQuery,
-        activeQuery,
-        revenueQuery,
-      ]);
+      // Execute queries with individual error handling
+      console.log('ReportService: Executing summary statistics queries...');
 
-      // Calculate total revenue
-      const totalRevenue = revenueResult.data?.reduce((sum, item) => sum + (item.payment_amount || 0), 0) || 0;
+      let totalResult, todayResult, activeResult, revenueResult;
+
+      try {
+        totalResult = await totalQuery;
+        console.log('ReportService: Total query result:', totalResult.count);
+      } catch (totalError) {
+        console.error('ReportService: Total query error:', totalError);
+        totalResult = { count: 0 };
+      }
+
+      try {
+        todayResult = await todayQuery;
+        console.log('ReportService: Today query result:', todayResult.count);
+      } catch (todayError) {
+        console.error('ReportService: Today query error:', todayError);
+        todayResult = { count: 0 };
+      }
+
+      try {
+        activeResult = await activeQuery;
+        console.log('ReportService: Active query result:', activeResult.count);
+      } catch (activeError) {
+        console.error('ReportService: Active query error:', activeError);
+        activeResult = { count: 0 };
+      }
+
+      try {
+        revenueResult = await revenueQuery;
+        console.log('ReportService: Revenue query result:', revenueResult.data?.length || 0, 'records');
+      } catch (revenueError) {
+        console.error('ReportService: Revenue query error:', revenueError);
+        revenueResult = { data: [] };
+      }
+
+      // Calculate total revenue safely
+      const totalRevenue = revenueResult.data?.reduce((sum, item) => {
+        const amount = item.payment_amount || 0;
+        return sum + amount;
+      }, 0) || 0;
+
+      console.log('ReportService: Summary statistics calculated successfully');
 
       return {
         success: true,

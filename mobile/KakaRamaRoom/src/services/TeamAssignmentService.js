@@ -7,23 +7,42 @@ class TeamAssignmentService {
    * @returns {Array} Array of apartment IDs
    */
   getCurrentUserApartmentIds() {
-    const currentUser = AuthService.getCurrentUser();
-    
-    if (!currentUser) {
+    try {
+      const currentUser = AuthService.getCurrentUser();
+
+      if (!currentUser) {
+        console.warn('TeamAssignmentService: No current user found');
+        return [];
+      }
+
+      console.log('TeamAssignmentService: Current user:', currentUser.id, currentUser.role);
+
+      // Admin bisa akses semua apartemen
+      if (currentUser.role === 'admin') {
+        console.log('TeamAssignmentService: Admin user - access to all apartments');
+        return null; // null berarti semua apartemen
+      }
+
+      // Tim lapangan hanya bisa akses apartemen yang di-assign
+      if (currentUser.role === 'field_team') {
+        const apartmentIds = currentUser.apartmentIds || [];
+        console.log('TeamAssignmentService: Field team user - apartment IDs:', apartmentIds);
+
+        // Jika tidak ada assignment, berikan akses ke semua apartemen sebagai fallback
+        if (apartmentIds.length === 0) {
+          console.warn('TeamAssignmentService: Field team has no apartment assignments, allowing access to all');
+          return null;
+        }
+
+        return apartmentIds;
+      }
+
+      console.warn('TeamAssignmentService: Unknown user role:', currentUser.role);
+      return [];
+    } catch (error) {
+      console.error('TeamAssignmentService: Error in getCurrentUserApartmentIds:', error);
       return [];
     }
-
-    // Admin bisa akses semua apartemen
-    if (currentUser.role === 'admin') {
-      return null; // null berarti semua apartemen
-    }
-
-    // Tim lapangan hanya bisa akses apartemen yang di-assign
-    if (currentUser.role === 'field_team') {
-      return currentUser.apartmentIds || [];
-    }
-
-    return [];
   }
 
   /**
@@ -154,6 +173,8 @@ class TeamAssignmentService {
    */
   async getAccessibleUnits(apartmentId = null) {
     try {
+      console.log('TeamAssignmentService: Getting accessible units, apartmentId:', apartmentId);
+
       let query = supabase
         .from('units')
         .select(`
@@ -167,8 +188,11 @@ class TeamAssignmentService {
 
       // Filter by specific apartment if provided
       if (apartmentId) {
+        console.log('TeamAssignmentService: Filtering by specific apartment:', apartmentId);
+
         // Check access first
         if (!this.canAccessApartment(apartmentId)) {
+          console.warn('TeamAssignmentService: No access to apartment:', apartmentId);
           return {
             success: false,
             message: 'Tidak memiliki akses ke apartemen ini',
@@ -176,25 +200,36 @@ class TeamAssignmentService {
         }
         query = query.eq('apartment_id', apartmentId);
       } else {
+        console.log('TeamAssignmentService: Filtering by apartment assignment');
+
         // Filter by assignment
-        query = this.filterByApartmentAssignment(query, 'apartment_id');
+        try {
+          query = this.filterByApartmentAssignment(query, 'apartment_id');
+        } catch (filterError) {
+          console.error('TeamAssignmentService: Error in filterByApartmentAssignment:', filterError);
+          // Continue without filter as fallback
+        }
       }
 
+      console.log('TeamAssignmentService: Executing units query...');
       const { data: units, error } = await query;
 
       if (error) {
+        console.error('TeamAssignmentService: Supabase query error:', error);
         throw error;
       }
+
+      console.log('TeamAssignmentService: Retrieved units:', units?.length || 0);
 
       return {
         success: true,
         data: units || [],
       };
     } catch (error) {
-      console.error('Error getting accessible units:', error);
+      console.error('TeamAssignmentService: Critical error in getAccessibleUnits:', error);
       return {
         success: false,
-        message: 'Gagal mengambil data unit',
+        message: 'Gagal mengambil data unit: ' + (error.message || 'Unknown error'),
       };
     }
   }
@@ -206,6 +241,8 @@ class TeamAssignmentService {
    */
   async getAccessibleCheckins(filters = {}) {
     try {
+      console.log('TeamAssignmentService: Getting accessible checkins with filters:', filters);
+
       let query = supabase
         .from('checkins')
         .select(`
@@ -224,10 +261,17 @@ class TeamAssignmentService {
         .order('created_at', { ascending: false });
 
       // Filter by assignment
-      query = this.filterByApartmentAssignment(query, 'apartment_id');
+      console.log('TeamAssignmentService: Applying apartment assignment filter');
+      try {
+        query = this.filterByApartmentAssignment(query, 'apartment_id');
+      } catch (filterError) {
+        console.error('TeamAssignmentService: Error in filterByApartmentAssignment:', filterError);
+        // Continue without filter as fallback
+      }
 
       // Apply additional filters
       if (filters.status) {
+        console.log('TeamAssignmentService: Filtering by status:', filters.status);
         if (Array.isArray(filters.status)) {
           query = query.in('status', filters.status);
         } else {
@@ -236,8 +280,10 @@ class TeamAssignmentService {
       }
 
       if (filters.apartmentId) {
+        console.log('TeamAssignmentService: Filtering by apartment ID:', filters.apartmentId);
         // Check access first
         if (!this.canAccessApartment(filters.apartmentId)) {
+          console.warn('TeamAssignmentService: No access to apartment:', filters.apartmentId);
           return {
             success: false,
             message: 'Tidak memiliki akses ke apartemen ini',
@@ -247,17 +293,33 @@ class TeamAssignmentService {
       }
 
       if (filters.teamId) {
+        console.log('TeamAssignmentService: Filtering by team ID:', filters.teamId);
         query = query.eq('team_id', filters.teamId);
       }
 
       if (filters.createdBy) {
+        console.log('TeamAssignmentService: Filtering by created_by:', filters.createdBy);
         query = query.eq('created_by', filters.createdBy);
       }
 
+      console.log('TeamAssignmentService: Executing checkins query...');
       const { data: checkins, error } = await query;
 
       if (error) {
+        console.error('TeamAssignmentService: Supabase query error:', error);
         throw error;
+      }
+
+      console.log('TeamAssignmentService: Retrieved checkins:', checkins?.length || 0);
+
+      if (checkins && checkins.length > 0) {
+        console.log('TeamAssignmentService: Sample checkin:', {
+          id: checkins[0].id,
+          status: checkins[0].status,
+          created_by: checkins[0].created_by,
+          apartment_id: checkins[0].apartment_id,
+          unit_number: checkins[0].units?.unit_number
+        });
       }
 
       return {
@@ -265,10 +327,10 @@ class TeamAssignmentService {
         data: checkins || [],
       };
     } catch (error) {
-      console.error('Error getting accessible checkins:', error);
+      console.error('TeamAssignmentService: Critical error in getAccessibleCheckins:', error);
       return {
         success: false,
-        message: 'Gagal mengambil data checkin',
+        message: 'Gagal mengambil data checkin: ' + (error.message || 'Unknown error'),
       };
     }
   }

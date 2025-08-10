@@ -19,6 +19,7 @@ import MarketingSourceService from '../../services/MarketingSourceService';
 import ImagePickerService from '../../services/ImagePickerService';
 import TeamAssignmentService from '../../services/TeamAssignmentService';
 import CurrencyInput from '../../components/CurrencyInput';
+import ModernModal from '../../components/ModernModal';
 
 /**
  * Screen untuk form checkin tim lapangan
@@ -129,13 +130,28 @@ const FieldCheckinScreen = ({ navigation }) => {
       // Load unit tersedia menggunakan TeamAssignmentService
       try {
         console.log('FieldCheckinScreen: Loading available units');
-        const unitResult = await TeamAssignmentService.getAccessibleUnits({
-          status: 'available'
-        });
+        const unitResult = await TeamAssignmentService.getAccessibleUnits();
 
         if (unitResult && unitResult.success) {
-          console.log('FieldCheckinScreen: Loaded available units:', unitResult.data?.length || 0);
-          setAvailableUnits(unitResult.data || []);
+          const allUnits = unitResult.data || [];
+          console.log('FieldCheckinScreen: Loaded all units:', allUnits.length);
+
+          // Filter hanya unit yang available
+          const availableUnitsOnly = allUnits.filter(unit => unit.status === 'available');
+          console.log('FieldCheckinScreen: Available units after filtering:', availableUnitsOnly.length);
+
+          setAvailableUnits(availableUnitsOnly);
+
+          // Log sample units for debugging
+          if (allUnits.length > 0) {
+            console.log('FieldCheckinScreen: Sample unit:', {
+              id: allUnits[0].id,
+              unit_number: allUnits[0].unit_number,
+              apartment_id: allUnits[0].apartment_id,
+              status: allUnits[0].status,
+              apartment_name: allUnits[0].apartments?.name
+            });
+          }
         } else {
           console.warn('FieldCheckinScreen: Failed to load units:', unitResult);
           setAvailableUnits([]);
@@ -180,12 +196,35 @@ const FieldCheckinScreen = ({ navigation }) => {
     console.log('FieldCheckinScreen: Available units:', availableUnits.length);
 
     if (formData.apartmentId) {
-      const filtered = availableUnits.filter(
-        unit => unit.apartment_id.toString() === formData.apartmentId
-      );
+      const filtered = availableUnits.filter(unit => {
+        const unitApartmentId = unit.apartment_id?.toString();
+        const selectedApartmentId = formData.apartmentId?.toString();
+        const match = unitApartmentId === selectedApartmentId;
+
+        if (!match && availableUnits.length > 0) {
+          console.log('FieldCheckinScreen: Unit apartment ID mismatch:', {
+            unitId: unit.id,
+            unitNumber: unit.unit_number,
+            unitApartmentId,
+            selectedApartmentId,
+            apartmentName: unit.apartments?.name
+          });
+        }
+
+        return match;
+      });
+
       console.log('FieldCheckinScreen: Filtered units:', filtered.length);
+
+      if (filtered.length === 0 && availableUnits.length > 0) {
+        console.warn('FieldCheckinScreen: No units found for apartment:', formData.apartmentId);
+        console.log('FieldCheckinScreen: Available apartment IDs:',
+          [...new Set(availableUnits.map(u => u.apartment_id?.toString()))]);
+      }
+
       setFilteredUnits(filtered);
     } else {
+      console.log('FieldCheckinScreen: No apartment selected, showing all units');
       setFilteredUnits(availableUnits);
     }
   };
@@ -696,45 +735,37 @@ const FieldCheckinScreen = ({ navigation }) => {
       </View>
 
       {/* Apartment Selection Modal */}
-      <Modal
+      <ModernModal
         visible={apartmentModalVisible}
-        animationType="slide"
-        presentationStyle="pageSheet"
+        title="Pilih Apartemen"
+        onClose={() => setApartmentModalVisible(false)}
+        scrollable={true}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Pilih Apartemen</Text>
-            <TouchableOpacity onPress={() => setApartmentModalVisible(false)}>
-              <Icon name="close" size={24} color={COLORS.textPrimary} />
+        <FlatList
+          data={apartments}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={[
+                styles.modalItem,
+                formData.apartmentId === item.id.toString() && styles.modalItemSelected
+              ]}
+              onPress={() => selectApartment(item)}
+            >
+              <Text style={[
+                styles.modalItemText,
+                formData.apartmentId === item.id.toString() && styles.modalItemTextSelected
+              ]}>
+                {item.name}
+              </Text>
+              {formData.apartmentId === item.id.toString() && (
+                <Icon name="check" size={20} color={COLORS.primary} />
+              )}
             </TouchableOpacity>
-          </View>
-
-          <FlatList
-            data={apartments}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[
-                  styles.modalItem,
-                  formData.apartmentId === item.id.toString() && styles.modalItemSelected
-                ]}
-                onPress={() => selectApartment(item)}
-              >
-                <Text style={[
-                  styles.modalItemText,
-                  formData.apartmentId === item.id.toString() && styles.modalItemTextSelected
-                ]}>
-                  {item.name}
-                </Text>
-                {formData.apartmentId === item.id.toString() && (
-                  <Icon name="check" size={20} color={COLORS.background} />
-                )}
-              </TouchableOpacity>
-            )}
-            contentContainerStyle={styles.modalContent}
-          />
-        </View>
-      </Modal>
+          )}
+          showsVerticalScrollIndicator={false}
+        />
+      </ModernModal>
 
       {/* Unit Selection Modal */}
       <Modal
