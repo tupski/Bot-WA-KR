@@ -579,10 +579,20 @@ class UnitService {
       clearInterval(this.autoCheckoutInterval);
     }
 
+    console.log('UnitService: Starting auto checkout monitoring with interval:', TIME_CONSTANTS.AUTO_CHECKOUT_CHECK_INTERVAL, 'ms');
+
     this.autoCheckoutInterval = setInterval(async () => {
-      await this.processAutoCheckouts();
-      await this.processCleaningCompletion();
+      try {
+        console.log('UnitService: Running scheduled auto checkout and cleaning check...');
+        await this.processAutoCheckouts();
+        await this.processCleaningCompletion();
+        console.log('UnitService: Scheduled auto checkout and cleaning check completed');
+      } catch (error) {
+        console.error('UnitService: Error in scheduled auto checkout:', error);
+      }
     }, TIME_CONSTANTS.AUTO_CHECKOUT_CHECK_INTERVAL);
+
+    console.log('UnitService: Auto checkout monitoring started successfully');
   }
 
   // Stop auto checkout monitoring
@@ -598,6 +608,7 @@ class UnitService {
     try {
       console.log('UnitService: Processing auto checkouts...');
       const now = new Date().toISOString();
+      console.log('UnitService: Current time for auto checkout check:', now);
 
       // Find expired checkins using Supabase
       const { data: expiredCheckins, error } = await supabase
@@ -615,15 +626,24 @@ class UnitService {
         .lte('checkout_time', now);
 
       if (error) {
-        console.error('Error finding expired checkins:', error);
+        console.error('UnitService: Error finding expired checkins:', error);
         return;
       }
 
+      if (!expiredCheckins || expiredCheckins.length === 0) {
+        console.log('UnitService: No expired checkins found for auto checkout');
+        return;
+      }
+
+      console.log(`UnitService: Found ${expiredCheckins.length} expired checkins for auto checkout`);
+
       // Process each expired checkin
-      for (const checkin of expiredCheckins || []) {
+      for (const checkin of expiredCheckins) {
         try {
+          console.log(`UnitService: Processing auto checkout for checkin ${checkin.id}, unit ${checkin.units?.unit_number}`);
+
           // Update checkin status to completed
-          await supabase
+          const { error: updateError } = await supabase
             .from('checkins')
             .update({
               status: 'completed',
@@ -631,16 +651,27 @@ class UnitService {
             })
             .eq('id', checkin.id);
 
-          // Update unit status to cleaning
-          await this.updateUnitStatus(checkin.unit_id, UNIT_STATUS.CLEANING, 1, 'admin');
+          if (updateError) {
+            console.error(`UnitService: Error updating checkin ${checkin.id}:`, updateError);
+            continue;
+          }
 
-          console.log(`Auto checkout: Unit ${checkin.units?.unit_number} at ${checkin.units?.apartments?.name}`);
+          // Update unit status to cleaning
+          const updateResult = await this.updateUnitStatus(checkin.unit_id, UNIT_STATUS.CLEANING, 1, 'system');
+
+          if (updateResult.success) {
+            console.log(`UnitService: Auto checkout successful - Unit ${checkin.units?.unit_number} at ${checkin.units?.apartments?.name}`);
+          } else {
+            console.error(`UnitService: Failed to update unit status for auto checkout:`, updateResult.message);
+          }
         } catch (updateError) {
-          console.error(`Error processing auto checkout for checkin ${checkin.id}:`, updateError);
+          console.error(`UnitService: Error processing auto checkout for checkin ${checkin.id}:`, updateError);
         }
       }
+
+      console.log(`UnitService: Auto checkout processing completed - ${expiredCheckins.length} checkins processed`);
     } catch (error) {
-      console.error('Error processing auto checkouts:', error);
+      console.error('UnitService: Critical error in processAutoCheckouts:', error);
     }
   }
 
@@ -652,6 +683,9 @@ class UnitService {
       const cleaningDuration = TIME_CONSTANTS.CLEANING_DURATION_MINUTES * 60 * 1000; // Convert to milliseconds
       const cutoffTime = new Date(now.getTime() - cleaningDuration).toISOString();
 
+      console.log(`UnitService: Checking for units that have been cleaning since before: ${cutoffTime}`);
+      console.log(`UnitService: Cleaning duration: ${TIME_CONSTANTS.CLEANING_DURATION_MINUTES} minutes`);
+
       // Find units that have been cleaning for more than the specified duration
       const { data: cleaningUnits, error } = await supabase
         .from('units')
@@ -661,23 +695,38 @@ class UnitService {
         .lte('cleaning_started_at', cutoffTime);
 
       if (error) {
-        console.error('Error finding cleaning units:', error);
+        console.error('UnitService: Error finding cleaning units:', error);
         return;
       }
 
-      // Process each unit that finished cleaning
-      for (const unit of cleaningUnits || []) {
-        try {
-          // Update unit status to available
-          await this.updateUnitStatus(unit.id, UNIT_STATUS.AVAILABLE, 1, 'admin');
+      if (!cleaningUnits || cleaningUnits.length === 0) {
+        console.log('UnitService: No units found that have completed cleaning');
+        return;
+      }
 
-          console.log(`Auto cleaning completion: Unit ${unit.unit_number}`);
+      console.log(`UnitService: Found ${cleaningUnits.length} units that have completed cleaning`);
+
+      // Process each unit that finished cleaning
+      for (const unit of cleaningUnits) {
+        try {
+          console.log(`UnitService: Completing cleaning for unit ${unit.unit_number} (started at: ${unit.cleaning_started_at})`);
+
+          // Update unit status to available
+          const updateResult = await this.updateUnitStatus(unit.id, UNIT_STATUS.AVAILABLE, 1, 'system');
+
+          if (updateResult.success) {
+            console.log(`UnitService: Auto cleaning completion successful - Unit ${unit.unit_number} is now available`);
+          } else {
+            console.error(`UnitService: Failed to complete cleaning for unit ${unit.unit_number}:`, updateResult.message);
+          }
         } catch (updateError) {
-          console.error(`Error completing cleaning for unit ${unit.id}:`, updateError);
+          console.error(`UnitService: Error completing cleaning for unit ${unit.id}:`, updateError);
         }
       }
+
+      console.log(`UnitService: Cleaning completion processing completed - ${cleaningUnits.length} units processed`);
     } catch (error) {
-      console.error('Error processing cleaning completion:', error);
+      console.error('UnitService: Critical error in processCleaningCompletion:', error);
     }
   }
 

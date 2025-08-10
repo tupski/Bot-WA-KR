@@ -38,6 +38,14 @@ const FieldUnitsOverviewScreen = ({ navigation }) => {
   const [marketingCommission, setMarketingCommission] = useState('');
   const [paymentProofs, setPaymentProofs] = useState([]);
 
+  // Extend checkin states
+  const [showExtendModal, setShowExtendModal] = useState(false);
+  const [selectedUnitForExtend, setSelectedUnitForExtend] = useState(null);
+  const [extendHours, setExtendHours] = useState('1');
+  const [extendPaymentMethod, setExtendPaymentMethod] = useState('cash');
+  const [extendPaymentAmount, setExtendPaymentAmount] = useState('');
+  const [extendNotes, setExtendNotes] = useState('');
+
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [showStatusModal, setShowStatusModal] = useState(false);
@@ -349,6 +357,73 @@ const FieldUnitsOverviewScreen = ({ navigation }) => {
     );
   };
 
+  // Extend checkin functionality
+  const handleExtendCheckin = (unit) => {
+    setSelectedUnitForExtend(unit);
+    setExtendHours('1');
+    setExtendPaymentMethod('cash');
+    setExtendPaymentAmount('');
+    setExtendNotes('');
+    setShowExtendModal(true);
+  };
+
+  const submitExtendCheckin = async () => {
+    try {
+      if (!extendHours || parseInt(extendHours) <= 0) {
+        Alert.alert('Error', 'Masukkan durasi extend yang valid');
+        return;
+      }
+
+      if (!extendPaymentAmount || parseFloat(extendPaymentAmount.replace(/[^\d]/g, '')) <= 0) {
+        Alert.alert('Error', 'Masukkan jumlah pembayaran yang valid');
+        return;
+      }
+
+      setLoading(true);
+
+      // Get active checkin for this unit
+      const checkinResult = await CheckinService.getActiveCheckinByUnit(selectedUnitForExtend.id);
+
+      if (!checkinResult.success || !checkinResult.data) {
+        Alert.alert('Error', 'Checkin aktif tidak ditemukan untuk unit ini');
+        return;
+      }
+
+      const extendData = {
+        additionalHours: parseInt(extendHours),
+        paymentMethod: extendPaymentMethod,
+        paymentAmount: parseFloat(extendPaymentAmount.replace(/[^\d]/g, '')),
+        notes: extendNotes?.trim() || null,
+      };
+
+      const result = await CheckinService.extendCheckin(
+        checkinResult.data.id,
+        extendData,
+        currentUser.id,
+        currentUser.role
+      );
+
+      if (result.success) {
+        Alert.alert('Sukses', 'Checkin berhasil diperpanjang!', [
+          {
+            text: 'OK',
+            onPress: () => {
+              setShowExtendModal(false);
+              loadUnits(); // Refresh units
+            },
+          },
+        ]);
+      } else {
+        Alert.alert('Error', result.message);
+      }
+    } catch (error) {
+      console.error('Extend checkin error:', error);
+      Alert.alert('Error', 'Gagal memperpanjang checkin');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Status update functions
   const showStatusOptions = (unit) => {
     setSelectedUnitForStatus(unit);
@@ -426,6 +501,18 @@ const FieldUnitsOverviewScreen = ({ navigation }) => {
           <View style={styles.availableActions}>
             <Icon name="touch-app" size={16} color={COLORS.success} />
             <Text style={styles.availableText}>Tap untuk booking</Text>
+          </View>
+        )}
+
+        {item.status === UNIT_STATUS.OCCUPIED && (
+          <View style={styles.occupiedActions}>
+            <TouchableOpacity
+              style={styles.extendButton}
+              onPress={() => handleExtendCheckin(item)}
+            >
+              <Icon name="access-time" size={14} color={COLORS.white} />
+              <Text style={styles.extendButtonText}>Extend</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -748,6 +835,7 @@ const FieldUnitsOverviewScreen = ({ navigation }) => {
 
       {renderBookingModal()}
       {renderStatusModal()}
+      {renderExtendModal()}
     </View>
   );
 
@@ -797,6 +885,113 @@ const FieldUnitsOverviewScreen = ({ navigation }) => {
                 </Text>
               </TouchableOpacity>
             ))}
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  // Extend Modal
+  const renderExtendModal = () => (
+    <Modal
+      visible={showExtendModal}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setShowExtendModal(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>
+              Extend Checkin - Unit {selectedUnitForExtend?.unit_number}
+            </Text>
+            <TouchableOpacity
+              onPress={() => setShowExtendModal(false)}
+              style={styles.closeButton}
+            >
+              <Icon name="close" size={24} color={COLORS.textPrimary} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalBody}>
+            {/* Duration */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Durasi Tambahan (Jam) *</Text>
+              <TextInput
+                style={styles.input}
+                value={extendHours}
+                onChangeText={setExtendHours}
+                keyboardType="numeric"
+                placeholder="Contoh: 2"
+              />
+            </View>
+
+            {/* Payment Method */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Metode Pembayaran</Text>
+              <View style={styles.paymentContainer}>
+                {['cash', 'transfer', 'qris'].map((method) => (
+                  <TouchableOpacity
+                    key={method}
+                    style={[
+                      styles.paymentButton,
+                      extendPaymentMethod === method && styles.paymentButtonActive
+                    ]}
+                    onPress={() => setExtendPaymentMethod(method)}
+                  >
+                    <Text style={[
+                      styles.paymentText,
+                      extendPaymentMethod === method && styles.paymentTextActive
+                    ]}>
+                      {method === 'cash' ? 'Cash' : method === 'transfer' ? 'Transfer' : 'QRIS'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Payment Amount */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Jumlah Pembayaran *</Text>
+              <CurrencyInput
+                value={extendPaymentAmount}
+                onChangeText={setExtendPaymentAmount}
+                placeholder="Masukkan jumlah pembayaran"
+                style={styles.currencyInput}
+              />
+            </View>
+
+            {/* Notes */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Catatan (Opsional)</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={extendNotes}
+                onChangeText={setExtendNotes}
+                placeholder="Catatan tambahan..."
+                multiline
+                numberOfLines={3}
+              />
+            </View>
+          </ScrollView>
+
+          <View style={styles.modalFooter}>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setShowExtendModal(false)}
+            >
+              <Text style={styles.cancelButtonText}>Batal</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.bookButton}
+              onPress={submitExtendCheckin}
+              disabled={loading}
+            >
+              <Text style={styles.bookButtonText}>
+                {loading ? 'Memproses...' : 'Extend Checkin'}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -887,6 +1082,25 @@ const styles = StyleSheet.create({
     color: COLORS.success,
     marginLeft: SIZES.xs,
     fontStyle: 'italic',
+  },
+  occupiedActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: SIZES.xs,
+  },
+  extendButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.warning,
+    paddingHorizontal: SIZES.sm,
+    paddingVertical: SIZES.xs,
+    borderRadius: SIZES.radius,
+  },
+  extendButtonText: {
+    marginLeft: SIZES.xs,
+    fontSize: SIZES.caption,
+    color: COLORS.white,
+    fontWeight: '500',
   },
   priceText: {
     fontSize: SIZES.body,
