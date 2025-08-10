@@ -303,40 +303,87 @@ const FieldCheckinScreen = ({ navigation }) => {
 
   // Marketing search functionality
   const handleMarketingSearch = (query) => {
-    setMarketingSearchQuery(query);
+    try {
+      setMarketingSearchQuery(query);
 
-    if (!query.trim()) {
-      setFilteredMarketingSources(marketingSources);
-      return;
+      if (!query || !query.trim()) {
+        setFilteredMarketingSources(marketingSources || []);
+        return;
+      }
+
+      // Ensure marketingSources is an array
+      const sources = Array.isArray(marketingSources) ? marketingSources : [];
+
+      const filtered = sources.filter(source => {
+        // Validate source object
+        if (!source || typeof source.name !== 'string') {
+          console.warn('FieldCheckinScreen: Invalid marketing source:', source);
+          return false;
+        }
+        return source.name.toLowerCase().includes(query.toLowerCase());
+      });
+
+      // Add current query as option if not found
+      const exactMatch = filtered.find(source =>
+        source.name.toLowerCase() === query.toLowerCase()
+      );
+
+      if (!exactMatch && query.trim()) {
+        filtered.unshift({ id: 'new', name: query.trim() });
+      }
+
+      setFilteredMarketingSources(filtered);
+    } catch (error) {
+      console.error('FieldCheckinScreen: Error in handleMarketingSearch:', error);
+      // Fallback to show all sources
+      setFilteredMarketingSources(marketingSources || []);
     }
-
-    const filtered = marketingSources.filter(source =>
-      source.name.toLowerCase().includes(query.toLowerCase())
-    );
-
-    // Add current query as option if not found
-    const exactMatch = filtered.find(source =>
-      source.name.toLowerCase() === query.toLowerCase()
-    );
-
-    if (!exactMatch && query.trim()) {
-      filtered.unshift({ id: 'new', name: query.trim() });
-    }
-
-    setFilteredMarketingSources(filtered);
   };
 
   const selectMarketingSource = async (source) => {
-    setFormData({ ...formData, marketingName: source.name });
-    setMarketingModalVisible(false);
-    setMarketingSearchQuery('');
+    try {
+      // Validate source data
+      if (!source || !source.name) {
+        console.error('FieldCheckinScreen: Invalid marketing source data:', source);
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: 'Data marketing tidak valid',
+        });
+        return;
+      }
 
-    // Add to database if new
-    if (source.id === 'new') {
-      await MarketingSourceService.addMarketingSourceIfNotExists(source.name);
-    } else {
-      // Increment usage count
-      await MarketingSourceService.incrementUsage(source.name);
+      // Update form data immediately
+      setFormData({ ...formData, marketingName: source.name });
+      setMarketingModalVisible(false);
+      setMarketingSearchQuery('');
+
+      // Handle database operations in background
+      try {
+        if (source.id === 'new') {
+          console.log('FieldCheckinScreen: Adding new marketing source:', source.name);
+          const result = await MarketingSourceService.addMarketingSourceIfNotExists(source.name);
+          if (!result.success) {
+            console.warn('FieldCheckinScreen: Failed to add marketing source:', result.message);
+          }
+        } else {
+          console.log('FieldCheckinScreen: Incrementing usage for:', source.name);
+          const result = await MarketingSourceService.incrementUsage(source.name);
+          if (!result.success) {
+            console.warn('FieldCheckinScreen: Failed to increment usage:', result.message);
+          }
+        }
+      } catch (dbError) {
+        console.error('FieldCheckinScreen: Database operation error:', dbError);
+        // Don't show error to user as the main operation (selecting marketing) succeeded
+      }
+    } catch (error) {
+      console.error('FieldCheckinScreen: Error in selectMarketingSource:', error);
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: 'Gagal memilih marketing source',
+      });
     }
   };
 
@@ -984,34 +1031,54 @@ const FieldCheckinScreen = ({ navigation }) => {
             </View>
 
             <FlatList
-              data={filteredMarketingSources}
-              keyExtractor={(item) => item.id.toString()}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.modalItem,
-                    item.id === 'new' && styles.modalItemNew
-                  ]}
-                  onPress={() => selectMarketingSource(item)}
-                >
-                  <View style={styles.marketingItemContent}>
-                    {item.id === 'new' && (
-                      <Icon name="add" size={20} color={COLORS.primary} style={styles.marketingIcon} />
-                    )}
-                    <Text style={[
-                      styles.modalItemText,
-                      item.id === 'new' && styles.modalItemTextNew
-                    ]}>
-                      {item.id === 'new' ? `Tambah "${item.name}"` : item.name}
-                    </Text>
-                  </View>
-                  {item.usage_count > 0 && item.id !== 'new' && (
-                    <Text style={styles.usageCount}>
-                      {item.usage_count}x
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              )}
+              data={filteredMarketingSources || []}
+              keyExtractor={(item, index) => {
+                try {
+                  return item?.id ? item.id.toString() : `marketing-${index}`;
+                } catch (error) {
+                  console.warn('FieldCheckinScreen: Error generating key for marketing item:', error);
+                  return `marketing-fallback-${index}`;
+                }
+              }}
+              renderItem={({ item }) => {
+                try {
+                  // Validate item data
+                  if (!item || !item.name) {
+                    console.warn('FieldCheckinScreen: Invalid marketing item:', item);
+                    return null;
+                  }
+
+                  return (
+                    <TouchableOpacity
+                      style={[
+                        styles.modalItem,
+                        item.id === 'new' && styles.modalItemNew
+                      ]}
+                      onPress={() => selectMarketingSource(item)}
+                    >
+                      <View style={styles.marketingItemContent}>
+                        {item.id === 'new' && (
+                          <Icon name="add" size={20} color={COLORS.primary} style={styles.marketingIcon} />
+                        )}
+                        <Text style={[
+                          styles.modalItemText,
+                          item.id === 'new' && styles.modalItemTextNew
+                        ]}>
+                          {item.id === 'new' ? `Tambah "${item.name}"` : item.name}
+                        </Text>
+                      </View>
+                      {item.usage_count > 0 && item.id !== 'new' && (
+                        <Text style={styles.usageCount}>
+                          {item.usage_count}x
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  );
+                } catch (error) {
+                  console.error('FieldCheckinScreen: Error rendering marketing item:', error);
+                  return null;
+                }
+              }}
               ListEmptyComponent={
                 <View style={styles.emptyMarketingContainer}>
                   <Icon name="search-off" size={48} color={COLORS.gray400} />
@@ -1020,6 +1087,9 @@ const FieldCheckinScreen = ({ navigation }) => {
                   </Text>
                 </View>
               }
+              onError={(error) => {
+                console.error('FieldCheckinScreen: FlatList error:', error);
+              }}
             />
           </View>
         </View>
