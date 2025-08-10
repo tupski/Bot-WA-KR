@@ -40,8 +40,8 @@ const AdminCheckinScreen = ({ navigation }) => {
   const [marketingSearchQuery, setMarketingSearchQuery] = useState('');
   const [filteredMarketingSources, setFilteredMarketingSources] = useState([]);
 
-  // Payment proof
-  const [paymentProof, setPaymentProof] = useState(null);
+  // Payment proof - support multiple images
+  const [paymentProofs, setPaymentProofs] = useState([]);
 
   const [formData, setFormData] = useState({
     apartmentId: '',
@@ -141,7 +141,22 @@ const AdminCheckinScreen = ({ navigation }) => {
     }
   };
 
-  // Payment proof functionality
+  // Helper function untuk menghitung checkout time
+  const calculateCheckoutTime = (durationHours) => {
+    try {
+      const duration = parseInt(durationHours) || 0;
+      if (duration <= 0) return null;
+
+      const checkoutTime = new Date();
+      checkoutTime.setHours(checkoutTime.getHours() + duration);
+      return checkoutTime;
+    } catch (error) {
+      console.error('Error calculating checkout time:', error);
+      return null;
+    }
+  };
+
+  // Payment proof functionality - support multiple images
   const selectPaymentProof = () => {
     ImagePickerService.showImagePickerOptions((selectedImage) => {
       console.log('AdminCheckinScreen: Image selected:', selectedImage);
@@ -153,7 +168,8 @@ const AdminCheckinScreen = ({ navigation }) => {
         return;
       }
 
-      setPaymentProof(selectedImage);
+      // Add to array instead of replacing
+      setPaymentProofs(prev => [...prev, { ...selectedImage, id: Date.now() }]);
     });
   };
 
@@ -163,7 +179,7 @@ const AdminCheckinScreen = ({ navigation }) => {
       if (result.success) {
         const validation = ImagePickerService.validateImage(result.data);
         if (validation.valid) {
-          setPaymentProof(result.data);
+          setPaymentProofs(prev => [...prev, { ...result.data, id: Date.now() }]);
         } else {
           Alert.alert('Error', validation.message);
         }
@@ -182,7 +198,7 @@ const AdminCheckinScreen = ({ navigation }) => {
       if (result.success) {
         const validation = ImagePickerService.validateImage(result.data);
         if (validation.valid) {
-          setPaymentProof(result.data);
+          setPaymentProofs(prev => [...prev, { ...result.data, id: Date.now() }]);
         } else {
           Alert.alert('Error', validation.message);
         }
@@ -195,8 +211,12 @@ const AdminCheckinScreen = ({ navigation }) => {
     }
   };
 
-  const removePaymentProof = () => {
-    setPaymentProof(null);
+  const removePaymentProof = (imageId) => {
+    setPaymentProofs(prev => prev.filter(img => img.id !== imageId));
+  };
+
+  const clearAllPaymentProofs = () => {
+    setPaymentProofs([]);
   };
 
   // Payment methods with new options
@@ -274,7 +294,7 @@ const AdminCheckinScreen = ({ navigation }) => {
         marketingCommission: parseFloat(formData.marketingCommission) || 0,
         marketingName: formData.marketingName?.trim() || null,
         notes: formData.notes?.trim() || null,
-        paymentProof: paymentProof,
+        paymentProofs: paymentProofs,
         createdBy: currentUser.id,
       };
 
@@ -303,7 +323,7 @@ const AdminCheckinScreen = ({ navigation }) => {
                   marketingName: '',
                   notes: '',
                 });
-                setPaymentProof(null);
+                setPaymentProofs([]);
 
                 // Navigate back safely
                 if (navigation && navigation.goBack) {
@@ -422,6 +442,22 @@ const AdminCheckinScreen = ({ navigation }) => {
             keyboardType="numeric"
             placeholderTextColor={COLORS.gray400}
           />
+
+          {/* Tampilan Waktu Checkout */}
+          {formData.durationHours && parseInt(formData.durationHours) > 0 && (
+            <View style={styles.checkoutTimeDisplay}>
+              <Icon name="schedule" size={16} color={COLORS.success} />
+              <Text style={styles.checkoutTimeText}>
+                Checkout: {calculateCheckoutTime(formData.durationHours)?.toLocaleString('id-ID', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                }) || 'Invalid'}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Metode Pembayaran */}
@@ -455,51 +491,54 @@ const AdminCheckinScreen = ({ navigation }) => {
           />
         </View>
 
-        {/* Upload Bukti Pembayaran */}
+        {/* Upload Bukti Pembayaran - Multi Select */}
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Bukti Pembayaran</Text>
-          {paymentProof ? (
-            <View style={styles.paymentProofContainer}>
-              {/* Image Preview */}
-              <View style={styles.imagePreviewContainer}>
-                <Image
-                  source={{ uri: paymentProof.uri }}
-                  style={styles.imagePreview}
-                  resizeMode="cover"
-                />
-                <TouchableOpacity
-                  style={styles.removeProofButton}
-                  onPress={removePaymentProof}
-                >
-                  <Icon name="close" size={18} color={COLORS.white} />
-                </TouchableOpacity>
-              </View>
+          <View style={styles.labelWithAction}>
+            <Text style={styles.inputLabel}>Bukti Pembayaran</Text>
+            {paymentProofs.length > 0 && (
+              <TouchableOpacity onPress={clearAllPaymentProofs} style={styles.clearAllButton}>
+                <Text style={styles.clearAllText}>Hapus Semua</Text>
+              </TouchableOpacity>
+            )}
+          </View>
 
-              {/* Image Info */}
-              <View style={styles.paymentProofInfo}>
-                <Icon name="image" size={20} color={COLORS.primary} />
-                <View style={styles.imageInfoText}>
-                  <Text style={styles.paymentProofName} numberOfLines={1}>
-                    {paymentProof.name || 'Bukti pembayaran'}
-                  </Text>
-                  <Text style={styles.imageSize}>
-                    {paymentProof.size ? `${(paymentProof.size / 1024 / 1024).toFixed(2)} MB` : 'Unknown size'}
-                  </Text>
+          {/* Display Multiple Images */}
+          {paymentProofs.length > 0 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imagesContainer}>
+              {paymentProofs.map((proof, index) => (
+                <View key={proof.id} style={styles.imageItemContainer}>
+                  <View style={styles.imagePreviewContainer}>
+                    <Image
+                      source={{ uri: proof.uri }}
+                      style={styles.imagePreview}
+                      resizeMode="cover"
+                    />
+                    <TouchableOpacity
+                      style={styles.removeProofButton}
+                      onPress={() => removePaymentProof(proof.id)}
+                    >
+                      <Icon name="close" size={16} color={COLORS.white} />
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.imageIndexText}>{index + 1}</Text>
                 </View>
-              </View>
-            </View>
-          ) : (
-            <TouchableOpacity
-              style={styles.uploadButton}
-              onPress={selectPaymentProof}
-            >
-              <Icon name="cloud-upload" size={24} color={COLORS.primary} />
-              <Text style={styles.uploadButtonText}>Upload Bukti Pembayaran</Text>
-              <Text style={styles.uploadButtonSubtext}>
-                Pilih dari kamera atau galeri
-              </Text>
-            </TouchableOpacity>
+              ))}
+            </ScrollView>
           )}
+
+          {/* Upload Button */}
+          <TouchableOpacity
+            style={[styles.uploadButton, paymentProofs.length > 0 && styles.uploadButtonSecondary]}
+            onPress={selectPaymentProof}
+          >
+            <Icon name="add-a-photo" size={24} color={COLORS.primary} />
+            <Text style={styles.uploadButtonText}>
+              {paymentProofs.length > 0 ? 'Tambah Foto Lagi' : 'Upload Bukti Pembayaran'}
+            </Text>
+            <Text style={styles.uploadButtonSubtext}>
+              {paymentProofs.length > 0 ? `${paymentProofs.length} foto dipilih` : 'Pilih dari kamera atau galeri'}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Nama Marketing dengan Select2 */}
@@ -1099,6 +1138,57 @@ const styles = StyleSheet.create({
   },
   currencyInput: {
     borderWidth: 0, // Remove border since CurrencyInput has its own
+  },
+  // Checkout Time Display Styles
+  checkoutTimeDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: SIZES.sm,
+    padding: SIZES.sm,
+    backgroundColor: COLORS.success + '20',
+    borderRadius: SIZES.radius / 2,
+  },
+  checkoutTimeText: {
+    fontSize: SIZES.body,
+    color: COLORS.success,
+    marginLeft: SIZES.xs,
+    fontWeight: '600',
+  },
+  // Multi Image Support Styles
+  labelWithAction: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SIZES.sm,
+  },
+  clearAllButton: {
+    paddingHorizontal: SIZES.sm,
+    paddingVertical: SIZES.xs,
+    backgroundColor: COLORS.error + '20',
+    borderRadius: SIZES.radius / 2,
+  },
+  clearAllText: {
+    fontSize: SIZES.caption,
+    color: COLORS.error,
+    fontWeight: '600',
+  },
+  imagesContainer: {
+    marginBottom: SIZES.sm,
+  },
+  imageItemContainer: {
+    marginRight: SIZES.sm,
+    alignItems: 'center',
+  },
+  imageIndexText: {
+    fontSize: SIZES.caption,
+    color: COLORS.textSecondary,
+    marginTop: SIZES.xs,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  uploadButtonSecondary: {
+    backgroundColor: COLORS.gray100,
+    borderStyle: 'dashed',
   },
 });
 

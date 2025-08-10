@@ -38,7 +38,7 @@ class CheckinService {
         paymentAmount,
         marketingCommission,
         paymentProofPath,
-        paymentProof, // New field for file object/path
+        paymentProofs, // New field for multiple file objects/paths
         marketingName,
         notes,
         createdBy,
@@ -106,25 +106,38 @@ class CheckinService {
         }
       }
 
-      // Upload payment proof if provided
-      let uploadedPaymentProofUrl = paymentProofPath; // Use existing path if provided
+      // Upload payment proofs if provided (support multiple files)
+      let uploadedPaymentProofUrls = [];
 
-      if (paymentProof && !paymentProofPath) {
-        console.log('CheckinService: Uploading payment proof to Supabase Storage');
+      if (paymentProofs && Array.isArray(paymentProofs) && paymentProofs.length > 0) {
+        console.log(`CheckinService: Uploading ${paymentProofs.length} payment proofs to Supabase Storage`);
 
         // Generate temporary checkin ID for file naming
         const tempCheckinId = `temp_${Date.now()}`;
-        const uploadResult = await StorageService.uploadPaymentProof(paymentProof, tempCheckinId);
 
-        if (uploadResult.success) {
-          uploadedPaymentProofUrl = uploadResult.data.publicUrl;
-          console.log('CheckinService: Payment proof uploaded successfully:', uploadedPaymentProofUrl);
-        } else {
-          console.error('CheckinService: Payment proof upload failed:', uploadResult.message);
-          // Continue without payment proof rather than failing the whole checkin
-          uploadedPaymentProofUrl = null;
+        for (let i = 0; i < paymentProofs.length; i++) {
+          const proof = paymentProofs[i];
+          try {
+            const uploadResult = await StorageService.uploadPaymentProof(proof, `${tempCheckinId}_${i + 1}`);
+
+            if (uploadResult.success) {
+              uploadedPaymentProofUrls.push(uploadResult.data.publicUrl);
+              console.log(`CheckinService: Payment proof ${i + 1} uploaded successfully:`, uploadResult.data.publicUrl);
+            } else {
+              console.error(`CheckinService: Payment proof ${i + 1} upload failed:`, uploadResult.message);
+              // Continue with other files
+            }
+          } catch (uploadError) {
+            console.error(`CheckinService: Error uploading payment proof ${i + 1}:`, uploadError);
+            // Continue with other files
+          }
         }
       }
+
+      // Convert array to JSON string for storage
+      const uploadedPaymentProofUrl = uploadedPaymentProofUrls.length > 0
+        ? JSON.stringify(uploadedPaymentProofUrls)
+        : paymentProofPath || null;
 
       // Insert checkin baru
       const { data: newCheckin, error: insertError } = await supabase
