@@ -119,8 +119,16 @@ class ReportService {
 
       const statistics = [];
 
-      // For each apartment, get checkin statistics
+      // For each apartment, get checkin statistics and total units
       for (const apartment of apartments || []) {
+        // Get total units for this apartment
+        const { data: units, error: unitsError } = await supabase
+          .from('units')
+          .select('id', { count: 'exact' })
+          .eq('apartment_id', apartment.id);
+
+        const totalUnits = units?.length || 0;
+
         let checkinQuery = supabase
           .from('checkins')
           .select('id, status, payment_amount, duration_hours, created_at')
@@ -156,6 +164,7 @@ class ReportService {
           id: apartment.id,
           name: apartment.name,
           code: apartment.code,
+          total_units: totalUnits,
           total_checkins: totalCheckins,
           active_checkins: activeCheckins,
           extended_checkins: extendedCheckins,

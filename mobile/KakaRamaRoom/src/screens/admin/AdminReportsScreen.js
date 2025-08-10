@@ -395,7 +395,7 @@ const AdminReportsScreen = () => {
 
       {/* Apartment Statistics */}
       <View style={styles.sectionContainer}>
-        <Text style={styles.sectionTitle}>Statistik per Apartemen</Text>
+        <Text style={styles.sectionTitle}>Statistik per Apartemen (Business Day)</Text>
         {apartmentStats.length > 0 ? (
           <FlatList
             data={apartmentStats}
@@ -409,24 +409,27 @@ const AdminReportsScreen = () => {
 
                 <View style={styles.apartmentStats}>
                   <View style={styles.apartmentStatItem}>
+                    <Icon name="home" size={20} color={COLORS.primary} />
                     <Text style={styles.apartmentStatNumber}>
-                      {formatNumber(item.total_checkins)}
+                      {formatNumber(item.total_units)}
                     </Text>
-                    <Text style={styles.apartmentStatLabel}>Total</Text>
+                    <Text style={styles.apartmentStatLabel}>Total Unit</Text>
                   </View>
 
                   <View style={styles.apartmentStatItem}>
+                    <Icon name="check-circle" size={20} color={COLORS.success} />
                     <Text style={styles.apartmentStatNumber}>
                       {formatNumber(item.active_checkins)}
                     </Text>
-                    <Text style={styles.apartmentStatLabel}>Aktif</Text>
+                    <Text style={styles.apartmentStatLabel}>Checkin Aktif</Text>
                   </View>
 
                   <View style={styles.apartmentStatItem}>
+                    <Icon name="attach-money" size={20} color={COLORS.warning} />
                     <Text style={styles.apartmentStatNumber}>
                       {formatCurrency(item.total_revenue)}
                     </Text>
-                    <Text style={styles.apartmentStatLabel}>Revenue</Text>
+                    <Text style={styles.apartmentStatLabel}>Pendapatan</Text>
                   </View>
                 </View>
               </View>
@@ -750,6 +753,7 @@ const styles = StyleSheet.create({
   },
   apartmentStatItem: {
     alignItems: 'center',
+    gap: SIZES.xs,
   },
   apartmentStatNumber: {
     fontSize: SIZES.h6,
