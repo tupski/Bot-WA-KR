@@ -455,7 +455,10 @@ const AdminUnitsScreen = () => {
 
         // First check if there's an active checkin for this unit
         try {
+          console.log('AdminUnitsScreen: Calling CheckinService.getActiveCheckinByUnit with unit ID:', unit.id);
+
           const checkinResult = await CheckinService.getActiveCheckinByUnit(unit.id);
+          console.log('AdminUnitsScreen: CheckinService result:', checkinResult);
 
           if (checkinResult && checkinResult.success && checkinResult.data) {
             console.log('AdminUnitsScreen: Found active checkin, showing detail');
@@ -480,10 +483,12 @@ const AdminUnitsScreen = () => {
             });
           } else {
             console.warn('AdminUnitsScreen: No active checkin found for occupied unit');
+            console.warn('AdminUnitsScreen: CheckinService response:', checkinResult);
+
             showAlert({
               type: 'warning',
               title: 'Info Unit',
-              message: `Unit: ${unit.unit_number}\nApartemen: ${unit.apartment_name}\nStatus: ${UNIT_STATUS_LABELS[unit.status]}\n\nUnit ini ditandai sebagai terisi, tetapi tidak ada checkin aktif yang ditemukan.`,
+              message: `Unit: ${unit.unit_number}\nApartemen: ${unit.apartment_name}\nStatus: ${UNIT_STATUS_LABELS[unit.status]}\n\nUnit ini ditandai sebagai terisi, tetapi tidak ada checkin aktif yang ditemukan.\n\nDetail: ${checkinResult?.message || 'Tidak ada informasi tambahan'}`,
               buttons: [
                 { text: 'OK', style: 'cancel' },
                 {
@@ -495,10 +500,32 @@ const AdminUnitsScreen = () => {
           }
         } catch (checkinError) {
           console.error('AdminUnitsScreen: Error checking active checkin:', checkinError);
+          console.error('AdminUnitsScreen: Error stack:', checkinError?.stack);
+
+          // More detailed error message
+          let errorMessage = 'Gagal memeriksa data checkin';
+
+          if (checkinError?.message) {
+            errorMessage += `: ${checkinError.message}`;
+          } else if (typeof checkinError === 'string') {
+            errorMessage += `: ${checkinError}`;
+          } else if (checkinError?.code) {
+            errorMessage += `: Database error ${checkinError.code}`;
+          } else {
+            errorMessage += ': Unknown error';
+          }
+
           showAlert({
             type: 'error',
-            title: 'Error',
-            message: `Gagal memeriksa data checkin: ${checkinError.message || 'Unknown error'}`,
+            title: 'Error Memuat Data Checkin',
+            message: errorMessage,
+            buttons: [
+              { text: 'OK', style: 'cancel' },
+              {
+                text: 'Coba Lagi',
+                onPress: () => handleUnitPress(unit)
+              }
+            ]
           });
         }
       } else {
