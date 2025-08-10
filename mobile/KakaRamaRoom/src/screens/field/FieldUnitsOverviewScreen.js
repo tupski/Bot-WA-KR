@@ -18,8 +18,12 @@ import CheckinService from '../../services/CheckinService';
 import AuthService from '../../services/AuthService';
 import ImagePickerService from '../../services/ImagePickerService';
 import CurrencyInput from '../../components/CurrencyInput';
+import { useModernAlert } from '../../components/ModernAlert';
 
 const FieldUnitsOverviewScreen = ({ navigation }) => {
+  // Modern Alert Hook
+  const { showAlert, AlertComponent } = useModernAlert();
+
   const [units, setUnits] = useState([]);
   const [filteredUnits, setFilteredUnits] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -117,7 +121,17 @@ const FieldUnitsOverviewScreen = ({ navigation }) => {
         console.warn('FieldUnitsOverviewScreen: No current user, cannot load units');
         setUnits([]);
         setFilteredUnits([]);
+        showAlert({
+          type: 'warning',
+          title: 'Peringatan',
+          message: 'Silakan login terlebih dahulu untuk melihat data unit',
+        });
         return;
+      }
+
+      // Validate TeamAssignmentService
+      if (!TeamAssignmentService || typeof TeamAssignmentService.getAccessibleUnits !== 'function') {
+        throw new Error('TeamAssignmentService tidak tersedia');
       }
 
       console.log('FieldUnitsOverviewScreen: Calling TeamAssignmentService.getAccessibleUnits');
@@ -126,21 +140,37 @@ const FieldUnitsOverviewScreen = ({ navigation }) => {
       console.log('FieldUnitsOverviewScreen: getAccessibleUnits result:', result);
 
       if (result && result.success) {
-        const unitsData = result.data || [];
+        const unitsData = Array.isArray(result.data) ? result.data : [];
         console.log('FieldUnitsOverviewScreen: Loaded units:', unitsData.length);
         setUnits(unitsData);
         setFilteredUnits(unitsData);
+
+        if (unitsData.length === 0) {
+          showAlert({
+            type: 'info',
+            title: 'Info',
+            message: 'Belum ada unit yang dapat diakses. Pastikan Anda telah ditugaskan ke apartemen tertentu.',
+          });
+        }
       } else {
         console.warn('FieldUnitsOverviewScreen: Failed to load units:', result);
         setUnits([]);
         setFilteredUnits([]);
-        Alert.alert('Error', result?.message || 'Gagal memuat data unit');
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: result?.message || 'Gagal memuat data unit. Silakan coba lagi.',
+        });
       }
     } catch (error) {
       console.error('FieldUnitsOverviewScreen: Error loading units:', error);
       setUnits([]);
       setFilteredUnits([]);
-      Alert.alert('Error', 'Gagal memuat data unit');
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: `Gagal memuat data unit: ${error.message || 'Unknown error'}`,
+      });
     } finally {
       setLoading(false);
     }
@@ -223,26 +253,44 @@ const FieldUnitsOverviewScreen = ({ navigation }) => {
 
   const handleBooking = async () => {
     try {
-      // Validation
+      console.log('FieldUnitsOverviewScreen: Starting booking process');
+
+      // Validation dengan showAlert
       if (!duration || isNaN(parseInt(duration))) {
-        Alert.alert('Error', 'Masukkan durasi yang valid');
+        showAlert({
+          type: 'warning',
+          title: 'Data Tidak Valid',
+          message: 'Masukkan durasi yang valid',
+        });
         return;
       }
 
       if (!paymentAmount || parseFloat(paymentAmount.replace(/[^\d]/g, '')) <= 0) {
-        Alert.alert('Error', 'Masukkan jumlah pembayaran yang valid');
+        showAlert({
+          type: 'warning',
+          title: 'Data Tidak Valid',
+          message: 'Masukkan jumlah pembayaran yang valid',
+        });
         return;
       }
 
       const durationHours = bookingType === 'daily' ? parseInt(duration) : parseInt(duration);
 
       if (bookingType === 'transit' && (durationHours < 1 || durationHours > 12)) {
-        Alert.alert('Error', 'Durasi transit harus antara 1-12 jam');
+        showAlert({
+          type: 'warning',
+          title: 'Durasi Tidak Valid',
+          message: 'Durasi transit harus antara 1-12 jam',
+        });
         return;
       }
 
       if (bookingType === 'daily' && durationHours < 24) {
-        Alert.alert('Error', 'Durasi harian minimal 24 jam');
+        showAlert({
+          type: 'warning',
+          title: 'Durasi Tidak Valid',
+          message: 'Durasi harian minimal 24 jam',
+        });
         return;
       }
 
@@ -272,22 +320,30 @@ const FieldUnitsOverviewScreen = ({ navigation }) => {
       );
 
       if (result.success) {
-        Alert.alert('Sukses', 'Booking berhasil dibuat!', [
-          {
-            text: 'OK',
-            onPress: () => {
-              setShowBookingModal(false);
-              resetBookingForm();
-              loadUnits(); // Refresh units
-            },
+        showAlert({
+          type: 'success',
+          title: 'Sukses',
+          message: 'Booking berhasil dibuat!',
+          onDismiss: () => {
+            setShowBookingModal(false);
+            resetBookingForm();
+            loadUnits(); // Refresh units
           },
-        ]);
+        });
       } else {
-        Alert.alert('Error', result.message);
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: result.message || 'Gagal membuat booking',
+        });
       }
     } catch (error) {
-      console.error('Booking error:', error);
-      Alert.alert('Error', 'Gagal membuat booking');
+      console.error('FieldUnitsOverviewScreen: Booking error:', error);
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: `Gagal membuat booking: ${error.message || 'Unknown error'}`,
+      });
     } finally {
       setLoading(false);
     }
@@ -1007,6 +1063,9 @@ const FieldUnitsOverviewScreen = ({ navigation }) => {
         </View>
       </View>
     </Modal>
+
+    {/* Modern Alert Component */}
+    <AlertComponent />
   );
 };
 
