@@ -10,6 +10,7 @@ import {
   TextInput,
   Modal,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { COLORS, SIZES, UNIT_STATUS, UNIT_STATUS_LABELS, UNIT_STATUS_COLORS } from '../../config/constants';
@@ -17,12 +18,16 @@ import UnitService from '../../services/UnitService';
 import ApartmentService from '../../services/ApartmentService';
 import AuthService from '../../services/AuthService';
 import CheckinService from '../../services/CheckinService';
+import { useModernAlert } from '../../components/ModernAlert';
 
 /**
  * Screen untuk manajemen unit oleh admin
  * Fitur: CRUD unit, ubah status unit, monitoring auto-checkout
  */
 const AdminUnitsScreen = () => {
+  // Modern Alert Hook
+  const { showAlert, AlertComponent } = useModernAlert();
+
   // State untuk data unit dan apartemen
   const [units, setUnits] = useState([]);
   const [apartments, setApartments] = useState([]);
@@ -50,10 +55,21 @@ const AdminUnitsScreen = () => {
    * Load data awal (unit dan apartemen)
    */
   const loadInitialData = async () => {
-    await Promise.all([
-      loadUnits(),
-      loadApartments(),
-    ]);
+    try {
+      await Promise.all([
+        loadUnits(),
+        loadApartments(),
+      ]);
+    } catch (error) {
+      console.error('AdminUnitsScreen: Error loading initial data:', error);
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: 'Gagal memuat data awal. Silakan coba lagi.',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   /**
@@ -61,17 +77,31 @@ const AdminUnitsScreen = () => {
    */
   const loadUnits = async () => {
     try {
+      // Validasi service
+      if (!UnitService || typeof UnitService.getAllUnits !== 'function') {
+        throw new Error('UnitService tidak tersedia');
+      }
+
       const result = await UnitService.getAllUnits();
-      if (result.success) {
-        setUnits(result.data);
+      if (result && result.success) {
+        const unitData = Array.isArray(result.data) ? result.data : [];
+        setUnits(unitData);
       } else {
-        Alert.alert('Error', result.message);
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: result?.message || 'Gagal memuat data unit',
+        });
+        setUnits([]);
       }
     } catch (error) {
-      console.error('Load units error:', error);
-      Alert.alert('Error', 'Gagal memuat data unit');
-    } finally {
-      setLoading(false);
+      console.error('AdminUnitsScreen: Load units error:', error);
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: `Gagal memuat data unit: ${error.message || 'Unknown error'}`,
+      });
+      setUnits([]);
     }
   };
 
@@ -80,12 +110,22 @@ const AdminUnitsScreen = () => {
    */
   const loadApartments = async () => {
     try {
+      // Validasi service
+      if (!ApartmentService || typeof ApartmentService.getActiveApartments !== 'function') {
+        throw new Error('ApartmentService tidak tersedia');
+      }
+
       const result = await ApartmentService.getActiveApartments();
-      if (result.success) {
-        setApartments(result.data);
+      if (result && result.success) {
+        const apartmentData = Array.isArray(result.data) ? result.data : [];
+        setApartments(apartmentData);
+      } else {
+        console.error('AdminUnitsScreen: Failed to load apartments:', result?.message);
+        setApartments([]);
       }
     } catch (error) {
-      console.error('Load apartments error:', error);
+      console.error('AdminUnitsScreen: Load apartments error:', error);
+      setApartments([]);
     }
   };
 
@@ -274,18 +314,35 @@ const AdminUnitsScreen = () => {
     Alert.alert('Ubah Status Unit', `Unit ${unit.unit_number}`, statusOptions);
   };
 
-  // Filter unit berdasarkan pencarian dan apartemen
-  const filteredUnits = units.filter((unit) => {
+  // Helper function untuk menghitung jumlah unit per apartemen
+  const getUnitCountByApartment = (apartmentId) => {
+    return units.filter(unit => unit.apartment_id === apartmentId).length;
+  };
+
+  // Helper function untuk mendapatkan total unit
+  const getTotalUnits = () => {
+    return units.length;
+  };
+
+  // Filter unit berdasarkan pencarian dan apartemen dengan safe operations
+  const filteredUnits = Array.isArray(units) ? units.filter((unit) => {
+    if (!unit || typeof unit !== 'object') return false;
+
+    const unitNumber = unit.unit_number || '';
+    const apartmentName = unit.apartment_name || '';
+    const unitType = unit.unit_type || '';
+    const query = searchQuery.toLowerCase();
+
     const matchesSearch =
-      unit.unit_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      unit.apartment_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (unit.unit_type && unit.unit_type.toLowerCase().includes(searchQuery.toLowerCase()));
+      unitNumber.toLowerCase().includes(query) ||
+      apartmentName.toLowerCase().includes(query) ||
+      unitType.toLowerCase().includes(query);
 
     const matchesApartment = selectedApartment ?
       unit.apartment_id === selectedApartment : true;
 
     return matchesSearch && matchesApartment;
-  });
+  }) : [];
 
   /**
    * Handle unit press - show checkin detail if occupied
@@ -427,6 +484,17 @@ const AdminUnitsScreen = () => {
     </TouchableOpacity>
   );
 
+  // Show loading indicator saat pertama kali load
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loadingText}>Memuat data unit...</Text>
+        <AlertComponent />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -446,39 +514,62 @@ const AdminUnitsScreen = () => {
       >
         <TouchableOpacity
           style={[
-            styles.filterButton,
-            !selectedApartment && styles.filterButtonActive,
+            styles.modernFilterButton,
+            !selectedApartment && styles.modernFilterButtonActive,
           ]}
           onPress={() => filterByApartment(null)}
         >
-          <Text
-            style={[
-              styles.filterButtonText,
-              !selectedApartment && styles.filterButtonTextActive,
-            ]}
-          >
-            Semua
-          </Text>
-        </TouchableOpacity>
-        {apartments.map((apartment) => (
-          <TouchableOpacity
-            key={apartment.id}
-            style={[
-              styles.filterButton,
-              selectedApartment === apartment.id && styles.filterButtonActive,
-            ]}
-            onPress={() => filterByApartment(apartment.id)}
-          >
+          <View style={styles.filterButtonContent}>
             <Text
               style={[
-                styles.filterButtonText,
-                selectedApartment === apartment.id && styles.filterButtonTextActive,
+                styles.modernFilterButtonText,
+                !selectedApartment && styles.modernFilterButtonTextActive,
               ]}
             >
-              {apartment.name || apartment.code || 'Apartemen'}
+              Semua Apartemen
             </Text>
-          </TouchableOpacity>
-        ))}
+            <Text
+              style={[
+                styles.filterButtonCount,
+                !selectedApartment && styles.filterButtonCountActive,
+              ]}
+            >
+              {getTotalUnits()} unit
+            </Text>
+          </View>
+        </TouchableOpacity>
+        {Array.isArray(apartments) && apartments.map((apartment) => {
+          const unitCount = getUnitCountByApartment(apartment.id);
+          return (
+            <TouchableOpacity
+              key={apartment.id}
+              style={[
+                styles.modernFilterButton,
+                selectedApartment === apartment.id && styles.modernFilterButtonActive,
+              ]}
+              onPress={() => filterByApartment(apartment.id)}
+            >
+              <View style={styles.filterButtonContent}>
+                <Text
+                  style={[
+                    styles.modernFilterButtonText,
+                    selectedApartment === apartment.id && styles.modernFilterButtonTextActive,
+                  ]}
+                >
+                  {apartment.name || apartment.code || 'Apartemen'}
+                </Text>
+                <Text
+                  style={[
+                    styles.filterButtonCount,
+                    selectedApartment === apartment.id && styles.filterButtonCountActive,
+                  ]}
+                >
+                  {unitCount} unit
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
 
       {/* Search */}
@@ -631,6 +722,9 @@ const AdminUnitsScreen = () => {
           </ScrollView>
         </View>
       </Modal>
+
+      {/* Modern Alert Component */}
+      <AlertComponent />
     </View>
   );
 };
@@ -941,6 +1035,68 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     marginLeft: SIZES.xs,
     fontStyle: 'italic',
+  },
+  // Modern Filter Button Styles
+  modernFilterButton: {
+    paddingHorizontal: SIZES.md,
+    paddingVertical: SIZES.sm,
+    borderRadius: SIZES.radius,
+    backgroundColor: COLORS.background,
+    marginRight: SIZES.sm,
+    minWidth: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    borderWidth: 1,
+    borderColor: COLORS.gray200,
+  },
+  modernFilterButtonActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+    elevation: 2,
+    shadowOpacity: 0.15,
+  },
+  filterButtonContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modernFilterButtonText: {
+    fontSize: SIZES.body,
+    color: COLORS.textPrimary,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: SIZES.xs,
+  },
+  modernFilterButtonTextActive: {
+    color: COLORS.background,
+  },
+  filterButtonCount: {
+    fontSize: SIZES.caption,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  filterButtonCountActive: {
+    color: COLORS.background,
+    opacity: 0.9,
+  },
+  // Loading Container Styles
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.gray100,
+    padding: SIZES.lg,
+  },
+  loadingText: {
+    fontSize: SIZES.body,
+    color: COLORS.textSecondary,
+    marginTop: SIZES.md,
+    textAlign: 'center',
   },
 });
 
