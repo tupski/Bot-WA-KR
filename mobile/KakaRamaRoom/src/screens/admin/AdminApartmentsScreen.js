@@ -417,14 +417,47 @@ const AdminApartmentsScreen = ({ navigation }) => {
 
       {/* Apartment List */}
       <FlatList
-        data={filteredApartments}
-        renderItem={renderApartmentItem}
-        keyExtractor={(item) => item.id.toString()}
+        data={filteredApartments || []}
+        renderItem={({ item }) => {
+          try {
+            // Validate item data
+            if (!item || !item.id) {
+              console.warn('AdminApartmentsScreen: Invalid apartment item:', item);
+              return null;
+            }
+            return renderApartmentItem({ item });
+          } catch (error) {
+            console.error('AdminApartmentsScreen: Error rendering apartment item:', error);
+            return null;
+          }
+        }}
+        keyExtractor={(item, index) => {
+          try {
+            return item?.id ? item.id.toString() : `apartment-${index}`;
+          } catch (error) {
+            console.warn('AdminApartmentsScreen: Error generating key for apartment:', error);
+            return `apartment-fallback-${index}`;
+          }
+        }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Icon name="apartment" size={48} color={COLORS.gray400} />
+            <Text style={styles.emptyText}>
+              {searchQuery ? 'Tidak ada apartemen yang sesuai pencarian' : 'Belum ada apartemen'}
+            </Text>
+            <Text style={styles.emptySubtext}>
+              Tap tombol + untuk menambah apartemen baru
+            </Text>
+          </View>
+        }
+        onError={(error) => {
+          console.error('AdminApartmentsScreen: FlatList error:', error);
+        }}
       />
 
       {/* Add/Edit Modal */}
@@ -733,6 +766,25 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: SIZES.md,
     textAlign: 'center',
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: SIZES.xl * 2,
+  },
+  emptyText: {
+    fontSize: SIZES.body,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginTop: SIZES.md,
+    fontWeight: '500',
+  },
+  emptySubtext: {
+    fontSize: SIZES.caption,
+    color: COLORS.gray400,
+    textAlign: 'center',
+    marginTop: SIZES.xs,
   },
 });
 
