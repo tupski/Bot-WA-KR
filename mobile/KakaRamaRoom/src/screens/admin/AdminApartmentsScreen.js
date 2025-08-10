@@ -16,6 +16,7 @@ import { COLORS, SIZES, APARTMENTS } from '../../config/constants';
 import ApartmentService from '../../services/ApartmentService';
 import AuthService from '../../services/AuthService';
 import { useModernAlert } from '../../components/ModernAlert';
+import ModernModal from '../../components/ModernModal';
 
 const AdminApartmentsScreen = ({ navigation }) => {
   // Modern Alert Hook
@@ -461,20 +462,13 @@ const AdminApartmentsScreen = ({ navigation }) => {
       />
 
       {/* Add/Edit Modal */}
-      <Modal
+      <ModernModal
         visible={modalVisible}
-        animationType="slide"
-        presentationStyle="pageSheet"
+        title={editingApartment ? 'Edit Apartemen' : 'Tambah Apartemen'}
+        onClose={() => setModalVisible(false)}
+        scrollable={true}
+        maxHeight="90%"
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>
-              {editingApartment ? 'Edit Apartemen' : 'Tambah Apartemen'}
-            </Text>
-            <TouchableOpacity onPress={() => setModalVisible(false)}>
-              <Icon name="close" size={24} color={COLORS.textPrimary} />
-            </TouchableOpacity>
-          </View>
 
           <View style={styles.modalContent}>
             <View style={styles.inputGroup}>
@@ -543,8 +537,7 @@ const AdminApartmentsScreen = ({ navigation }) => {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
-      </Modal>
+      </ModernModal>
 
       {/* Modern Alert Component */}
       <AlertComponent />
