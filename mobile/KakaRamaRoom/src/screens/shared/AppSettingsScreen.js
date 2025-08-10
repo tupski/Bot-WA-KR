@@ -160,29 +160,63 @@ const AppSettingsScreen = ({ navigation }) => {
     );
   };
 
-  const SettingItem = ({ icon, title, subtitle, value, onToggle, onPress, showSwitch = false, showChevron = false }) => (
+  const handleLogout = async () => {
+    Alert.alert(
+      'Konfirmasi Logout',
+      'Apakah Anda yakin ingin keluar dari aplikasi?',
+      [
+        {
+          text: 'Batal',
+          style: 'cancel',
+        },
+        {
+          text: 'Keluar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const result = await AuthService.logout();
+              if (result.success) {
+                // Reset navigation stack to login screen
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Login' }],
+                });
+              } else {
+                Alert.alert('Error', 'Gagal logout. Silakan coba lagi.');
+              }
+            } catch (error) {
+              console.error('Logout error:', error);
+              Alert.alert('Error', 'Terjadi kesalahan saat logout.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const SettingItem = ({ icon, title, subtitle, value, onToggle, onPress, showSwitch = false, showChevron = false, isDestructive = false }) => (
     <TouchableOpacity
       style={styles.settingItem}
       onPress={onPress}
       disabled={showSwitch}
     >
       <View style={styles.settingIcon}>
-        <Icon name={icon} size={24} color={COLORS.PRIMARY} />
+        <Icon name={icon} size={24} color={isDestructive ? COLORS.error : COLORS.primary} />
       </View>
       <View style={styles.settingContent}>
-        <Text style={styles.settingTitle}>{title}</Text>
+        <Text style={[styles.settingTitle, isDestructive && { color: COLORS.error }]}>{title}</Text>
         {subtitle && <Text style={styles.settingSubtitle}>{subtitle}</Text>}
       </View>
       {showSwitch && (
         <Switch
           value={value}
           onValueChange={onToggle}
-          trackColor={{ false: COLORS.LIGHT_GRAY, true: COLORS.PRIMARY }}
-          thumbColor={value ? COLORS.WHITE : COLORS.TEXT_SECONDARY}
+          trackColor={{ false: COLORS.gray300, true: COLORS.primary }}
+          thumbColor={value ? COLORS.background : COLORS.gray400}
         />
       )}
       {showChevron && (
-        <Icon name="chevron-right" size={24} color={COLORS.TEXT_SECONDARY} />
+        <Icon name="chevron-right" size={24} color={COLORS.gray400} />
       )}
     </TouchableOpacity>
   );
@@ -291,6 +325,20 @@ const AppSettingsScreen = ({ navigation }) => {
             subtitle="Kembalikan pengaturan ke default"
             onPress={resetSettings}
             showChevron={true}
+          />
+        </View>
+
+        {/* Account */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Akun</Text>
+
+          <SettingItem
+            icon="logout"
+            title="Keluar"
+            subtitle="Logout dari aplikasi"
+            onPress={handleLogout}
+            showChevron={true}
+            isDestructive={true}
           />
         </View>
 

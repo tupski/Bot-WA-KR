@@ -190,33 +190,6 @@ const FieldDashboardScreen = ({ navigation }) => {
     }
   };
 
-  const handleLogout = async () => {
-    Alert.alert(
-      'Konfirmasi Logout',
-      'Apakah Anda yakin ingin keluar dari aplikasi?',
-      [
-        {
-          text: 'Batal',
-          style: 'cancel',
-        },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            const result = await AuthService.logout();
-            if (result.success) {
-              // Reset navigation stack to login screen
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Login' }],
-              });
-            }
-          },
-        },
-      ]
-    );
-  };
-
   const quickActions = [
     {
       title: 'Check-in Baru',
@@ -265,9 +238,6 @@ const FieldDashboardScreen = ({ navigation }) => {
             onPress={() => navigation.navigate('Notifications')}
             color={COLORS.background}
           />
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Icon name="logout" size={24} color={COLORS.background} />
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -446,9 +416,6 @@ const styles = StyleSheet.create({
     opacity: 0.9,
     marginTop: SIZES.xs / 2,
     fontWeight: '500',
-  },
-  logoutButton: {
-    padding: SIZES.sm,
   },
   statsContainer: {
     flexDirection: 'row',
