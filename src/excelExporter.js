@@ -69,8 +69,9 @@ class ExcelExporter {
                 await this.createCashReportSheet(workbook, transactions, displayDate);
                 await this.createCombinedSummarySheet(workbook, csSummary, marketingCommissionByApartment, displayDate);
 
-                // Save file
-                const filename = `Laporan_KAKARAMA_ROOM_${displayDate}.xlsx`;
+                // Save file dengan format tanggal yang aman untuk filename
+                const filenameDateFormat = moment(reportDate).format('YYYY-MM-DD');
+                const filename = `Laporan_KAKARAMA_ROOM_${filenameDateFormat}.xlsx`;
                 const filepath = path.join(this.exportDir, filename);
 
                 await workbook.xlsx.writeFile(filepath);
