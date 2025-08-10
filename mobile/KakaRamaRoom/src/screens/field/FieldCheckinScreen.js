@@ -104,8 +104,8 @@ const FieldCheckinScreen = ({ navigation }) => {
       if (user && user.apartmentIds) {
         // Load apartemen yang ditugaskan ke tim
         promises.push(ApartmentService.getApartmentsByIds(user.apartmentIds));
-        // Load unit tersedia dari apartemen yang ditugaskan
-        promises.push(UnitService.getAvailableUnits(user.apartmentIds));
+        // Load unit tersedia dari apartemen yang ditugaskan (pass null untuk semua apartemen yang accessible)
+        promises.push(UnitService.getAvailableUnits(null));
       }
 
       // Load marketing sources
@@ -118,7 +118,10 @@ const FieldCheckinScreen = ({ navigation }) => {
       }
 
       if (unitResult && unitResult.success) {
+        console.log('FieldCheckinScreen: Loaded available units:', unitResult.data.length);
         setAvailableUnits(unitResult.data);
+      } else {
+        console.error('FieldCheckinScreen: Failed to load units:', unitResult);
       }
 
       if (marketingResult && marketingResult.success) {
@@ -135,10 +138,14 @@ const FieldCheckinScreen = ({ navigation }) => {
    * Filter unit berdasarkan apartemen yang dipilih
    */
   const filterUnitsByApartment = () => {
+    console.log('FieldCheckinScreen: Filtering units by apartment:', formData.apartmentId);
+    console.log('FieldCheckinScreen: Available units:', availableUnits.length);
+
     if (formData.apartmentId) {
       const filtered = availableUnits.filter(
         unit => unit.apartment_id.toString() === formData.apartmentId
       );
+      console.log('FieldCheckinScreen: Filtered units:', filtered.length);
       setFilteredUnits(filtered);
     } else {
       setFilteredUnits(availableUnits);
