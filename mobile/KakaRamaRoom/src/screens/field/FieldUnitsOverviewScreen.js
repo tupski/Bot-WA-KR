@@ -19,6 +19,7 @@ import AuthService from '../../services/AuthService';
 
 const FieldUnitsOverviewScreen = ({ navigation }) => {
   const [units, setUnits] = useState([]);
+  const [filteredUnits, setFilteredUnits] = useState([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -30,10 +31,29 @@ const FieldUnitsOverviewScreen = ({ navigation }) => {
   const [notes, setNotes] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
 
+  // Search and filter states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [selectedUnitForStatus, setSelectedUnitForStatus] = useState(null);
+
   useEffect(() => {
     loadCurrentUser();
     loadUnits();
   }, []);
+
+  // Filter units based on search query
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredUnits(units);
+    } else {
+      const filtered = units.filter(unit =>
+        unit.unit_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        unit.apartments?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        unit.apartments?.code.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredUnits(filtered);
+    }
+  }, [units, searchQuery]);
 
   const loadCurrentUser = async () => {
     const user = AuthService.getCurrentUser();
@@ -47,6 +67,7 @@ const FieldUnitsOverviewScreen = ({ navigation }) => {
       
       if (result.success) {
         setUnits(result.data);
+        setFilteredUnits(result.data);
       } else {
         Alert.alert('Error', result.message);
       }
@@ -198,42 +219,99 @@ const FieldUnitsOverviewScreen = ({ navigation }) => {
     setNotes('');
   };
 
+  // Status update functions
+  const showStatusOptions = (unit) => {
+    setSelectedUnitForStatus(unit);
+    setShowStatusModal(true);
+  };
+
+  const updateUnitStatus = async (newStatus) => {
+    if (!selectedUnitForStatus) return;
+
+    try {
+      setLoading(true);
+      const result = await UnitService.updateUnitStatus(
+        selectedUnitForStatus.id,
+        newStatus,
+        currentUser.id
+      );
+
+      if (result.success) {
+        Alert.alert('Berhasil', `Status unit ${selectedUnitForStatus.unit_number} berhasil diubah`);
+        setShowStatusModal(false);
+        setSelectedUnitForStatus(null);
+        loadUnits(); // Refresh data
+      } else {
+        Alert.alert('Error', result.message);
+      }
+    } catch (error) {
+      console.error('Update unit status error:', error);
+      Alert.alert('Error', 'Gagal mengubah status unit');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getAvailableStatuses = (currentStatus) => {
+    // Define which status transitions are allowed
+    const statusTransitions = {
+      [UNIT_STATUS.AVAILABLE]: [UNIT_STATUS.CLEANING, UNIT_STATUS.MAINTENANCE],
+      [UNIT_STATUS.OCCUPIED]: [UNIT_STATUS.AVAILABLE], // Only if no active checkin
+      [UNIT_STATUS.CLEANING]: [UNIT_STATUS.AVAILABLE, UNIT_STATUS.MAINTENANCE],
+      [UNIT_STATUS.MAINTENANCE]: [UNIT_STATUS.AVAILABLE, UNIT_STATUS.CLEANING],
+    };
+
+    return statusTransitions[currentStatus] || [];
+  };
+
   const renderUnitCard = ({ item }) => (
-    <TouchableOpacity
+    <View
       style={[
         styles.unitCard,
         { borderLeftColor: getStatusColor(item.status) }
       ]}
-      onPress={() => handleUnitPress(item)}
     >
-      <View style={styles.unitHeader}>
-        <View style={styles.unitInfo}>
-          <Text style={styles.unitNumber}>{item.unit_number}</Text>
-          <Text style={styles.apartmentName}>{item.apartments?.name}</Text>
+      <TouchableOpacity
+        style={styles.unitContent}
+        onPress={() => handleUnitPress(item)}
+      >
+        <View style={styles.unitHeader}>
+          <View style={styles.unitInfo}>
+            <Text style={styles.unitNumber}>{item.unit_number}</Text>
+            <Text style={styles.apartmentName}>{item.apartments?.name}</Text>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
+            <Icon
+              name={getStatusIcon(item.status)}
+              size={16}
+              color={getStatusColor(item.status)}
+            />
+            <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
+              {getStatusLabel(item.status)}
+            </Text>
+          </View>
         </View>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
-          <Icon 
-            name={getStatusIcon(item.status)} 
-            size={16} 
-            color={getStatusColor(item.status)} 
-          />
-          <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
-            {getStatusLabel(item.status)}
-          </Text>
-        </View>
-      </View>
 
-      {item.status === UNIT_STATUS.AVAILABLE && (
-        <View style={styles.availableActions}>
-          <Icon name="touch-app" size={16} color={COLORS.success} />
-          <Text style={styles.availableText}>Tap untuk booking</Text>
-        </View>
-      )}
+        {item.status === UNIT_STATUS.AVAILABLE && (
+          <View style={styles.availableActions}>
+            <Icon name="touch-app" size={16} color={COLORS.success} />
+            <Text style={styles.availableText}>Tap untuk booking</Text>
+          </View>
+        )}
 
-      {item.price && (
-        <Text style={styles.priceText}>Rp {item.price.toLocaleString('id-ID')}</Text>
-      )}
-    </TouchableOpacity>
+        {item.price && (
+          <Text style={styles.priceText}>Rp {item.price.toLocaleString('id-ID')}</Text>
+        )}
+      </TouchableOpacity>
+
+      {/* Status Update Button */}
+      <TouchableOpacity
+        style={styles.statusButton}
+        onPress={() => showStatusOptions(item)}
+      >
+        <Icon name="swap-vert" size={20} color={COLORS.primary} />
+      </TouchableOpacity>
+    </View>
   );
 
   const renderBookingModal = () => (
@@ -415,8 +493,25 @@ const FieldUnitsOverviewScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <Icon name="search" size={20} color={COLORS.gray400} />
+        <TextInput
+          style={styles.searchInput}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Cari unit atau apartemen..."
+          placeholderTextColor={COLORS.gray400}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <Icon name="close" size={20} color={COLORS.gray400} />
+          </TouchableOpacity>
+        )}
+      </View>
+
       <FlatList
-        data={units}
+        data={filteredUnits}
         renderItem={renderUnitCard}
         keyExtractor={(item) => item.id}
         refreshControl={
@@ -431,13 +526,68 @@ const FieldUnitsOverviewScreen = ({ navigation }) => {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Icon name="meeting-room" size={64} color={COLORS.gray300} />
-            <Text style={styles.emptyText}>Tidak ada unit yang dapat diakses</Text>
+            <Text style={styles.emptyText}>
+              {searchQuery ? 'Tidak ada unit yang sesuai pencarian' : 'Tidak ada unit yang dapat diakses'}
+            </Text>
           </View>
         }
       />
 
       {renderBookingModal()}
+      {renderStatusModal()}
     </View>
+  );
+
+  // Status Modal
+  const renderStatusModal = () => (
+    <Modal
+      visible={showStatusModal}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setShowStatusModal(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.statusModalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>
+              Ubah Status Unit {selectedUnitForStatus?.unit_number}
+            </Text>
+            <TouchableOpacity
+              onPress={() => setShowStatusModal(false)}
+              style={styles.closeButton}
+            >
+              <Icon name="close" size={24} color={COLORS.textPrimary} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.statusOptions}>
+            <Text style={styles.currentStatusText}>
+              Status saat ini: {getStatusLabel(selectedUnitForStatus?.status)}
+            </Text>
+
+            {getAvailableStatuses(selectedUnitForStatus?.status).map((status) => (
+              <TouchableOpacity
+                key={status}
+                style={[
+                  styles.statusOption,
+                  { borderColor: getStatusColor(status) }
+                ]}
+                onPress={() => updateUnitStatus(status)}
+              >
+                <Icon
+                  name={getStatusIcon(status)}
+                  size={20}
+                  color={getStatusColor(status)}
+                />
+                <Text style={[styles.statusOptionText, { color: getStatusColor(status) }]}>
+                  {getStatusLabel(status)}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 };
 
@@ -687,6 +837,64 @@ const styles = StyleSheet.create({
     fontSize: SIZES.body,
     fontWeight: '600',
     color: COLORS.background,
+  },
+  // Search styles
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.gray100,
+    margin: SIZES.md,
+    paddingHorizontal: SIZES.md,
+    paddingVertical: SIZES.sm,
+    borderRadius: SIZES.radius,
+    borderWidth: 1,
+    borderColor: COLORS.gray300,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: SIZES.sm,
+    fontSize: SIZES.body,
+    color: COLORS.textPrimary,
+  },
+  // Unit card styles
+  unitContent: {
+    flex: 1,
+  },
+  statusButton: {
+    padding: SIZES.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  // Status modal styles
+  statusModalContent: {
+    backgroundColor: COLORS.background,
+    borderTopLeftRadius: SIZES.radius * 2,
+    borderTopRightRadius: SIZES.radius * 2,
+    maxHeight: '60%',
+    minHeight: '40%',
+  },
+  statusOptions: {
+    padding: SIZES.md,
+  },
+  currentStatusText: {
+    fontSize: SIZES.body,
+    color: COLORS.textSecondary,
+    marginBottom: SIZES.md,
+    textAlign: 'center',
+  },
+  statusOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SIZES.md,
+    marginVertical: SIZES.xs,
+    borderRadius: SIZES.radius,
+    borderWidth: 2,
+    backgroundColor: COLORS.background,
+  },
+  statusOptionText: {
+    marginLeft: SIZES.sm,
+    fontSize: SIZES.body,
+    fontWeight: '500',
   },
 });
 
