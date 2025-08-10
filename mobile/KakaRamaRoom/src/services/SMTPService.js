@@ -98,14 +98,19 @@ class SMTPService {
    */
   async testSMTPConnection(smtpConfig, testEmail) {
     try {
-      // In a real implementation, this would call a backend API
-      // For now, we'll simulate the test
-      
+      console.log('SMTPService: Testing SMTP connection with config:', {
+        host: smtpConfig.host,
+        port: smtpConfig.port,
+        username: smtpConfig.username,
+        fromEmail: smtpConfig.fromEmail,
+        testEmail,
+      });
+
       // Validate SMTP config
-      if (!smtpConfig.host || !smtpConfig.username || !smtpConfig.password) {
+      if (!smtpConfig.host || !smtpConfig.username || !smtpConfig.password || !smtpConfig.fromEmail) {
         return {
           success: false,
-          message: 'Konfigurasi SMTP tidak lengkap',
+          message: 'Konfigurasi SMTP tidak lengkap. Pastikan Host, Username, Password, dan From Email sudah diisi.',
         };
       }
 
@@ -114,30 +119,105 @@ class SMTPService {
       if (!emailRegex.test(testEmail)) {
         return {
           success: false,
-          message: 'Format email tidak valid',
+          message: 'Format email tujuan tidak valid',
         };
       }
 
-      // Simulate API call to backend for sending test email
-      // In real implementation, this would be:
-      // const response = await fetch('/api/smtp/test', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ smtpConfig, testEmail }),
-      // });
+      if (!emailRegex.test(smtpConfig.fromEmail)) {
+        return {
+          success: false,
+          message: 'Format From Email tidak valid',
+        };
+      }
 
-      // For now, simulate success after delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      return {
-        success: true,
-        message: 'Test email berhasil dikirim',
+      // Prepare test email data
+      const testEmailData = {
+        smtp: {
+          host: smtpConfig.host,
+          port: parseInt(smtpConfig.port) || 587,
+          secure: smtpConfig.secure || false,
+          auth: {
+            user: smtpConfig.username,
+            pass: smtpConfig.password,
+          },
+        },
+        from: {
+          email: smtpConfig.fromEmail,
+          name: smtpConfig.fromName || 'KakaRama Room System',
+        },
+        to: testEmail,
+        subject: 'Test Email - KakaRama Room System',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #2196F3;">Test Email Berhasil!</h2>
+            <p>Ini adalah email test dari sistem KakaRama Room.</p>
+            <p><strong>Konfigurasi SMTP:</strong></p>
+            <ul>
+              <li>Host: ${smtpConfig.host}</li>
+              <li>Port: ${smtpConfig.port}</li>
+              <li>Username: ${smtpConfig.username}</li>
+              <li>From Email: ${smtpConfig.fromEmail}</li>
+            </ul>
+            <p>Jika Anda menerima email ini, berarti konfigurasi SMTP sudah benar.</p>
+            <hr>
+            <p style="color: #666; font-size: 12px;">
+              Email ini dikirim pada: ${new Date().toLocaleString('id-ID')}
+            </p>
+          </div>
+        `,
       };
+
+      // Try to call backend API for sending email
+      try {
+        // Check if we have a backend endpoint
+        const backendUrl = process.env.BACKEND_URL || 'http://localhost:3000';
+
+        console.log('SMTPService: Attempting to send test email via backend API');
+
+        const response = await fetch(`${backendUrl}/api/smtp/test`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(testEmailData),
+          timeout: 30000, // 30 second timeout
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          console.log('SMTPService: Backend API response:', result);
+
+          if (result.success) {
+            return {
+              success: true,
+              message: 'Test email berhasil dikirim! Silakan cek inbox email tujuan.',
+            };
+          } else {
+            return {
+              success: false,
+              message: result.message || 'Gagal mengirim test email melalui backend',
+            };
+          }
+        } else {
+          console.warn('SMTPService: Backend API not available, response status:', response.status);
+          throw new Error(`Backend API error: ${response.status}`);
+        }
+      } catch (apiError) {
+        console.warn('SMTPService: Backend API not available:', apiError.message);
+
+        // Fallback: Save config and show informative message
+        await this.saveSMTPSettings({ smtp: smtpConfig });
+
+        return {
+          success: true,
+          message: 'Konfigurasi SMTP telah disimpan. Untuk test email yang sebenarnya, pastikan backend server sudah berjalan dan dapat diakses.',
+        };
+      }
     } catch (error) {
-      console.error('Error testing SMTP:', error);
+      console.error('SMTPService: Error testing SMTP:', error);
       return {
         success: false,
-        message: 'Gagal melakukan test SMTP',
+        message: `Gagal melakukan test SMTP: ${error.message || 'Unknown error'}`,
       };
     }
   }
@@ -324,22 +404,159 @@ class SMTPService {
    */
   async sendDailyReport(reportData, recipients) {
     try {
-      // In real implementation, this would call backend API
-      // For now, simulate sending
-      console.log('Sending daily report to:', recipients);
-      console.log('Report data:', reportData);
+      console.log('SMTPService: Sending daily report to:', recipients);
+      console.log('SMTPService: Report data summary:', {
+        date: reportData.date,
+        totalCheckins: reportData.stats?.totalCheckins,
+        totalRevenue: reportData.stats?.totalRevenue,
+      });
 
-      return {
-        success: true,
-        message: 'Laporan harian berhasil dikirim',
+      // Get SMTP settings
+      const settingsResult = await this.getSMTPSettings();
+      if (!settingsResult.success) {
+        return {
+          success: false,
+          message: 'Gagal mengambil pengaturan SMTP',
+        };
+      }
+
+      const smtpConfig = settingsResult.data.smtp;
+
+      // Validate SMTP config
+      if (!smtpConfig.host || !smtpConfig.username || !smtpConfig.password || !smtpConfig.fromEmail) {
+        return {
+          success: false,
+          message: 'Konfigurasi SMTP tidak lengkap',
+        };
+      }
+
+      // Prepare email data
+      const emailData = {
+        smtp: {
+          host: smtpConfig.host,
+          port: parseInt(smtpConfig.port) || 587,
+          secure: smtpConfig.secure || false,
+          auth: {
+            user: smtpConfig.username,
+            pass: smtpConfig.password,
+          },
+        },
+        from: {
+          email: smtpConfig.fromEmail,
+          name: smtpConfig.fromName || 'KakaRama Room System',
+        },
+        to: recipients,
+        subject: `Laporan Harian KakaRama Room - ${reportData.date}`,
+        html: this.formatDailyReportHTML(reportData),
       };
+
+      // Try to call backend API for sending email
+      try {
+        const backendUrl = process.env.BACKEND_URL || 'http://localhost:3000';
+
+        console.log('SMTPService: Attempting to send daily report via backend API');
+
+        const response = await fetch(`${backendUrl}/api/smtp/send-report`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(emailData),
+          timeout: 60000, // 60 second timeout for reports
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          console.log('SMTPService: Daily report sent successfully:', result);
+
+          return {
+            success: true,
+            message: 'Laporan harian berhasil dikirim',
+          };
+        } else {
+          console.error('SMTPService: Backend API error:', response.status);
+          throw new Error(`Backend API error: ${response.status}`);
+        }
+      } catch (apiError) {
+        console.warn('SMTPService: Backend API not available for daily report:', apiError.message);
+
+        return {
+          success: false,
+          message: 'Backend server tidak tersedia untuk mengirim email. Pastikan server backend sudah berjalan.',
+        };
+      }
     } catch (error) {
-      console.error('Error sending daily report:', error);
+      console.error('SMTPService: Error sending daily report:', error);
       return {
         success: false,
-        message: 'Gagal mengirim laporan harian',
+        message: `Gagal mengirim laporan harian: ${error.message || 'Unknown error'}`,
       };
     }
+  }
+
+  /**
+   * Format daily report data to HTML
+   * @param {Object} reportData - Report data
+   * @returns {string}
+   */
+  formatDailyReportHTML(reportData) {
+    const { date, stats, checkins, units } = reportData;
+
+    return `
+      <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto;">
+        <h1 style="color: #2196F3; text-align: center;">Laporan Harian KakaRama Room</h1>
+        <h2 style="color: #666; text-align: center;">${date}</h2>
+
+        <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="color: #333; margin-top: 0;">Ringkasan Statistik</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Total Checkin:</strong></td>
+              <td style="padding: 8px; border-bottom: 1px solid #ddd;">${stats?.totalCheckins || 0}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Checkin Aktif:</strong></td>
+              <td style="padding: 8px; border-bottom: 1px solid #ddd;">${stats?.activeCheckins || 0}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Total Pendapatan:</strong></td>
+              <td style="padding: 8px; border-bottom: 1px solid #ddd;">Rp ${(stats?.totalRevenue || 0).toLocaleString('id-ID')}</td>
+            </tr>
+          </table>
+        </div>
+
+        ${checkins && checkins.length > 0 ? `
+          <div style="margin: 20px 0;">
+            <h3 style="color: #333;">Daftar Checkin</h3>
+            <table style="width: 100%; border-collapse: collapse; border: 1px solid #ddd;">
+              <thead>
+                <tr style="background: #f0f0f0;">
+                  <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Unit</th>
+                  <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Customer</th>
+                  <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Checkin</th>
+                  <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${checkins.map(checkin => `
+                  <tr>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${checkin.unit_number || 'N/A'}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${checkin.customer_name || 'N/A'}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${new Date(checkin.checkin_time).toLocaleString('id-ID')}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">${checkin.status || 'N/A'}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        ` : ''}
+
+        <hr style="margin: 30px 0;">
+        <p style="color: #666; font-size: 12px; text-align: center;">
+          Laporan ini dibuat secara otomatis pada: ${new Date().toLocaleString('id-ID')}
+        </p>
+      </div>
+    `;
   }
 }
 
