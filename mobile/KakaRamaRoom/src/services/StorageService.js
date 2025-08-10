@@ -126,15 +126,29 @@ class StorageService {
 
   /**
    * Upload payment proof specifically
-   * @param {string} filePath - Local file path
+   * @param {Object|string} fileData - File data object or file path
    * @param {string} checkinId - Checkin ID for organizing files
    * @returns {Promise<Object>} - Upload result
    */
-  async uploadPaymentProof(filePath, checkinId) {
+  async uploadPaymentProof(fileData, checkinId) {
     try {
-      const fileName = `payment_proof_${checkinId}.jpg`;
+      // Handle both object and string input
+      let filePath, fileName;
+
+      if (typeof fileData === 'string') {
+        // Legacy: filePath as string
+        filePath = fileData;
+        fileName = `payment_proof_${checkinId}.jpg`;
+      } else if (fileData && fileData.uri) {
+        // New: file data object from ImagePickerService
+        filePath = fileData.uri;
+        fileName = fileData.name || `payment_proof_${checkinId}.jpg`;
+      } else {
+        throw new Error('Invalid file data provided');
+      }
+
       const folder = 'payment-proofs';
-      
+
       return await this.uploadFile(filePath, fileName, folder);
     } catch (error) {
       console.error('StorageService: Payment proof upload failed:', error);

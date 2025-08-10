@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase';
+import DatabaseManager from '../config/supabase';
 import ActivityLogService from './ActivityLogService';
 import UnitService from './UnitService';
 import TeamAssignmentService from './TeamAssignmentService';

@@ -215,6 +215,8 @@ const AdminCheckinScreen = ({ navigation }) => {
 
   const handleSubmit = async () => {
     try {
+      console.log('AdminCheckinScreen: Starting handleSubmit');
+
       // Validasi form
       if (!formData.apartmentId || !formData.unitId || !formData.paymentAmount) {
         Alert.alert('Error', 'Harap lengkapi apartemen, unit, dan jumlah pembayaran');
@@ -233,15 +235,19 @@ const AdminCheckinScreen = ({ navigation }) => {
         return;
       }
 
+      console.log('AdminCheckinScreen: Getting current user');
       const currentUser = AuthService.getCurrentUser();
       if (!currentUser) {
+        console.error('AdminCheckinScreen: No current user found');
         Alert.alert('Error', 'User tidak ditemukan. Silakan login ulang.');
         return;
       }
+      console.log('AdminCheckinScreen: Current user:', currentUser);
 
       setSubmitting(true);
 
       // Hitung checkout time dengan error handling
+      console.log('AdminCheckinScreen: Calculating checkout time');
       const checkoutTime = new Date();
       if (isNaN(checkoutTime.getTime())) {
         throw new Error('Invalid date');
@@ -268,6 +274,7 @@ const AdminCheckinScreen = ({ navigation }) => {
       console.log('AdminCheckinScreen: Checkin result:', result);
 
       if (result && result.success) {
+        console.log('AdminCheckinScreen: Checkin successful, resetting form');
         // Reset form immediately
         setFormData({
           apartmentId: '',
@@ -281,8 +288,13 @@ const AdminCheckinScreen = ({ navigation }) => {
         });
         setPaymentProof(null);
 
-        // Navigate back without alert to prevent navigation issues
-        navigation.goBack();
+        // Show success message and navigate back
+        Alert.alert('Sukses', 'Checkin berhasil dibuat!', [
+          {
+            text: 'OK',
+            onPress: () => navigation.goBack()
+          }
+        ]);
       } else {
         const errorMessage = result?.message || 'Gagal membuat checkin tanpa pesan error';
         console.error('AdminCheckinScreen: Checkin failed:', errorMessage);
@@ -290,8 +302,10 @@ const AdminCheckinScreen = ({ navigation }) => {
       }
     } catch (error) {
       console.error('AdminCheckinScreen: Submit checkin error:', error);
+      console.error('AdminCheckinScreen: Error stack:', error.stack);
       Alert.alert('Error', `Gagal membuat checkin: ${error.message || 'Unknown error'}`);
     } finally {
+      console.log('AdminCheckinScreen: Setting submitting to false');
       setSubmitting(false);
     }
   };
