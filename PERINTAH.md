@@ -193,6 +193,8 @@ komisi : 50
 - `!export <apartemen>` - Export laporan apartemen business day kemarin
 - `!export <apartemen> <angka>` - Export laporan apartemen X hari terakhir
 - `!export <apartemen> DDMMYYYY` - Export laporan apartemen tanggal tertentu
+- `!export email [tanggal]` - Export dan kirim ke email saja (private message only)
+- `!export disini [tanggal]` - Export dan kirim ke chat saja (private message only)
 
 **Contoh:**
 ```
@@ -204,6 +206,8 @@ komisi : 50
 !export sky               # SKY HOUSE business day kemarin
 !export sky 7             # SKY HOUSE 7 hari terakhir
 !export tokyo 01082025    # TOKYO PIK2 tanggal 1 Agustus 2025
+!export email             # Business day kemarin, kirim ke email saja
+!export disini 01082025   # Tanggal 1 Agustus, kirim ke chat saja
 ```
 
 **Output:**
@@ -231,7 +235,26 @@ komisi : 50
 - Range waktu: Tanggal yang diminta jam 12:00 - tanggal berikutnya jam 11:59
 - Contoh: `!export sky 30072025` = 30 Juli 12:00 - 31 Juli 11:59 (hanya SKY HOUSE BSD)
 - File Excel berisi transaksi sesuai filter apartemen dan periode
+- Parameter `email` dan `disini` hanya bisa digunakan di private message
 - Otomatis dikirim via email
+
+### **!exportapartemen**
+**Fungsi:** Export laporan Excel khusus apartemen (hanya untuk grup apartemen)
+**Format:**
+- `!exportapartemen` - Export business day kemarin untuk apartemen ini
+- `!exportapartemen DDMMYYYY` - Export tanggal tertentu untuk apartemen ini
+
+**Contoh:**
+```
+!exportapartemen           # Business day kemarin
+!exportapartemen 01082025  # Tanggal 1 Agustus 2025
+```
+
+**Catatan:**
+- Hanya bisa digunakan di grup apartemen
+- File Excel berisi data khusus apartemen tersebut saja
+- Menggunakan business day range (jam 12:00 - 11:59 hari berikutnya)
+- File langsung dikirim ke grup apartemen
 
 ### **!fixenv**
 **Fungsi:** Memperbaiki dan reload konfigurasi environment
