@@ -729,10 +729,14 @@ class ExcelExporter {
 
         // ===== KOMISI MARKETING SECTION (TOP) =====
 
-        // Title for Marketing Commission
-        worksheet.addRow([`Komisi Marketing - ${date}`]);
-        worksheet.mergeCells('A1:I1');
-        const titleRow1 = worksheet.getRow(1);
+        // Add empty rows to start from B3
+        worksheet.addRow([]);
+        worksheet.addRow([]);
+
+        // Title for Marketing Commission starting from B3
+        worksheet.getCell('B3').value = `Komisi Marketing - ${date}`;
+        worksheet.mergeCells('B3:J3');
+        const titleRow1 = worksheet.getRow(3);
         titleRow1.font = { bold: true, size: 14 };
         titleRow1.alignment = { horizontal: 'center' };
         titleRow1.fill = {
@@ -743,8 +747,8 @@ class ExcelExporter {
 
         worksheet.addRow([]);
 
-        // Headers for Marketing Commission table
-        const headerRow1 = worksheet.addRow(['Marketing', 'Treepark', 'Sky House', 'Springwood', 'Emerald', 'Tokyo', 'Serpong', 'Transpark', 'Total']);
+        // Headers for Marketing Commission table starting from column B
+        const headerRow1 = worksheet.addRow(['', 'Marketing', 'Treepark', 'Sky House', 'Springwood', 'Emerald', 'Tokyo', 'Serpong', 'Transpark', 'Total']);
         headerRow1.font = { bold: true, color: { argb: 'FFFFFF' } };
         headerRow1.fill = {
             type: 'pattern',
@@ -753,25 +757,26 @@ class ExcelExporter {
         };
         headerRow1.alignment = { horizontal: 'center', vertical: 'middle' };
 
-        // Set column widths for table format
+        // Set column widths for table format (adjusted for new column positions starting from B)
         worksheet.columns = [
-            { width: 12 }, // Marketing
-            { width: 10 }, // Treepark
-            { width: 10 }, // Sky House
-            { width: 12 }, // Springwood
-            { width: 10 }, // Emerald
-            { width: 10 }, // Tokyo
-            { width: 10 }, // Serpong
-            { width: 10 }, // Transpark
-            { width: 10 }  // Total
+            { width: 3 },  // Column A (empty)
+            { width: 12 }, // Column B (Marketing)
+            { width: 10 }, // Column C (Treepark)
+            { width: 10 }, // Column D (Sky House)
+            { width: 12 }, // Column E (Springwood)
+            { width: 10 }, // Column F (Emerald)
+            { width: 10 }, // Column G (Tokyo)
+            { width: 10 }, // Column H (Serpong)
+            { width: 10 }, // Column I (Transpark)
+            { width: 10 }  // Column J (Total)
         ];
 
-        let currentRow = 4; // Track current row for spacing
+        let currentRow = 5; // Track current row for spacing (after title at B3 and empty row)
 
         if (!marketingCommissionByApartment || marketingCommissionByApartment.length === 0) {
-            worksheet.addRow(['Tidak ada data komisi marketing pada tanggal ini']);
-            worksheet.mergeCells(`A4:I4`);
-            const noDataRow = worksheet.getRow(4);
+            worksheet.addRow(['', 'Tidak ada data komisi marketing pada tanggal ini']);
+            worksheet.mergeCells(`B5:J5`);
+            const noDataRow = worksheet.getRow(5);
             noDataRow.alignment = { horizontal: 'center' };
             noDataRow.font = { italic: true };
             currentRow = 5;
@@ -805,6 +810,7 @@ class ExcelExporter {
             Object.keys(marketingData).forEach(csName => {
                 const data = marketingData[csName];
                 const row = worksheet.addRow([
+                    '', // Empty column A
                     csName,
                     data['TREEPARK BSD'] || '',
                     data['SKY HOUSE BSD'] || '',
@@ -840,9 +846,9 @@ class ExcelExporter {
 
         // ===== RINGKASAN CS SECTION (BOTTOM) =====
 
-        // Title for CS Summary
-        worksheet.addRow([`Ringkasan CS - ${date}`]);
-        worksheet.mergeCells(`A${currentRow + 1}:D${currentRow + 1}`);
+        // Title for CS Summary starting from column B
+        worksheet.addRow(['', `Ringkasan CS - ${date}`]);
+        worksheet.mergeCells(`B${currentRow + 1}:E${currentRow + 1}`);
         const titleRowObj = worksheet.getRow(currentRow + 1);
         titleRowObj.font = { bold: true, size: 14 };
         titleRowObj.alignment = { horizontal: 'center' };
@@ -855,8 +861,8 @@ class ExcelExporter {
         currentRow += 2;
         worksheet.addRow([]);
 
-        // Headers for CS Summary
-        const headerRow2 = worksheet.addRow(['No', 'Nama CS', 'Total Booking', 'Total Komisi']);
+        // Headers for CS Summary starting from column B
+        const headerRow2 = worksheet.addRow(['', 'No', 'Nama CS', 'Total Booking', 'Total Komisi']);
         headerRow2.font = { bold: true, color: { argb: 'FFFFFF' } };
         headerRow2.fill = {
             type: 'pattern',
@@ -871,14 +877,15 @@ class ExcelExporter {
         if (csSummary && csSummary.length > 0) {
             csSummary.forEach((cs, index) => {
                 const row = worksheet.addRow([
+                    '', // Empty column A
                     index + 1,
                     cs.cs_name || '-',
                     cs.total_bookings || 0,
                     parseFloat(cs.total_commission || 0)
                 ]);
 
-                // Format currency columns
-                row.getCell(4).numFmt = 'Rp #,##0'; // Total Komisi
+                // Format currency columns (adjusted for new column positions)
+                row.getCell(5).numFmt = 'Rp #,##0'; // Total Komisi
 
                 // Add zebra stripe (alternating row colors)
                 if (index % 2 === 1) {
@@ -892,19 +899,20 @@ class ExcelExporter {
                 currentRow++;
             });
 
-            // Add totals row for CS Summary
+            // Add totals row for CS Summary (adjusted for new column positions)
             const totalRow = worksheet.addRow([
                 '',
+                '',
                 'TOTAL:',
-                { formula: `SUM(C${currentRow - csSummary.length + 1}:C${currentRow})` },
-                { formula: `SUM(D${currentRow - csSummary.length + 1}:D${currentRow})` }
+                { formula: `SUM(D${currentRow - csSummary.length + 1}:D${currentRow})` },
+                { formula: `SUM(E${currentRow - csSummary.length + 1}:E${currentRow})` }
             ]);
 
-            // Merge cells A and B for TOTAL label to make it wider
-            worksheet.mergeCells(`A${totalRow.number}:B${totalRow.number}`);
+            // Merge cells B and C for TOTAL label to make it wider
+            worksheet.mergeCells(`B${totalRow.number}:C${totalRow.number}`);
 
             totalRow.font = { bold: true };
-            totalRow.getCell(4).numFmt = 'Rp #,##0';
+            totalRow.getCell(5).numFmt = 'Rp #,##0';
 
             // Add background color to make total row more visible in protected view
             totalRow.fill = {
