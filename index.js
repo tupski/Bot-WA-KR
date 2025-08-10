@@ -598,48 +598,48 @@ async function handleCommand(message, apartmentName) {
             if (isFromGroup) {
                 // Help untuk grup
                 const apartmentName = bot.getApartmentName(message.from);
-                helpMessage = `📋 **PANDUAN PERINTAH BOT KAKARAMA ROOM**\n🏠 *${apartmentName}*\n\n`;
+                helpMessage = `📋 *PANDUAN PERINTAH BOT KAKARAMA ROOM*\n🏠 *${apartmentName}*\n\n`;
 
-                helpMessage += `**📊 LAPORAN & REKAP**\n`;
+                helpMessage += `*📊 LAPORAN & REKAP*\n`;
                 helpMessage += `• \`!rekap\` - Rekap hari ini (business day)\n`;
                 helpMessage += `• \`!rekap DDMMYYYY\` - Rekap tanggal tertentu\n`;
                 helpMessage += `• \`!detailrekap\` - Detail transaksi hari ini\n`;
                 helpMessage += `• \`!detailrekap DDMMYYYY\` - Detail tanggal tertentu\n\n`;
 
-                helpMessage += `**📝 CONTOH PENGGUNAAN**\n`;
+                helpMessage += `*📝 CONTOH PENGGUNAAN*\n`;
                 helpMessage += `• \`!rekap\` - Rekap hari ini\n`;
                 helpMessage += `• \`!rekap 08082025\` - Rekap 8 Agustus 2025\n`;
                 helpMessage += `• \`!detailrekap\` - Detail hari ini\n\n`;
 
-                helpMessage += `**📋 FORMAT BOOKING**\n`;
+                helpMessage += `*📋 FORMAT BOOKING*\n`;
                 helpMessage += `Kirim pesan dengan format:\n`;
                 helpMessage += `\`\`\`\n🟢${apartmentName}\nUnit      : L3/10D\nCek out: 23:05\nUntuk   : 9 jam\nCash/tf: transfer 200\nCs         : dreamy\nkomisi : 50\`\`\`\n\n`;
 
-                helpMessage += `**⏰ BUSINESS DAY**\n`;
+                helpMessage += `*⏰ BUSINESS DAY*\n`;
                 helpMessage += `Laporan harian: jam 12:00 - 11:59 hari berikutnya\n\n`;
 
-                helpMessage += `**ℹ️ INFO**\n`;
+                helpMessage += `*ℹ️ INFO*\n`;
                 helpMessage += `Bot otomatis memproses pesan booking dan mengirim laporan harian jam 12:00 WIB`;
             } else {
                 // Help untuk private message (owner)
                 if (!isOwner) {
-                    helpMessage = `📋 **PANDUAN PERINTAH BOT KAKARAMA ROOM**\n\n`;
-                    helpMessage += `**❌ AKSES TERBATAS**\n`;
+                    helpMessage = `📋 *PANDUAN PERINTAH BOT KAKARAMA ROOM*\n\n`;
+                    helpMessage += `*❌ AKSES TERBATAS*\n`;
                     helpMessage += `Anda tidak terdaftar sebagai owner.\n`;
                     helpMessage += `Untuk akses penuh, hubungi administrator.\n\n`;
-                    helpMessage += `**📱 GUNAKAN DI GRUP**\n`;
+                    helpMessage += `*📱 GUNAKAN DI GRUP*\n`;
                     helpMessage += `Untuk melihat laporan apartemen, gunakan perintah di grup apartemen yang bersangkutan.`;
                 } else {
-                    helpMessage = `📋 **PANDUAN LENGKAP PERINTAH BOT KAKARAMA ROOM**\n*Owner Access*\n\n`;
+                    helpMessage = `📋 *PANDUAN LENGKAP PERINTAH BOT KAKARAMA ROOM*\n*Owner Access*\n\n`;
 
-                    helpMessage += `**📊 LAPORAN & REKAP**\n`;
+                    helpMessage += `📊 *LAPORAN & REKAP*\n`;
                     helpMessage += `• \`!rekap\` - Rekap semua apartemen hari ini\n`;
                     helpMessage += `• \`!rekap <apartemen>\` - Rekap apartemen tertentu\n`;
                     helpMessage += `• \`!rekap DDMMYYYY\` - Rekap tanggal tertentu\n`;
                     helpMessage += `• \`!rekap <apartemen> DDMMYYYY\` - Rekap apartemen tanggal tertentu\n`;
                     helpMessage += `• \`!detailrekap\` - Detail transaksi (sama format dengan !rekap)\n\n`;
 
-                    helpMessage += `**📤 EXPORT & EMAIL**\n`;
+                    helpMessage += `📤 *EXPORT & EMAIL*\n`;
                     helpMessage += `• \`!export\` - Export business day kemarin\n`;
                     helpMessage += `• \`!export <angka>\` - Export X hari terakhir (1-31)\n`;
                     helpMessage += `• \`!export DDMMYYYY\` - Export tanggal tertentu\n`;
@@ -648,20 +648,20 @@ async function handleCommand(message, apartmentName) {
                     helpMessage += `• \`!export <apartemen>\` - Export apartemen tertentu\n`;
                     helpMessage += `• \`!export <apartemen> <parameter>\` - Kombinasi apartemen + parameter\n\n`;
 
-                    helpMessage += `**🔧 SISTEM & MAINTENANCE**\n`;
+                    helpMessage += `🔧 *SISTEM & MAINTENANCE*\n`;
                     helpMessage += `• \`!status\` - Status bot dan jadwal laporan\n`;
                     helpMessage += `• \`!debug\` - Informasi debug sistem\n`;
                     helpMessage += `• \`!reload\` - Reload konfigurasi grup\n`;
                     helpMessage += `• \`!mapping\` - Lihat mapping grup aktif\n`;
                     helpMessage += `• \`!rekapulang\` - Reprocess semua pesan\n\n`;
 
-                    helpMessage += `**🔄 RECOVERY & TESTING**\n`;
+                    helpMessage += `🔄 *RECOVERY & TESTING*\n`;
                     helpMessage += `• \`!forcereload\` - Force reload konfigurasi\n`;
                     helpMessage += `• \`!forcedelete <message_id>\` - Hapus transaksi paksa\n`;
                     helpMessage += `• \`!testbusiness\` - Test business day logic\n`;
                     helpMessage += `• \`!testsync\` - Test sinkronisasi edit/delete\n\n`;
 
-                    helpMessage += `**🏢 APARTEMEN YANG DIDUKUNG**\n`;
+                    helpMessage += `*🏢 APARTEMEN YANG DIDUKUNG*\n`;
                     helpMessage += `• \`sky\` → SKY HOUSE BSD\n`;
                     helpMessage += `• \`treepark\` → TREEPARK BSD\n`;
                     helpMessage += `• \`emerald\` → EMERALD BINTARO\n`;
@@ -669,13 +669,13 @@ async function handleCommand(message, apartmentName) {
                     helpMessage += `• \`serpong\` → SERPONG GARDEN\n`;
                     helpMessage += `• \`tokyo\` → TOKYO PIK 2\n\n`;
 
-                    helpMessage += `**📝 CONTOH PENGGUNAAN**\n`;
+                    helpMessage += `*📝 CONTOH PENGGUNAAN*\n`;
                     helpMessage += `• \`!export 2\` - Export 2 hari terakhir\n`;
                     helpMessage += `• \`!export 08082025\` - Export 8 Agustus 2025\n`;
                     helpMessage += `• \`!export sky 08082025\` - Export Sky House 8 Agustus\n`;
                     helpMessage += `• \`!rekap emerald\` - Rekap Emerald Bintaro hari ini\n\n`;
 
-                    helpMessage += `**⏰ BUSINESS DAY LOGIC**\n`;
+                    helpMessage += `*⏰ BUSINESS DAY LOGIC*\n`;
                     helpMessage += `Laporan harian: jam 12:00 - 11:59 hari berikutnya\n`;
                     helpMessage += `Export otomatis dikirim ke WhatsApp + Email`;
                 }
@@ -991,7 +991,7 @@ async function handleCommand(message, apartmentName) {
                 const emailSent = await emailService.sendDailyReport(filepath, targetDate, apartmentName, true);
 
                 const apartmentInfo = apartmentName ? `\n- Apartemen: ${apartmentName}` : '';
-                const reportSummary = `📊 **LAPORAN EXPORT**\n\n📅 Periode: ${displayDate}${apartmentInfo}\n📈 Total transaksi: ${transactions.length}\n📄 File: ${filename}`;
+                const reportSummary = `📊 *LAPORAN EXPORT*\n\n📅 Periode: ${displayDate}${apartmentInfo}\n📈 Total transaksi: ${transactions.length}\n📄 File: ${filename}`;
 
                 // Send report with attachment to WhatsApp
                 const whatsappSent = await bot.sendReportWithAttachment(message.from, reportSummary, filepath);
@@ -1556,14 +1556,14 @@ async function handleCommand(message, apartmentName) {
                 });
 
                 testMsg += `🧪 *Cara test sinkronisasi:*\n`;
-                testMsg += `1. **Edit Message**: Edit pesan booking di grup\n`;
+                testMsg += `1. *Edit Message*: Edit pesan booking di grup\n`;
                 testMsg += `   → Bot akan update database otomatis\n`;
                 testMsg += `   → Kirim konfirmasi perubahan\n\n`;
-                testMsg += `2. **Delete Message**: Hapus pesan booking di grup\n`;
+                testMsg += `2. *Delete Message*: Hapus pesan booking di grup\n`;
                 testMsg += `   → Bot akan hapus data dari database\n`;
                 testMsg += `   → Kirim notifikasi penghapusan\n\n`;
-                testMsg += `3. **Cek Log**: Monitor log untuk detail proses\n`;
-                testMsg += `4. **Verifikasi**: Gunakan !rekap untuk cek data`;
+                testMsg += `3. *Cek Log*: Monitor log untuk detail proses\n`;
+                testMsg += `4. *Verifikasi*: Gunakan !rekap untuk cek data`;
 
                 await bot.sendMessage(message.from, testMsg);
                 logger.info('Test sync info berhasil dikirim');
@@ -1779,7 +1779,7 @@ async function handleCommand(message, apartmentName) {
                     debugMsg += `📊 *${filteredTransactions.length} Transaksi Terbaru${targetApartment ? ` - ${targetApartment}` : ''}:*\n\n`;
 
                     filteredTransactions.forEach((transaction, index) => {
-                        debugMsg += `${index + 1}. **${transaction.location}**\n`;
+                        debugMsg += `${index + 1}. *${transaction.location}*\n`;
                         debugMsg += `   Unit: ${transaction.unit}\n`;
                         debugMsg += `   CS: ${transaction.cs_name}\n`;
                         debugMsg += `   Amount: ${transaction.amount.toLocaleString('id-ID')}\n`;
@@ -1897,7 +1897,7 @@ async function handleCommand(message, apartmentName) {
                     rawMsg += `❌ Tidak ada transaksi di database`;
                 } else {
                     recentTransactions.forEach((transaction, index) => {
-                        rawMsg += `${index + 1}. **${transaction.location}**\n`;
+                        rawMsg += `${index + 1}. *${transaction.location}*\n`;
                         rawMsg += `   Unit: ${transaction.unit}\n`;
                         rawMsg += `   CS: ${transaction.cs_name}\n`;
                         rawMsg += `   Amount: ${transaction.amount.toLocaleString('id-ID')}\n`;
