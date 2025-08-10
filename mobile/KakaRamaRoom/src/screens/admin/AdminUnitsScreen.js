@@ -278,7 +278,46 @@ const AdminUnitsScreen = () => {
    */
   const changeUnitStatus = async (unit, newStatus) => {
     try {
+      // Validasi input
+      if (!unit || !unit.id) {
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: 'Data unit tidak valid',
+        });
+        return;
+      }
+
+      if (!newStatus) {
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: 'Status baru tidak valid',
+        });
+        return;
+      }
+
+      // Validasi user
       const currentUser = AuthService.getCurrentUser();
+      if (!currentUser || !currentUser.id) {
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: 'User tidak valid. Silakan login ulang.',
+        });
+        return;
+      }
+
+      // Validasi service
+      if (!UnitService || typeof UnitService.updateUnitStatus !== 'function') {
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: 'Service unit tidak tersedia',
+        });
+        return;
+      }
+
       const result = await UnitService.updateUnitStatus(
         unit.id,
         newStatus,
@@ -286,15 +325,29 @@ const AdminUnitsScreen = () => {
         'admin'
       );
 
-      if (result.success) {
-        Alert.alert('Sukses', result.message);
-        await loadUnits();
+      if (result && result.success) {
+        showAlert({
+          type: 'success',
+          title: 'Sukses',
+          message: result.message || 'Status unit berhasil diubah',
+          onDismiss: () => {
+            loadUnits(); // Reload data
+          },
+        });
       } else {
-        Alert.alert('Error', result.message);
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: result?.message || 'Gagal mengubah status unit',
+        });
       }
     } catch (error) {
-      console.error('Change unit status error:', error);
-      Alert.alert('Error', 'Gagal mengubah status unit');
+      console.error('AdminUnitsScreen: Change unit status error:', error);
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: `Gagal mengubah status unit: ${error.message || 'Unknown error'}`,
+      });
     }
   };
 
@@ -303,15 +356,40 @@ const AdminUnitsScreen = () => {
    * @param {Object} unit - Data unit
    */
   const showStatusMenu = (unit) => {
+    // Validasi unit data
+    if (!unit || !unit.id) {
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: 'Data unit tidak valid',
+      });
+      return;
+    }
+
+    // Validasi UNIT_STATUS dan UNIT_STATUS_LABELS
+    if (!UNIT_STATUS || !UNIT_STATUS_LABELS) {
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: 'Konfigurasi status unit tidak tersedia',
+      });
+      return;
+    }
+
     const statusOptions = Object.values(UNIT_STATUS).map(status => ({
-      text: UNIT_STATUS_LABELS[status],
+      text: UNIT_STATUS_LABELS[status] || status,
       onPress: () => changeUnitStatus(unit, status),
       style: status === unit.status ? 'default' : 'default',
     }));
 
     statusOptions.push({ text: 'Batal', style: 'cancel' });
 
-    Alert.alert('Ubah Status Unit', `Unit ${unit.unit_number}`, statusOptions);
+    showAlert({
+      type: 'confirm',
+      title: 'Ubah Status Unit',
+      message: `Unit ${unit.unit_number}\nStatus saat ini: ${UNIT_STATUS_LABELS[unit.status] || unit.status}`,
+      buttons: statusOptions
+    });
   };
 
   // Helper function untuk menghitung jumlah unit per apartemen
@@ -352,13 +430,26 @@ const AdminUnitsScreen = () => {
     try {
       console.log('AdminUnitsScreen: Unit pressed:', unit);
 
+      // Validasi unit data
+      if (!unit || !unit.id) {
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: 'Data unit tidak valid',
+        });
+        return;
+      }
+
       if (unit.status === UNIT_STATUS.OCCUPIED) {
         console.log('AdminUnitsScreen: Checking for active checkin for unit:', unit.id);
 
-        // Check if navigation is available
-        if (!navigation || !navigation.navigate) {
-          console.error('AdminUnitsScreen: Navigation not available');
-          Alert.alert('Error', 'Navigasi tidak tersedia');
+        // Validasi CheckinService
+        if (!CheckinService || typeof CheckinService.getActiveCheckinByUnit !== 'function') {
+          showAlert({
+            type: 'error',
+            title: 'Error',
+            message: 'Service checkin tidak tersedia',
+          });
           return;
         }
 
@@ -366,49 +457,72 @@ const AdminUnitsScreen = () => {
         try {
           const checkinResult = await CheckinService.getActiveCheckinByUnit(unit.id);
 
-          if (checkinResult && checkinResult.success) {
-            console.log('AdminUnitsScreen: Found active checkin, navigating to detail');
-            // Navigate to checkin detail with proper error handling
-            navigation.navigate('CheckinDetail', {
-              unitId: unit.id,
-              unitNumber: unit.unit_number,
-              apartmentName: unit.apartment_name
-            });
-          } else {
-            console.warn('AdminUnitsScreen: No active checkin found for occupied unit');
-            Alert.alert(
-              'Info Unit',
-              `Unit: ${unit.unit_number}\nApartemen: ${unit.apartment_name}\nStatus: ${UNIT_STATUS_LABELS[unit.status]}\n\nUnit ini ditandai sebagai terisi, tetapi tidak ada checkin aktif yang ditemukan.`,
-              [
-                { text: 'OK' },
+          if (checkinResult && checkinResult.success && checkinResult.data) {
+            console.log('AdminUnitsScreen: Found active checkin, showing detail');
+
+            // Show checkin detail in alert instead of navigation for now
+            const checkin = checkinResult.data;
+            const checkinTime = new Date(checkin.checkin_time).toLocaleString('id-ID');
+            const checkoutTime = checkin.checkout_time ?
+              new Date(checkin.checkout_time).toLocaleString('id-ID') : 'Belum ditentukan';
+
+            showAlert({
+              type: 'info',
+              title: 'Detail Checkin',
+              message: `Unit: ${unit.unit_number}\nApartemen: ${unit.apartment_name}\nTamu: ${checkin.guest_name || 'N/A'}\nCheckin: ${checkinTime}\nCheckout: ${checkoutTime}\nPembayaran: Rp ${(checkin.payment_amount || 0).toLocaleString('id-ID')}\nMarketing: ${checkin.marketing_name || 'N/A'}`,
+              buttons: [
+                { text: 'Tutup', style: 'cancel' },
                 {
                   text: 'Ubah Status',
                   onPress: () => showStatusMenu(unit)
                 }
               ]
-            );
+            });
+          } else {
+            console.warn('AdminUnitsScreen: No active checkin found for occupied unit');
+            showAlert({
+              type: 'warning',
+              title: 'Info Unit',
+              message: `Unit: ${unit.unit_number}\nApartemen: ${unit.apartment_name}\nStatus: ${UNIT_STATUS_LABELS[unit.status]}\n\nUnit ini ditandai sebagai terisi, tetapi tidak ada checkin aktif yang ditemukan.`,
+              buttons: [
+                { text: 'OK', style: 'cancel' },
+                {
+                  text: 'Ubah Status',
+                  onPress: () => showStatusMenu(unit)
+                }
+              ]
+            });
           }
         } catch (checkinError) {
           console.error('AdminUnitsScreen: Error checking active checkin:', checkinError);
-          Alert.alert('Error', 'Gagal memeriksa data checkin untuk unit ini');
+          showAlert({
+            type: 'error',
+            title: 'Error',
+            message: `Gagal memeriksa data checkin: ${checkinError.message || 'Unknown error'}`,
+          });
         }
       } else {
         // Show unit info for non-occupied units
-        Alert.alert(
-          'Info Unit',
-          `Unit: ${unit.unit_number}\nApartemen: ${unit.apartment_name}\nStatus: ${UNIT_STATUS_LABELS[unit.status]}`,
-          [
-            { text: 'OK' },
+        showAlert({
+          type: 'info',
+          title: 'Info Unit',
+          message: `Unit: ${unit.unit_number}\nApartemen: ${unit.apartment_name}\nStatus: ${UNIT_STATUS_LABELS[unit.status] || unit.status}`,
+          buttons: [
+            { text: 'OK', style: 'cancel' },
             {
               text: 'Ubah Status',
               onPress: () => showStatusMenu(unit)
             }
           ]
-        );
+        });
       }
     } catch (error) {
       console.error('AdminUnitsScreen: Error in handleUnitPress:', error);
-      Alert.alert('Error', 'Terjadi kesalahan saat membuka detail unit');
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: `Terjadi kesalahan saat membuka detail unit: ${error.message || 'Unknown error'}`,
+      });
     }
   };
 
