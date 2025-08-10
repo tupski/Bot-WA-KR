@@ -5,6 +5,25 @@ Semua perubahan penting pada proyek KakaRama Room akan didokumentasikan di file 
 Format berdasarkan [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 dan proyek ini mengikuti [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2025-08-10
+
+### Added
+- **Multi-Select Image Picker**: Upload hingga 5 foto bukti pembayaran dari galeri atau kamera
+- **Enhanced Unit Overview**: Field pencarian dan tombol ubah status unit (Terisi, Tersedia, Cleaning, Maintenance)
+- **Improved UI/UX**:
+  - Hapus card form checkin untuk UI yang lebih sederhana
+  - Fix modal marketing background yang transparan
+  - Fix unit selection setelah apartemen dipilih
+
+### Fixed
+- **Build Release Issues**: Update react-native-image-resizer ke versi terbaru
+- **Unit Selection Bug**: Perbaiki unit tidak muncul setelah pilih apartemen
+- **Modal Background**: Fix background transparan di modal marketing name
+
+### Changed
+- **Image Upload**: Dari single image ke multi-select (maksimal 5 foto)
+- **Unit Management**: Tim lapangan bisa ubah status unit langsung dari overview
+
 ## [1.2.0] - 2025-08-10
 
 ### Added
