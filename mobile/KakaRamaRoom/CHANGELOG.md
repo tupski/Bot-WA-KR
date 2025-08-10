@@ -1,0 +1,73 @@
+# Changelog
+
+Semua perubahan penting pada proyek KakaRama Room akan didokumentasikan di file ini.
+
+Format berdasarkan [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+dan proyek ini mengikuti [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.2.0] - 2025-08-10
+
+### Added
+- **Business Day Logic**: Implementasi sistem closing harian jam 12 siang
+  - 9 Agustus 12:00 - 10 Agustus 11:59 = laporan tanggal 9 Agustus
+  - Standardisasi di seluruh aplikasi menggunakan BusinessDayService
+- **Filter Laporan Multi-Select**: 
+  - Multi-select dropdown apartemen di AdminReportsScreen
+  - Filter rentang tanggal dengan quick options (hari ini, 7 hari, 30 hari)
+- **Card Statistik Harian**: 
+  - Checkin Hari ini (Checkin Aktif)
+  - Total Checkin (Semua Apartemen)
+  - Total Transaksi Tunai/Cash
+  - Total Transaksi Transfer
+- **Statistik per Apartemen**: Laporan harian dengan business day logic
+  - Nama Apartemen
+  - Jumlah Unit (Total)
+  - Pendapatan
+- **Marketing Terbaik**: Section marketing terbaik dengan business day logic
+- **Tampilan Tanggal & Jam**: Real-time display di AdminReportsScreen
+- **Logout di Pengaturan**: Pindahkan logout ke AppSettingsScreen dengan menu "Keluar"
+
+### Fixed
+- **FieldTeamService Error**: Perbaiki error "Cannot read property 'from' of undefined"
+  - Fix import supabase yang salah di FieldTeamService.js
+  - Fix import DatabaseManager di ActivityLogService.js
+- **AdminCheckinScreen Force Close**: 
+  - Perbaiki error handling yang lebih baik
+  - Fix StorageService untuk handle object paymentProof
+  - Tambah logging detail untuk debugging
+- **Menu Tim Lapangan**: Perbaiki akses menu tim lapangan yang tidak bisa dibuka
+
+### Changed
+- **Logout Button**: Dipindahkan dari dashboard ke Pengaturan -> Keluar
+- **Business Day Logic**: Standardisasi di semua komponen laporan
+- **Multi-Select Support**: Update semua ReportService untuk mendukung filter multi-apartemen
+
+### Technical Details
+- Update BusinessDayService dengan logika closing jam 12 siang
+- Refactor AdminReportsScreen dengan UI yang lebih baik
+- Perbaiki import dependencies di semua service
+- Tambah error handling yang lebih robust
+- Update ReportService dengan fungsi getDailyStatistics baru
+
+### Breaking Changes
+- Filter apartemen di AdminReportsScreen sekarang menggunakan multi-select
+- Business day calculation berubah dari midnight ke noon (12:00)
+
+## [1.1.0] - 2025-08-07
+
+### Added
+- Migrasi dari SQLite ke Supabase
+- Real-time synchronization
+- Improved error handling
+
+### Fixed
+- Database connection issues
+- Performance improvements
+
+## [1.0.0] - 2025-08-01
+
+### Added
+- Initial release
+- Basic checkin/checkout functionality
+- Admin and field team dashboards
+- WhatsApp bot integration

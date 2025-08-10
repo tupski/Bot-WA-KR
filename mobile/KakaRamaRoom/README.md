@@ -1,8 +1,31 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# KakaRama Room Mobile App
 
-# Getting Started
+Aplikasi mobile untuk manajemen checkin apartemen KakaRama Room yang terintegrasi dengan bot WhatsApp.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## Fitur Utama
+
+- **Dashboard Admin & Tim Lapangan**: Monitoring real-time checkin/checkout
+- **Business Day Logic**: Sistem closing harian jam 12 siang
+- **Multi-Filter Laporan**: Filter apartemen dan rentang tanggal
+- **Statistik Real-time**: Card statistik harian dan per apartemen
+- **Marketing Analytics**: Tracking performa marketing terbaik
+- **Supabase Integration**: Database real-time dengan sinkronisasi
+
+## Versi Terbaru: 1.2.0
+
+### Perubahan Terbaru
+- ✅ Fix error "Cannot read property 'from' of undefined" di tim lapangan
+- ✅ Fix AdminCheckinScreen force close issue
+- ✅ Implementasi business day logic (closing jam 12 siang)
+- ✅ Pindahkan logout ke Pengaturan -> Keluar
+- ✅ Filter multi-select apartemen dan rentang tanggal
+- ✅ Card statistik harian dengan business day logic
+- ✅ Statistik per apartemen dengan total unit dan pendapatan
+- ✅ Marketing terbaik dengan business day logic
+
+## Getting Started
+
+> **Note**: Pastikan sudah setup [React Native Environment](https://reactnative.dev/docs/set-up-your-environment) dan konfigurasi Supabase.
 
 ## Step 1: Start Metro
 
@@ -31,6 +54,30 @@ npm run android
 # OR using Yarn
 yarn android
 ```
+
+## Konfigurasi Supabase
+
+Sebelum menjalankan aplikasi, pastikan konfigurasi Supabase sudah benar:
+
+1. **Setup Environment Variables**:
+   ```bash
+   # Copy file .env.example ke .env
+   cp .env.example .env
+
+   # Edit .env dengan kredensial Supabase Anda
+   SUPABASE_URL=your_supabase_url
+   SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
+
+2. **Database Schema**:
+   - Jalankan script `supabase-schema.sql` di Supabase SQL Editor
+   - Import data sample dari `migration-data-fixed.sql` jika diperlukan
+
+3. **Test Koneksi**:
+   ```bash
+   # Test koneksi database
+   npm run test-db
+   ```
 
 ### iOS
 
