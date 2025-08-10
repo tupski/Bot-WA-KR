@@ -474,6 +474,22 @@ const AdminUnitsScreen = () => {
         </View>
       )}
 
+      {/* Checkout Time untuk unit terisi dari input manual admin */}
+      {item.status === UNIT_STATUS.OCCUPIED && item.checkout_time && item.is_manual_checkin && (
+        <View style={styles.checkoutInfo}>
+          <Icon name="schedule" size={16} color={COLORS.success} />
+          <Text style={styles.checkoutText}>
+            Checkout: {new Date(item.checkout_time).toLocaleString('id-ID', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })}
+          </Text>
+        </View>
+      )}
+
       {/* Tap hint for occupied units */}
       {item.status === UNIT_STATUS.OCCUPIED && (
         <View style={styles.tapHint}>
@@ -884,6 +900,20 @@ const styles = StyleSheet.create({
     color: COLORS.warning,
     marginLeft: SIZES.xs,
     fontWeight: '500',
+  },
+  checkoutInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.success + '20',
+    padding: SIZES.sm,
+    borderRadius: SIZES.radius / 2,
+    marginTop: SIZES.xs,
+  },
+  checkoutText: {
+    fontSize: SIZES.caption,
+    color: COLORS.success,
+    marginLeft: SIZES.xs,
+    fontWeight: '600',
   },
   emptyState: {
     alignItems: 'center',

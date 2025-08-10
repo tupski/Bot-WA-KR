@@ -19,8 +19,15 @@ class UnitService {
           apartments (
             name,
             code
+          ),
+          checkins!inner (
+            id,
+            checkout_time,
+            is_manual_checkin,
+            status
           )
         `)
+        .eq('checkins.status', 'active')
         .order('unit_number', { ascending: true });
 
       if (error) {
@@ -30,12 +37,43 @@ class UnitService {
         throw error;
       }
 
+      // Get units without active checkins
+      const { data: unitsWithoutCheckins, error: unitsError } = await supabase
+        .from('units')
+        .select(`
+          *,
+          apartments (
+            name,
+            code
+          )
+        `)
+        .not('id', 'in', `(${units?.map(u => u.id).join(',') || '0'})`)
+        .order('unit_number', { ascending: true });
+
+      if (unitsError && unitsError.code !== 'PGRST116') {
+        console.error('Error getting units without checkins:', unitsError);
+      }
+
+      // Combine both results
+      const allUnits = [
+        ...(units || []),
+        ...(unitsWithoutCheckins || [])
+      ];
+
       // Transform data to match expected format
-      const transformedUnits = units?.map(unit => ({
-        ...unit,
-        apartment_name: unit.apartments?.name,
-        apartment_code: unit.apartments?.code,
-      })) || [];
+      const transformedUnits = allUnits.map(unit => {
+        const activeCheckin = Array.isArray(unit.checkins) ? unit.checkins[0] : unit.checkins;
+
+        return {
+          ...unit,
+          apartment_name: unit.apartments?.name,
+          apartment_code: unit.apartments?.code,
+          checkout_time: activeCheckin?.checkout_time,
+          is_manual_checkin: activeCheckin?.is_manual_checkin,
+          checkins: undefined, // Remove checkins array from final result
+          apartments: undefined, // Remove apartments object from final result
+        };
+      });
 
       return {
         success: true,
