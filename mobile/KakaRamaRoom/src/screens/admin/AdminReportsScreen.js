@@ -31,6 +31,12 @@ const AdminReportsScreen = () => {
   const [apartmentStats, setApartmentStats] = useState([]);
   const [topMarketing, setTopMarketing] = useState([]);
   const [apartments, setApartments] = useState([]);
+  const [dailyStats, setDailyStats] = useState({
+    activeCheckins: 0,
+    totalCheckins: 0,
+    cashTransactions: 0,
+    transferTransactions: 0,
+  });
 
   // State untuk filter
   const [selectedApartments, setSelectedApartments] = useState([]); // Multi-select
@@ -138,6 +144,12 @@ const AdminReportsScreen = () => {
       });
       if (marketingResult.success) {
         setTopMarketing(marketingResult.data);
+      }
+
+      // Load daily stats dengan business day logic
+      const dailyStatsResult = await ReportService.getDailyStatistics(filters);
+      if (dailyStatsResult.success) {
+        setDailyStats(dailyStatsResult.data);
       }
     } catch (error) {
       console.error('Load report data error:', error);
@@ -280,6 +292,36 @@ const AdminReportsScreen = () => {
           <View style={styles.dateTimeInfo}>
             <Text style={styles.businessDateLabel}>Business Day</Text>
             <Text style={styles.businessDateText}>{businessDate}</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Daily Statistics Cards */}
+      <View style={styles.dailyStatsContainer}>
+        <Text style={styles.sectionTitle}>Statistik Harian</Text>
+        <View style={styles.statsGrid}>
+          <View style={styles.statCard}>
+            <Icon name="check-circle" size={32} color={COLORS.success} />
+            <Text style={styles.statNumber}>{dailyStats.activeCheckins}</Text>
+            <Text style={styles.statLabel}>Checkin Aktif</Text>
+          </View>
+
+          <View style={styles.statCard}>
+            <Icon name="assignment" size={32} color={COLORS.primary} />
+            <Text style={styles.statNumber}>{dailyStats.totalCheckins}</Text>
+            <Text style={styles.statLabel}>Total Checkin</Text>
+          </View>
+
+          <View style={styles.statCard}>
+            <Icon name="money" size={32} color={COLORS.warning} />
+            <Text style={styles.statNumber}>{dailyStats.cashTransactions}</Text>
+            <Text style={styles.statLabel}>Transaksi Tunai</Text>
+          </View>
+
+          <View style={styles.statCard}>
+            <Icon name="credit-card" size={32} color={COLORS.info} />
+            <Text style={styles.statNumber}>{dailyStats.transferTransactions}</Text>
+            <Text style={styles.statLabel}>Transaksi Transfer</Text>
           </View>
         </View>
       </View>
@@ -810,6 +852,48 @@ const styles = StyleSheet.create({
     color: COLORS.secondary,
     fontWeight: '600',
     marginTop: 2,
+  },
+  dailyStatsContainer: {
+    paddingHorizontal: SIZES.lg,
+    paddingBottom: SIZES.md,
+  },
+  sectionTitle: {
+    fontSize: SIZES.h5,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: SIZES.md,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SIZES.sm,
+  },
+  statCard: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: COLORS.background,
+    padding: SIZES.md,
+    borderRadius: SIZES.radius,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.gray200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  statNumber: {
+    fontSize: SIZES.h4,
+    fontWeight: 'bold',
+    color: COLORS.textPrimary,
+    marginTop: SIZES.xs,
+  },
+  statLabel: {
+    fontSize: SIZES.caption,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginTop: SIZES.xs,
   },
   emptyState: {
     alignItems: 'center',

@@ -705,6 +705,116 @@ class ReportService {
       };
     }
   }
+
+  /**
+   * Get daily statistics dengan business day logic
+   * @param {Object} filters - Filter options
+   */
+  async getDailyStatistics(filters = {}) {
+    try {
+      console.log('ReportService: Getting daily statistics with filters:', filters);
+
+      // Gunakan business day range jika tidak ada filter tanggal
+      let dateFilter = {};
+      if (filters.startDate && filters.endDate) {
+        dateFilter = {
+          created_at: {
+            gte: filters.startDate,
+            lte: filters.endDate,
+          }
+        };
+      } else {
+        const businessDayRange = BusinessDayService.getCurrentBusinessDayRange();
+        dateFilter = {
+          created_at: {
+            gte: businessDayRange.start,
+            lte: businessDayRange.end,
+          }
+        };
+      }
+
+      // Query untuk active checkins (status = 'active')
+      let activeQuery = supabase
+        .from('checkins')
+        .select('id', { count: 'exact' })
+        .eq('status', 'active')
+        .gte('created_at', dateFilter.created_at.gte)
+        .lte('created_at', dateFilter.created_at.lte);
+
+      if (filters.apartmentIds && filters.apartmentIds.length > 0) {
+        activeQuery = activeQuery.in('apartment_id', filters.apartmentIds);
+      }
+
+      // Query untuk total checkins
+      let totalQuery = supabase
+        .from('checkins')
+        .select('id', { count: 'exact' })
+        .gte('created_at', dateFilter.created_at.gte)
+        .lte('created_at', dateFilter.created_at.lte);
+
+      if (filters.apartmentIds && filters.apartmentIds.length > 0) {
+        totalQuery = totalQuery.in('apartment_id', filters.apartmentIds);
+      }
+
+      // Query untuk cash transactions
+      let cashQuery = supabase
+        .from('checkins')
+        .select('id', { count: 'exact' })
+        .eq('payment_method', 'cash')
+        .gte('created_at', dateFilter.created_at.gte)
+        .lte('created_at', dateFilter.created_at.lte);
+
+      if (filters.apartmentIds && filters.apartmentIds.length > 0) {
+        cashQuery = cashQuery.in('apartment_id', filters.apartmentIds);
+      }
+
+      // Query untuk transfer transactions
+      let transferQuery = supabase
+        .from('checkins')
+        .select('id', { count: 'exact' })
+        .eq('payment_method', 'transfer')
+        .gte('created_at', dateFilter.created_at.gte)
+        .lte('created_at', dateFilter.created_at.lte);
+
+      if (filters.apartmentIds && filters.apartmentIds.length > 0) {
+        transferQuery = transferQuery.in('apartment_id', filters.apartmentIds);
+      }
+
+      // Execute all queries
+      const [activeResult, totalResult, cashResult, transferResult] = await Promise.all([
+        activeQuery,
+        totalQuery,
+        cashQuery,
+        transferQuery,
+      ]);
+
+      if (activeResult.error) throw activeResult.error;
+      if (totalResult.error) throw totalResult.error;
+      if (cashResult.error) throw cashResult.error;
+      if (transferResult.error) throw transferResult.error;
+
+      const dailyStats = {
+        activeCheckins: activeResult.count || 0,
+        totalCheckins: totalResult.count || 0,
+        cashTransactions: cashResult.count || 0,
+        transferTransactions: transferResult.count || 0,
+      };
+
+      console.log('ReportService: Daily statistics result:', dailyStats);
+
+      return {
+        success: true,
+        data: dailyStats,
+      };
+    } catch (error) {
+      console.error('Error getting daily statistics:', error);
+      return {
+        success: false,
+        message: 'Gagal mengambil statistik harian',
+        error,
+      };
+    }
+  }
 }
 
 export default new ReportService();
