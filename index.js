@@ -726,7 +726,9 @@ async function handleCommand(message, apartmentName) {
                     helpMessage += `• \`!export DD-DDMMYYYY\` - Export range tanggal\n`;
                     helpMessage += `• \`!export <bulan>\` - Export bulanan (agustus, juli, dll)\n`;
                     helpMessage += `• \`!export <apartemen>\` - Export apartemen tertentu\n`;
-                    helpMessage += `• \`!export <apartemen> <parameter>\` - Kombinasi apartemen + parameter\n\n`;
+                    helpMessage += `• \`!export <apartemen> <parameter>\` - Kombinasi apartemen + parameter\n`;
+                    helpMessage += `• \`!export email [tanggal]\` - Kirim ke email saja (private message)\n`;
+                    helpMessage += `• \`!export disini [tanggal]\` - Kirim ke chat saja (private message)\n\n`;
 
                     helpMessage += `🔧 *SISTEM & MAINTENANCE*\n`;
                     helpMessage += `• \`!status\` - Status bot dan jadwal laporan\n`;
@@ -755,6 +757,8 @@ async function handleCommand(message, apartmentName) {
                     helpMessage += `• \`!export 2\` - Export 2 hari terakhir\n`;
                     helpMessage += `• \`!export 08082025\` - Export 8 Agustus 2025\n`;
                     helpMessage += `• \`!export sky 08082025\` - Export Sky House 8 Agustus\n`;
+                    helpMessage += `• \`!export email\` - Export hari ini, kirim ke email saja\n`;
+                    helpMessage += `• \`!export disini 08082025\` - Export 8 Agustus, kirim ke chat saja\n`;
                     helpMessage += `• \`!rekap emerald\` - Rekap Emerald Bintaro hari ini\n\n`;
 
                     helpMessage += `*⏰ Logika Jam Kerja*\n`;
@@ -838,6 +842,21 @@ async function handleCommand(message, apartmentName) {
                 let targetDate = null;
                 let startDate, endDate, displayDate;
                 let apartmentName = null;
+                let sendMode = 'both'; // 'email', 'disini', atau 'both' (default)
+
+                // Check untuk parameter 'email' atau 'disini' di posisi pertama
+                if (parts.length >= 2 && (parts[1] === 'email' || parts[1] === 'disini')) {
+                    // Parameter 'email' dan 'disini' hanya bisa digunakan di private message
+                    const isFromGroup = message.from.includes('@g.us');
+                    if (isFromGroup) {
+                        await bot.sendMessage(message.from, '❌ Parameter `email` dan `disini` hanya bisa digunakan di private message untuk keamanan.');
+                        return;
+                    }
+
+                    sendMode = parts[1];
+                    // Remove parameter mode dari parts untuk parsing selanjutnya
+                    parts.splice(1, 1);
+                }
 
                 if (parts.length === 1) {
                     // !export - Default: business day berdasarkan jam saat ini
@@ -1069,25 +1088,46 @@ async function handleCommand(message, apartmentName) {
 
                 await workbook.xlsx.writeFile(filepath);
 
-                // kirim via email dan whatsapp
-                const emailSent = await emailService.sendDailyReport(filepath, targetDate, apartmentName, true);
-
                 const apartmentInfo = apartmentName ? `\n- Apartemen: ${apartmentName}` : '';
                 const reportSummary = `📊 *LAPORAN EXPORT*\n\n📅 Periode: ${displayDate}${apartmentInfo}\n📈 Total transaksi: ${transactions.length}`;
 
-                // kirim laporan dan attachment ke whatsapp
-                const whatsappSent = await bot.sendReportWithAttachment(message.from, reportSummary, filepath);
+                // Kirim berdasarkan parameter mode
+                let emailSent = false;
+                let whatsappSent = false;
 
-                // pesan untuk status pengiriman attachment
+                if (sendMode === 'email' || sendMode === 'both') {
+                    emailSent = await emailService.sendDailyReport(filepath, targetDate, apartmentName, true);
+                }
+
+                if (sendMode === 'disini' || sendMode === 'both') {
+                    whatsappSent = await bot.sendReportWithAttachment(message.from, reportSummary, filepath);
+                }
+
+                // pesan untuk status pengiriman attachment berdasarkan mode
                 let statusMessage = '';
-                if (emailSent && whatsappSent) {
-                    statusMessage = `✅ Export laporan berhasil!\n\n${reportSummary}\n\n📧 Laporan telah dikirim via email ke ${config.email.to}\n💬 File attachment telah dikirim ke chat ini`;
-                } else if (emailSent && !whatsappSent) {
-                    statusMessage = `⚠️ Export laporan berhasil!\n\n${reportSummary}\n\n📧 Laporan telah dikirim via email ke ${config.email.to}\n❌ Gagal mengirim file attachment ke WhatsApp`;
-                } else if (!emailSent && whatsappSent) {
-                    statusMessage = `⚠️ Export laporan berhasil!\n\n${reportSummary}\n\n❌ Gagal mengirim via email\n💬 File attachment telah dikirim ke chat ini`;
-                } else {
-                    statusMessage = `⚠️ Export laporan berhasil dibuat tapi gagal dikirim.\n\n${reportSummary}\n\n❌ Gagal mengirim via email dan WhatsApp\n💾 File tersimpan di server: ${filepath}`;
+
+                if (sendMode === 'email') {
+                    if (emailSent) {
+                        statusMessage = `✅ Export laporan berhasil!\n\n${reportSummary}\n\n📧 Laporan telah dikirim via email ke ${config.email.to}`;
+                    } else {
+                        statusMessage = `❌ Export laporan berhasil dibuat tapi gagal dikirim via email.\n\n${reportSummary}\n\n💾 File tersimpan di server: ${filepath}`;
+                    }
+                } else if (sendMode === 'disini') {
+                    if (whatsappSent) {
+                        statusMessage = `✅ Export laporan berhasil!\n\n${reportSummary}\n\n💬 File attachment telah dikirim ke chat ini`;
+                    } else {
+                        statusMessage = `❌ Export laporan berhasil dibuat tapi gagal dikirim ke chat.\n\n${reportSummary}\n\n💾 File tersimpan di server: ${filepath}`;
+                    }
+                } else { // sendMode === 'both'
+                    if (emailSent && whatsappSent) {
+                        statusMessage = `✅ Export laporan berhasil!\n\n${reportSummary}\n\n📧 Laporan telah dikirim via email ke ${config.email.to}\n💬 File attachment telah dikirim ke chat ini`;
+                    } else if (emailSent && !whatsappSent) {
+                        statusMessage = `⚠️ Export laporan berhasil!\n\n${reportSummary}\n\n📧 Laporan telah dikirim via email ke ${config.email.to}\n❌ Gagal mengirim file attachment ke WhatsApp`;
+                    } else if (!emailSent && whatsappSent) {
+                        statusMessage = `⚠️ Export laporan berhasil!\n\n${reportSummary}\n\n❌ Gagal mengirim via email\n💬 File attachment telah dikirim ke chat ini`;
+                    } else {
+                        statusMessage = `⚠️ Export laporan berhasil dibuat tapi gagal dikirim.\n\n${reportSummary}\n\n❌ Gagal mengirim via email dan WhatsApp\n💾 File tersimpan di server: ${filepath}`;
+                    }
                 }
 
                 await bot.sendMessage(message.from, statusMessage);
