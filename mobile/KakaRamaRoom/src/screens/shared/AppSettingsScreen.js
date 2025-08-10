@@ -130,36 +130,62 @@ const AppSettingsScreen = ({ navigation }) => {
   };
 
   const showAboutApp = () => {
-    Alert.alert(
-      `Tentang ${APP_INFO.name}`,
-      `${APP_INFO.description}\n\nVersi: ${APP_INFO.version}\nBuild: ${APP_INFO.buildNumber}\nDeveloper: ${APP_INFO.developer}`,
-      [{ text: 'OK' }]
-    );
+    try {
+      showAlert({
+        type: 'info',
+        title: `Tentang ${APP_INFO.name}`,
+        message: `${APP_INFO.description}\n\nVersi: ${APP_INFO.version}\nBuild: ${APP_INFO.buildNumber}\nDeveloper: ${APP_INFO.developer}`
+      });
+    } catch (error) {
+      console.error('Error showing about app:', error);
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: 'Gagal menampilkan informasi aplikasi'
+      });
+    }
   };
 
   const showChangelog = () => {
-    const changelogText = APP_INFO.changelog
-      .map(version => {
-        const changes = version.changes.map(change => `• ${change}`).join('\n');
-        return `${version.version} (${version.date})\n${changes}`;
-      })
-      .join('\n\n');
+    try {
+      const changelogText = APP_INFO.changelog
+        .map(version => {
+          const changes = version.changes.map(change => `• ${change}`).join('\n');
+          return `${version.version} (${version.date})\n${changes}`;
+        })
+        .join('\n\n');
 
-    Alert.alert(
-      'Changelog',
-      changelogText,
-      [{ text: 'OK' }],
-      { scrollable: true }
-    );
+      showAlert({
+        type: 'info',
+        title: 'Changelog',
+        message: changelogText
+      });
+    } catch (error) {
+      console.error('Error showing changelog:', error);
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: 'Gagal menampilkan changelog'
+      });
+    }
   };
 
   const showFeatures = () => {
-    const featuresText = APP_INFO.features.map(feature => `• ${feature}`).join('\n');
-    Alert.alert(
-      'Fitur Aplikasi',
-      featuresText,
-      [{ text: 'OK' }]
-    );
+    try {
+      const featuresText = APP_INFO.features.map(feature => `• ${feature}`).join('\n');
+      showAlert({
+        type: 'info',
+        title: 'Fitur Aplikasi',
+        message: featuresText
+      });
+    } catch (error) {
+      console.error('Error showing features:', error);
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: 'Gagal menampilkan daftar fitur'
+      });
+    }
   };
 
   const handleHelp = () => {
@@ -209,13 +235,7 @@ const AppSettingsScreen = ({ navigation }) => {
     }
   };
 
-  const showAbout = () => {
-    showAlert({
-      type: 'info',
-      title: 'Tentang Aplikasi',
-      message: `KakaRama Room\nVersi: ${APP_INFO.version}\n\nSistem manajemen checkin apartemen yang terintegrasi dengan bot WhatsApp.\n\nDikembangkan untuk KakaRama Room Management.`
-    });
-  };
+
 
   const handleLogout = async () => {
     showAlert({
