@@ -446,7 +446,7 @@ const AdminReportsScreen = () => {
 
       {/* Top Marketing */}
       <View style={styles.sectionContainer}>
-        <Text style={styles.sectionTitle}>Top Marketing</Text>
+        <Text style={styles.sectionTitle}>Marketing Terbaik (Business Day)</Text>
         {topMarketing.length > 0 ? (
           <FlatList
             data={topMarketing}

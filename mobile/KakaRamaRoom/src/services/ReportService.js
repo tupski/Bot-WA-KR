@@ -215,9 +215,11 @@ class ReportService {
         query = query.lte('created_at', filters.endDate + 'T23:59:59.999Z');
       }
 
-      // Filter by apartment
+      // Filter by apartment (support both single and multi-select)
       if (filters.apartmentId) {
         query = query.eq('apartment_id', filters.apartmentId);
+      } else if (filters.apartmentIds && filters.apartmentIds.length > 0) {
+        query = query.in('apartment_id', filters.apartmentIds);
       }
 
       const { data: checkins, error } = await query;
