@@ -1279,6 +1279,35 @@ const styles = StyleSheet.create({
   currencyInput: {
     borderWidth: 0, // Remove border since CurrencyInput has its own
   },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: COLORS.white,
+    borderTopLeftRadius: SIZES.radius * 2,
+    borderTopRightRadius: SIZES.radius * 2,
+    maxHeight: '80%',
+    minHeight: '50%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: SIZES.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.gray200,
+  },
+  modalTitle: {
+    fontSize: SIZES.h6,
+    fontWeight: 'bold',
+    color: COLORS.textPrimary,
+  },
+  modalContent: {
+    paddingBottom: SIZES.xl,
+  },
 });
 
 export default FieldCheckinScreen;
