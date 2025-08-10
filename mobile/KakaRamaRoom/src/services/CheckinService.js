@@ -5,6 +5,7 @@ import UnitService from './UnitService';
 import TeamAssignmentService from './TeamAssignmentService';
 import StorageService from './StorageService';
 import { ACTIVITY_ACTIONS, UNIT_STATUS, CHECKIN_STATUS } from '../config/constants';
+import TimeUtils from '../utils/TimeUtils';
 
 /**
  * Service untuk mengelola data checkin
@@ -104,20 +105,31 @@ class CheckinService {
         };
       }
 
-      // Calculate checkout time if not provided
+      // Calculate checkout time if not provided using WIB timezone
       let finalCheckoutTime = checkoutTime;
       if (!finalCheckoutTime) {
         try {
-          const now = new Date();
-          if (isNaN(now.getTime())) {
-            throw new Error('Invalid date');
-          }
-          finalCheckoutTime = new Date(now.getTime() + (durationHours * 60 * 60 * 1000)).toISOString();
+          console.log('CheckinService: Calculating checkout time with duration:', durationHours);
+          const checkoutDate = TimeUtils.calculateCheckoutTime(durationHours);
+          finalCheckoutTime = TimeUtils.formatToISOWIB(checkoutDate);
+          console.log('CheckinService: Calculated checkout time (WIB):', finalCheckoutTime);
         } catch (error) {
           console.error('CheckinService: Error calculating checkout time:', error);
           return {
             success: false,
             message: 'Gagal menghitung waktu checkout',
+          };
+        }
+      } else {
+        // Ensure provided checkout time is in WIB format
+        try {
+          finalCheckoutTime = TimeUtils.formatToISOWIB(checkoutTime);
+          console.log('CheckinService: Converted provided checkout time to WIB:', finalCheckoutTime);
+        } catch (error) {
+          console.error('CheckinService: Error converting checkout time to WIB:', error);
+          return {
+            success: false,
+            message: 'Format waktu checkout tidak valid',
           };
         }
       }

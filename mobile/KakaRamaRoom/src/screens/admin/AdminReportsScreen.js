@@ -95,13 +95,24 @@ const AdminReportsScreen = () => {
       console.log('AdminReportsScreen: Starting loadInitialData');
       setLoading(true);
 
+      // Validate services availability
+      if (!ApartmentService || typeof ApartmentService.getAllApartments !== 'function') {
+        throw new Error('ApartmentService tidak tersedia');
+      }
+
       // Load apartemen untuk filter dengan error handling
       try {
         console.log('AdminReportsScreen: Loading apartments');
-        const apartmentResult = await ApartmentService.getAllApartments();
-        if (apartmentResult && apartmentResult.success) {
-          setApartments(apartmentResult.data || []);
-          console.log('AdminReportsScreen: Loaded apartments:', apartmentResult.data?.length || 0);
+        const apartmentResult = await Promise.race([
+          ApartmentService.getAllApartments(),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Timeout loading apartments')), 10000)
+          )
+        ]);
+
+        if (apartmentResult && apartmentResult.success && Array.isArray(apartmentResult.data)) {
+          setApartments(apartmentResult.data);
+          console.log('AdminReportsScreen: Loaded apartments:', apartmentResult.data.length);
         } else {
           console.warn('AdminReportsScreen: Failed to load apartments:', apartmentResult);
           setApartments([]);
@@ -109,6 +120,7 @@ const AdminReportsScreen = () => {
       } catch (apartmentError) {
         console.error('AdminReportsScreen: Apartment loading error:', apartmentError);
         setApartments([]);
+        // Don't show error for apartment loading failure, continue with empty list
       }
 
       // Load data laporan dengan error handling
@@ -117,20 +129,54 @@ const AdminReportsScreen = () => {
         await loadReportData();
       } catch (reportError) {
         console.error('AdminReportsScreen: Report data loading error:', reportError);
+        // Set default values instead of showing error immediately
+        setSummaryStats({
+          totalCheckins: 0,
+          todayCheckins: 0,
+          activeCheckins: 0,
+          totalRevenue: 0,
+        });
+        setApartmentStats([]);
+        setTopMarketing([]);
+        setDailyStats({
+          activeCheckins: 0,
+          totalCheckins: 0,
+          cashTransactions: 0,
+          transferTransactions: 0,
+        });
+
         showAlert({
-          type: 'error',
-          title: 'Error',
-          message: 'Gagal memuat data laporan. Silakan coba lagi.',
+          type: 'warning',
+          title: 'Peringatan',
+          message: 'Beberapa data laporan gagal dimuat. Data mungkin tidak lengkap.',
         });
       }
 
       console.log('AdminReportsScreen: Finished loadInitialData');
     } catch (error) {
       console.error('AdminReportsScreen: Critical error in loadInitialData:', error);
+
+      // Set all states to safe defaults
+      setSummaryStats({
+        totalCheckins: 0,
+        todayCheckins: 0,
+        activeCheckins: 0,
+        totalRevenue: 0,
+      });
+      setApartmentStats([]);
+      setTopMarketing([]);
+      setDailyStats({
+        activeCheckins: 0,
+        totalCheckins: 0,
+        cashTransactions: 0,
+        transferTransactions: 0,
+      });
+      setApartments([]);
+
       showAlert({
         type: 'error',
         title: 'Error',
-        message: 'Gagal memuat data awal. Silakan restart aplikasi.',
+        message: 'Gagal memuat data awal. Aplikasi akan menampilkan data kosong.',
       });
     } finally {
       setLoading(false);

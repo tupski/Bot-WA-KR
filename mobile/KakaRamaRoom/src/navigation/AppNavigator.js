@@ -40,6 +40,10 @@ import ProfileManagementScreen from '../screens/shared/ProfileManagementScreen';
 import ActivityLogScreen from '../screens/shared/ActivityLogScreen';
 import NotificationsScreen from '../screens/shared/NotificationsScreen';
 
+// Profile Screens
+import AdminProfileScreen from '../screens/admin/AdminProfileScreen';
+import FieldProfileScreen from '../screens/field/FieldProfileScreen';
+
 // Admin Notification Screens
 import AdminBroadcastScreen from '../screens/admin/AdminBroadcastScreen';
 
@@ -337,6 +341,13 @@ const AppNavigator = () => {
               }}
             />
             <Stack.Screen
+              name="AdminProfile"
+              component={AdminProfileScreen}
+              options={{
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
               name={SCREENS.PROFILE}
               component={ProfileScreen}
               options={{
@@ -416,6 +427,13 @@ const AppNavigator = () => {
             <Stack.Screen
               name="FieldProfileManagement"
               component={ProfileManagementScreen}
+              options={{
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="FieldProfile"
+              component={FieldProfileScreen}
               options={{
                 headerShown: false,
               }}

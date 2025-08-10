@@ -21,6 +21,7 @@ import TeamAssignmentService from '../../services/TeamAssignmentService';
 import CurrencyInput from '../../components/CurrencyInput';
 import ModernModal from '../../components/ModernModal';
 import { useModernAlert } from '../../components/ModernAlert';
+import TimeUtils from '../../utils/TimeUtils';
 
 /**
  * Screen untuk form checkin tim lapangan
@@ -440,22 +441,19 @@ const FieldCheckinScreen = ({ navigation }) => {
   };
 
   /**
-   * Hitung waktu checkout berdasarkan durasi
-   * @returns {string} - Waktu checkout dalam format string
+   * Hitung waktu checkout berdasarkan durasi menggunakan WIB timezone
+   * @returns {string} - Waktu checkout dalam format string WIB
    */
   const calculateCheckoutTime = () => {
     if (!formData.durationHours) return '';
 
-    const now = new Date();
-    const checkoutTime = new Date(now.getTime() + (parseInt(formData.durationHours) * 60 * 60 * 1000));
-
-    return checkoutTime.toLocaleString('id-ID', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    try {
+      const checkoutDate = TimeUtils.calculateCheckoutTime(formData.durationHours);
+      return TimeUtils.formatDateTimeWIB(checkoutDate);
+    } catch (error) {
+      console.error('FieldCheckinScreen: Error calculating checkout time:', error);
+      return 'Error menghitung waktu';
+    }
   };
 
 

@@ -21,6 +21,7 @@ import AuthService from '../../services/AuthService';
 import MarketingSourceService from '../../services/MarketingSourceService';
 import ImagePickerService from '../../services/ImagePickerService';
 import CurrencyInput from '../../components/CurrencyInput';
+import TimeUtils from '../../utils/TimeUtils';
 
 const AdminCheckinScreen = ({ navigation }) => {
   const [apartments, setApartments] = useState([]);
@@ -141,17 +142,15 @@ const AdminCheckinScreen = ({ navigation }) => {
     }
   };
 
-  // Helper function untuk menghitung checkout time
+  // Helper function untuk menghitung checkout time menggunakan WIB timezone
   const calculateCheckoutTime = (durationHours) => {
     try {
       const duration = parseInt(durationHours) || 0;
       if (duration <= 0) return null;
 
-      const checkoutTime = new Date();
-      checkoutTime.setHours(checkoutTime.getHours() + duration);
-      return checkoutTime;
+      return TimeUtils.calculateCheckoutTime(duration);
     } catch (error) {
-      console.error('Error calculating checkout time:', error);
+      console.error('AdminCheckinScreen: Error calculating checkout time:', error);
       return null;
     }
   };
@@ -448,13 +447,10 @@ const AdminCheckinScreen = ({ navigation }) => {
             <View style={styles.checkoutTimeDisplay}>
               <Icon name="schedule" size={16} color={COLORS.success} />
               <Text style={styles.checkoutTimeText}>
-                Checkout: {calculateCheckoutTime(formData.durationHours)?.toLocaleString('id-ID', {
-                  day: '2-digit',
-                  month: '2-digit',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                }) || 'Invalid'}
+                Checkout: {(() => {
+                  const checkoutTime = calculateCheckoutTime(formData.durationHours);
+                  return checkoutTime ? TimeUtils.formatDateTimeWIB(checkoutTime) : 'Invalid';
+                })()}
               </Text>
             </View>
           )}

@@ -103,15 +103,35 @@ const ModernAlert = ({
   };
 
   const handleBackdropPress = () => {
-    if (dismissible) {
-      onDismiss?.();
+    if (dismissible && onDismiss) {
+      onDismiss();
+    }
+  };
+
+  const handleButtonPress = (button) => {
+    try {
+      if (button.onPress && typeof button.onPress === 'function') {
+        button.onPress();
+      } else if (onDismiss && typeof onDismiss === 'function') {
+        onDismiss();
+      }
+    } catch (error) {
+      console.error('ModernAlert: Error in button press handler:', error);
+      // Fallback to dismiss
+      if (onDismiss && typeof onDismiss === 'function') {
+        onDismiss();
+      }
     }
   };
 
   const defaultButtons = buttons.length > 0 ? buttons : [
     {
       text: 'OK',
-      onPress: onDismiss,
+      onPress: () => {
+        if (onDismiss && typeof onDismiss === 'function') {
+          onDismiss();
+        }
+      },
       style: 'primary',
     },
   ];
@@ -181,8 +201,9 @@ const ModernAlert = ({
                         index === 0 && defaultButtons.length > 1 && styles.firstButton,
                         index === defaultButtons.length - 1 && defaultButtons.length > 1 && styles.lastButton,
                       ]}
-                      onPress={button.onPress}
+                      onPress={() => handleButtonPress(button)}
                       activeOpacity={0.8}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
                       <Text
                         style={[
@@ -309,18 +330,51 @@ export const useModernAlert = () => {
   });
 
   const showAlert = (config) => {
+    console.log('ModernAlert: showAlert called with config:', config);
+
+    const dismissHandler = () => {
+      console.log('ModernAlert: dismissHandler called');
+      setAlertConfig(prev => ({ ...prev, visible: false }));
+      if (config.onDismiss && typeof config.onDismiss === 'function') {
+        try {
+          config.onDismiss();
+        } catch (error) {
+          console.error('ModernAlert: Error in onDismiss callback:', error);
+        }
+      }
+    };
+
+    // Process buttons to ensure proper handlers
+    const processedButtons = config.buttons?.map(button => ({
+      ...button,
+      onPress: () => {
+        console.log('ModernAlert: Button pressed:', button.text);
+        try {
+          if (button.onPress && typeof button.onPress === 'function') {
+            button.onPress();
+          }
+          // Always dismiss after button press unless explicitly prevented
+          if (button.preventDismiss !== true) {
+            dismissHandler();
+          }
+        } catch (error) {
+          console.error('ModernAlert: Error in button onPress:', error);
+          dismissHandler(); // Fallback dismiss
+        }
+      }
+    })) || [];
+
     setAlertConfig({
       visible: true,
       dismissible: true,
       ...config,
-      onDismiss: () => {
-        setAlertConfig(prev => ({ ...prev, visible: false }));
-        config.onDismiss?.();
-      },
+      buttons: processedButtons,
+      onDismiss: dismissHandler,
     });
   };
 
   const hideAlert = () => {
+    console.log('ModernAlert: hideAlert called');
     setAlertConfig(prev => ({ ...prev, visible: false }));
   };
 

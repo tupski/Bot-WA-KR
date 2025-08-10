@@ -4,15 +4,18 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
-  Modal,
   TextInput,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { COLORS, SIZES } from '../config/constants';
 import CleaningService from '../services/CleaningService';
+import ModernModal from './ModernModal';
+import { useModernAlert } from './ModernAlert';
 
 const CleaningManagement = ({ unitId, onStatusChange, currentUser }) => {
+  // Modern Alert Hook
+  const { showAlert, AlertComponent } = useModernAlert();
+
   const [cleaningStatus, setCleaningStatus] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showExtendModal, setShowExtendModal] = useState(false);
@@ -42,7 +45,11 @@ const CleaningManagement = ({ unitId, onStatusChange, currentUser }) => {
   const handleExtendCleaning = async () => {
     const minutes = parseInt(extendMinutes);
     if (isNaN(minutes) || minutes < 1 || minutes > 10) {
-      Alert.alert('Error', 'Masukkan menit antara 1-10');
+      showAlert({
+        type: 'warning',
+        title: 'Peringatan',
+        message: 'Masukkan menit antara 1-10'
+      });
       return;
     }
 
@@ -56,15 +63,27 @@ const CleaningManagement = ({ unitId, onStatusChange, currentUser }) => {
       );
 
       if (result.success) {
-        Alert.alert('Sukses', result.message);
+        showAlert({
+          type: 'success',
+          title: 'Berhasil',
+          message: result.message
+        });
         setShowExtendModal(false);
         await loadCleaningStatus();
         onStatusChange && onStatusChange();
       } else {
-        Alert.alert('Error', result.message);
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: result.message
+        });
       }
     } catch (error) {
-      Alert.alert('Error', 'Gagal memperpanjang cleaning');
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: 'Gagal memperpanjang cleaning'
+      });
     } finally {
       setLoading(false);
     }

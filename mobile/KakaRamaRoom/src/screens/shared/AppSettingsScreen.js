@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
-  Alert,
   StyleSheet,
   Linking,
 } from 'react-native';
@@ -13,8 +12,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { COLORS, SIZES, APP_INFO } from '../../config/constants';
 import AuthService from '../../services/AuthService';
+import { useModernAlert } from '../../components/ModernAlert';
 
 const AppSettingsScreen = ({ navigation }) => {
+  // Modern Alert Hook
+  const { showAlert, AlertComponent } = useModernAlert();
+
   const [settings, setSettings] = useState({
     darkMode: false,
     notifications: true,
@@ -98,10 +101,11 @@ const AppSettingsScreen = ({ navigation }) => {
   };
 
   const resetSettings = () => {
-    Alert.alert(
-      'Reset Pengaturan',
-      'Apakah Anda yakin ingin mereset semua pengaturan ke default?',
-      [
+    showAlert({
+      type: 'confirm',
+      title: 'Reset Pengaturan',
+      message: 'Apakah Anda yakin ingin mereset semua pengaturan ke default?',
+      buttons: [
         { text: 'Batal', style: 'cancel' },
         {
           text: 'Reset',
@@ -114,11 +118,15 @@ const AppSettingsScreen = ({ navigation }) => {
               debugMode: false,
             };
             saveSettings(defaultSettings);
-            Alert.alert('Berhasil', 'Pengaturan berhasil direset');
+            showAlert({
+              type: 'success',
+              title: 'Berhasil',
+              message: 'Pengaturan berhasil direset'
+            });
           },
         },
       ]
-    );
+    });
   };
 
   const showAboutApp = () => {
@@ -155,10 +163,11 @@ const AppSettingsScreen = ({ navigation }) => {
   };
 
   const handleHelp = () => {
-    Alert.alert(
-      'Bantuan & Kontak Admin',
-      'Pilih kontak admin untuk bantuan:',
-      [
+    showAlert({
+      type: 'info',
+      title: 'Bantuan & Kontak Admin',
+      message: 'Pilih kontak admin untuk bantuan:',
+      buttons: [
         {
           text: 'Admin KR 1',
           onPress: () => openWhatsApp('081383138882', 'Admin KR 1'),
@@ -172,7 +181,7 @@ const AppSettingsScreen = ({ navigation }) => {
           style: 'cancel',
         },
       ]
-    );
+    });
   };
 
   const openWhatsApp = async (phoneNumber, adminName) => {
@@ -201,18 +210,19 @@ const AppSettingsScreen = ({ navigation }) => {
   };
 
   const showAbout = () => {
-    Alert.alert(
-      'Tentang Aplikasi',
-      `KakaRama Room\nVersi: ${APP_INFO.version}\n\nSistem manajemen checkin apartemen yang terintegrasi dengan bot WhatsApp.\n\nDikembangkan untuk KakaRama Room Management.`,
-      [{ text: 'OK' }]
-    );
+    showAlert({
+      type: 'info',
+      title: 'Tentang Aplikasi',
+      message: `KakaRama Room\nVersi: ${APP_INFO.version}\n\nSistem manajemen checkin apartemen yang terintegrasi dengan bot WhatsApp.\n\nDikembangkan untuk KakaRama Room Management.`
+    });
   };
 
   const handleLogout = async () => {
-    Alert.alert(
-      'Konfirmasi Logout',
-      'Apakah Anda yakin ingin keluar dari aplikasi?',
-      [
+    showAlert({
+      type: 'confirm',
+      title: 'Konfirmasi Logout',
+      message: 'Apakah Anda yakin ingin keluar dari aplikasi?',
+      buttons: [
         {
           text: 'Batal',
           style: 'cancel',
@@ -227,7 +237,11 @@ const AppSettingsScreen = ({ navigation }) => {
               // Check if navigation is available
               if (!navigation || !navigation.reset) {
                 console.error('AppSettingsScreen: Navigation not available');
-                Alert.alert('Error', 'Navigasi tidak tersedia');
+                showAlert({
+                  type: 'error',
+                  title: 'Error',
+                  message: 'Navigasi tidak tersedia'
+                });
                 return;
               }
 
@@ -259,17 +273,25 @@ const AppSettingsScreen = ({ navigation }) => {
                   console.log('AppSettingsScreen: Force navigation reset successful');
                 } else {
                   console.error('AppSettingsScreen: Cannot force logout - navigation not available');
-                  Alert.alert('Error', 'Tidak dapat logout - silakan restart aplikasi');
+                  showAlert({
+                    type: 'error',
+                    title: 'Error',
+                    message: 'Tidak dapat logout - silakan restart aplikasi'
+                  });
                 }
               } catch (forceNavError) {
                 console.error('AppSettingsScreen: Force navigation error:', forceNavError);
-                Alert.alert('Error', 'Tidak dapat logout - silakan restart aplikasi');
+                showAlert({
+                  type: 'error',
+                  title: 'Error',
+                  message: 'Tidak dapat logout - silakan restart aplikasi'
+                });
               }
             }
           },
         },
       ]
-    );
+    });
   };
 
   const SettingItem = ({ icon, title, subtitle, value, onToggle, onPress, showSwitch = false, showChevron = false, isDestructive = false }) => (
@@ -307,7 +329,7 @@ const AppSettingsScreen = ({ navigation }) => {
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Icon name="arrow-back" size={24} color={COLORS.WHITE} />
+          <Icon name="arrow-back" size={24} color={COLORS.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Pengaturan</Text>
       </View>
@@ -319,9 +341,15 @@ const AppSettingsScreen = ({ navigation }) => {
             <Text style={styles.sectionTitle}>Informasi Pengguna</Text>
             <TouchableOpacity
               style={styles.userInfo}
-              onPress={() => navigation.navigate('ProfileManagement')}
+              onPress={() => {
+                if (currentUser.role === 'admin') {
+                  navigation.navigate('AdminProfile');
+                } else {
+                  navigation.navigate('FieldProfile');
+                }
+              }}
             >
-              <Icon name="account-circle" size={48} color={COLORS.PRIMARY} />
+              <Icon name="account-circle" size={48} color={COLORS.primary} />
               <View style={styles.userDetails}>
                 <Text style={styles.userName}>{currentUser.fullName}</Text>
                 <Text style={styles.userRole}>
@@ -329,15 +357,34 @@ const AppSettingsScreen = ({ navigation }) => {
                 </Text>
                 <Text style={styles.userContact}>{currentUser.phone || currentUser.email}</Text>
               </View>
-              <Icon name="chevron-right" size={24} color={COLORS.TEXT_SECONDARY} />
+              <Icon name="chevron-right" size={24} color={COLORS.textSecondary} />
             </TouchableOpacity>
           </View>
         )}
 
+        {/* Profile Settings */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Profil & Akun</Text>
+
+          <SettingItem
+            icon="person"
+            title="Profil Saya"
+            subtitle="Kelola informasi profil dan password"
+            onPress={() => {
+              if (currentUser.role === 'admin') {
+                navigation.navigate('AdminProfile');
+              } else {
+                navigation.navigate('FieldProfile');
+              }
+            }}
+            showChevron={true}
+          />
+        </View>
+
         {/* App Settings */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Pengaturan Aplikasi</Text>
-          
+
           <SettingItem
             icon="dark-mode"
             title="Mode Gelap"
@@ -346,7 +393,7 @@ const AppSettingsScreen = ({ navigation }) => {
             onToggle={() => toggleSetting('darkMode')}
             showSwitch={true}
           />
-          
+
           <SettingItem
             icon="notifications"
             title="Notifikasi"
@@ -457,6 +504,9 @@ const AppSettingsScreen = ({ navigation }) => {
           </View>
         )}
       </ScrollView>
+
+      {/* Modern Alert Component */}
+      <AlertComponent />
     </View>
   );
 };

@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -17,11 +16,15 @@ import AuthService from '../services/AuthService';
 import DatabaseManager from '../config/supabase'; // Updated to use Supabase
 import { COLORS, SIZES, USER_ROLES } from '../config/constants';
 import RealtimeService from '../services/RealtimeService';
+import { useModernAlert } from '../components/ModernAlert';
 
 // Import package.json untuk mendapatkan versi app
 const packageJson = require('../../package.json');
 
 const LoginScreen = ({ navigation }) => {
+  // Modern Alert Hook
+  const { showAlert, AlertComponent } = useModernAlert();
+
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [userType, setUserType] = useState(USER_ROLES.FIELD_TEAM); // Default ke Tim Lapangan
@@ -50,7 +53,11 @@ const LoginScreen = ({ navigation }) => {
       }
     } catch (error) {
       console.error('App initialization error:', error);
-      Alert.alert('Error', 'Gagal menginisialisasi aplikasi');
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: 'Gagal menginisialisasi aplikasi'
+      });
     } finally {
       setInitializing(false);
     }
@@ -69,7 +76,11 @@ const LoginScreen = ({ navigation }) => {
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
-      Alert.alert('Error', `Email dan password harus diisi`);
+      showAlert({
+        type: 'warning',
+        title: 'Peringatan',
+        message: 'Username dan password harus diisi'
+      });
       return;
     }
 
@@ -102,11 +113,19 @@ const LoginScreen = ({ navigation }) => {
       } else {
         const errorMessage = result?.message || 'Login gagal tanpa pesan error';
         console.log('Login failed:', errorMessage);
-        Alert.alert('Login Gagal', errorMessage);
+        showAlert({
+          type: 'error',
+          title: 'Login Gagal',
+          message: errorMessage
+        });
       }
     } catch (error) {
       console.error('Login error:', error);
-      Alert.alert('Error', `Terjadi kesalahan saat login: ${error.message || 'Unknown error'}`);
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: `Terjadi kesalahan saat login: ${error.message || 'Unknown error'}`
+      });
     } finally {
       setLoading(false);
       console.log('=== LOGIN DEBUG END ===');
@@ -255,6 +274,9 @@ const LoginScreen = ({ navigation }) => {
           <Text style={styles.footerText}>App Version {packageJson.version}</Text>
         </View>
       </ScrollView>
+
+      {/* Modern Alert Component */}
+      <AlertComponent />
     </KeyboardAvoidingView>
   );
 };

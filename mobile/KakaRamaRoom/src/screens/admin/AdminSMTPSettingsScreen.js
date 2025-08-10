@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
   Switch,
 } from 'react-native';
@@ -14,8 +13,12 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { COLORS, SIZES } from '../../config/constants';
 import SMTPService from '../../services/SMTPService';
 import EmailReportService from '../../services/EmailReportService';
+import { useModernAlert } from '../../components/ModernAlert';
 
 const AdminSMTPSettingsScreen = ({ navigation }) => {
+  // Modern Alert Hook
+  const { showAlert, AlertComponent } = useModernAlert();
+
   const [loading, setLoading] = useState(false);
   const [testingEmail, setTestingEmail] = useState(false);
   const [testingReport, setTestingReport] = useState(false);
@@ -63,7 +66,11 @@ const AdminSMTPSettingsScreen = ({ navigation }) => {
       
       // Validate required fields
       if (!smtpConfig.host || !smtpConfig.username || !smtpConfig.password || !smtpConfig.fromEmail) {
-        Alert.alert('Error', 'Harap lengkapi semua field yang wajib diisi');
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: 'Harap lengkapi semua field yang wajib diisi'
+        });
         return;
       }
 
@@ -73,13 +80,25 @@ const AdminSMTPSettingsScreen = ({ navigation }) => {
       });
 
       if (result.success) {
-        Alert.alert('Berhasil', 'Pengaturan SMTP berhasil disimpan');
+        showAlert({
+          type: 'success',
+          title: 'Berhasil',
+          message: 'Pengaturan SMTP berhasil disimpan'
+        });
       } else {
-        Alert.alert('Error', result.message || 'Gagal menyimpan pengaturan SMTP');
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: result.message || 'Gagal menyimpan pengaturan SMTP'
+        });
       }
     } catch (error) {
       console.error('Error saving SMTP settings:', error);
-      Alert.alert('Error', 'Gagal menyimpan pengaturan SMTP');
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: 'Gagal menyimpan pengaturan SMTP'
+      });
     } finally {
       setLoading(false);
     }
@@ -88,7 +107,11 @@ const AdminSMTPSettingsScreen = ({ navigation }) => {
   const testSMTPConnection = async () => {
     try {
       if (!testEmail) {
-        Alert.alert('Error', 'Masukkan email tujuan untuk test');
+        showAlert({
+          type: 'warning',
+          title: 'Peringatan',
+          message: 'Masukkan email tujuan untuk test'
+        });
         return;
       }
 
@@ -96,13 +119,25 @@ const AdminSMTPSettingsScreen = ({ navigation }) => {
       const result = await SMTPService.testSMTPConnection(smtpConfig, testEmail);
 
       if (result.success) {
-        Alert.alert('Berhasil', 'Test email berhasil dikirim! Silakan cek inbox email tujuan.');
+        showAlert({
+          type: 'success',
+          title: 'Berhasil',
+          message: 'Test email berhasil dikirim! Silakan cek inbox email tujuan.'
+        });
       } else {
-        Alert.alert('Error', result.message || 'Gagal mengirim test email');
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: result.message || 'Gagal mengirim test email'
+        });
       }
     } catch (error) {
       console.error('Error testing SMTP:', error);
-      Alert.alert('Error', 'Gagal melakukan test SMTP');
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: 'Gagal melakukan test SMTP'
+      });
     } finally {
       setTestingEmail(false);
     }
@@ -119,13 +154,25 @@ const AdminSMTPSettingsScreen = ({ navigation }) => {
       const result = await EmailReportService.sendTestReport(testEmail);
 
       if (result.success) {
-        Alert.alert('Berhasil', 'Test laporan harian berhasil dikirim! Silakan cek inbox email tujuan.');
+        showAlert({
+          type: 'success',
+          title: 'Berhasil',
+          message: 'Test laporan harian berhasil dikirim! Silakan cek inbox email tujuan.'
+        });
       } else {
-        Alert.alert('Error', result.message || 'Gagal mengirim test laporan');
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: result.message || 'Gagal mengirim test laporan'
+        });
       }
     } catch (error) {
       console.error('Error testing daily report:', error);
-      Alert.alert('Error', 'Gagal melakukan test laporan harian');
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: 'Gagal melakukan test laporan harian'
+      });
     } finally {
       setTestingReport(false);
     }
@@ -392,6 +439,9 @@ const AdminSMTPSettingsScreen = ({ navigation }) => {
           )}
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Modern Alert Component */}
+      <AlertComponent />
     </View>
   );
 };

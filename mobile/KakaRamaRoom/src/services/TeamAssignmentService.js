@@ -142,20 +142,41 @@ class TeamAssignmentService {
    * @returns {Object} Filtered query
    */
   filterByApartmentAssignment(query, apartmentColumn = 'apartment_id') {
-    const apartmentIds = this.getCurrentUserApartmentIds();
-    
-    // Admin bisa akses semua
-    if (apartmentIds === null) {
-      return query;
-    }
+    try {
+      const apartmentIds = this.getCurrentUserApartmentIds();
+      console.log('TeamAssignmentService: Filtering by apartment IDs:', apartmentIds);
 
-    // Tim lapangan hanya apartemen yang di-assign
-    if (apartmentIds.length > 0) {
-      return query.in(apartmentColumn, apartmentIds);
-    }
+      // Admin bisa akses semua
+      if (apartmentIds === null) {
+        return query;
+      }
 
-    // Jika tidak ada assignment, return query yang tidak akan return data
-    return query.eq(apartmentColumn, -1);
+      // Tim lapangan hanya apartemen yang di-assign
+      if (apartmentIds && apartmentIds.length > 0) {
+        // Validate all UUIDs before using them in query
+        const validUUIDs = apartmentIds.filter(id => this.isValidUUID(id));
+
+        if (validUUIDs.length === 0) {
+          console.warn('TeamAssignmentService: No valid UUIDs found in apartment assignments');
+          // Return query that will return empty results using valid UUID
+          return query.eq(apartmentColumn, '00000000-0000-0000-0000-000000000000');
+        }
+
+        if (validUUIDs.length !== apartmentIds.length) {
+          console.warn('TeamAssignmentService: Some invalid UUIDs filtered out:',
+            apartmentIds.filter(id => !this.isValidUUID(id)));
+        }
+
+        return query.in(apartmentColumn, validUUIDs);
+      }
+
+      // Jika tidak ada assignment, return query yang tidak akan return data
+      return query.eq(apartmentColumn, '00000000-0000-0000-0000-000000000000');
+    } catch (error) {
+      console.error('TeamAssignmentService: Error in filterByApartmentAssignment:', error);
+      // Return query with impossible condition to avoid errors
+      return query.eq(apartmentColumn, '00000000-0000-0000-0000-000000000000');
+    }
   }
 
   /**
@@ -165,7 +186,7 @@ class TeamAssignmentService {
    */
   canAccessApartment(apartmentId) {
     const apartmentIds = this.getCurrentUserApartmentIds();
-    
+
     // Admin bisa akses semua
     if (apartmentIds === null) {
       return true;
@@ -173,6 +194,28 @@ class TeamAssignmentService {
 
     // Tim lapangan cek assignment
     return apartmentIds.includes(apartmentId);
+  }
+
+  /**
+   * Check apakah user bisa akses apartemen tertentu dengan async fallback
+   * @param {string} apartmentId - ID apartemen
+   * @returns {Promise<boolean>}
+   */
+  async canAccessApartmentAsync(apartmentId) {
+    try {
+      const apartmentIds = await this.getCurrentUserApartmentIdsAsync();
+
+      // Admin bisa akses semua
+      if (apartmentIds === null) {
+        return true;
+      }
+
+      // Tim lapangan cek assignment
+      return apartmentIds.includes(apartmentId);
+    } catch (error) {
+      console.error('TeamAssignmentService: Error in canAccessApartmentAsync:', error);
+      return false; // Default to no access on error
+    }
   }
 
   /**
@@ -257,6 +300,17 @@ class TeamAssignmentService {
   }
 
   /**
+   * Validate UUID format
+   * @param {string} uuid - UUID to validate
+   * @returns {boolean}
+   */
+  isValidUUID(uuid) {
+    if (!uuid || typeof uuid !== 'string') return false;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(uuid);
+  }
+
+  /**
    * Get units yang bisa diakses user saat ini
    * @param {string} apartmentId - Optional filter by apartment
    * @returns {Promise<Object>}
@@ -280,12 +334,27 @@ class TeamAssignmentService {
       if (apartmentId) {
         console.log('TeamAssignmentService: Filtering by specific apartment:', apartmentId);
 
-        // Check access first
-        if (!this.canAccessApartment(apartmentId)) {
-          console.warn('TeamAssignmentService: No access to apartment:', apartmentId);
+        // Validate UUID format first
+        if (!this.isValidUUID(apartmentId)) {
+          console.error('TeamAssignmentService: Invalid UUID format for apartmentId:', apartmentId);
           return {
             success: false,
-            message: 'Tidak memiliki akses ke apartemen ini',
+            message: 'Format ID apartemen tidak valid',
+          };
+        }
+
+        // Check access first with async fallback
+        const hasAccess = await this.canAccessApartmentAsync(apartmentId);
+        if (!hasAccess) {
+          console.warn('TeamAssignmentService: No access to apartment:', apartmentId);
+
+          // Get user's accessible apartments for better error message
+          const userApartmentIds = await this.getCurrentUserApartmentIdsAsync();
+          const accessibleApartments = Array.isArray(userApartmentIds) ? userApartmentIds.join(', ') : 'Belum ada assignment';
+
+          return {
+            success: false,
+            message: `Tidak memiliki akses ke apartemen ini. Tim lapangan hanya dapat mengakses apartemen yang telah ditugaskan. Apartemen yang dapat diakses: ${accessibleApartments}`,
           };
         }
         query = query.eq('apartment_id', apartmentId);
@@ -306,6 +375,15 @@ class TeamAssignmentService {
 
       if (error) {
         console.error('TeamAssignmentService: Supabase query error:', error);
+
+        // Handle specific UUID error
+        if (error.message && error.message.includes('invalid input syntax for type uuid')) {
+          return {
+            success: false,
+            message: 'Format ID apartemen tidak valid. Silakan coba lagi atau hubungi administrator.',
+          };
+        }
+
         throw error;
       }
 
@@ -317,9 +395,20 @@ class TeamAssignmentService {
       };
     } catch (error) {
       console.error('TeamAssignmentService: Critical error in getAccessibleUnits:', error);
+
+      // Handle specific error types
+      let errorMessage = 'Gagal mengambil data unit';
+      if (error.message && error.message.includes('invalid input syntax for type uuid')) {
+        errorMessage = 'Format ID apartemen tidak valid';
+      } else if (error.message && error.message.includes('timeout')) {
+        errorMessage = 'Koneksi timeout. Silakan coba lagi';
+      } else if (error.message) {
+        errorMessage += ': ' + error.message;
+      }
+
       return {
         success: false,
-        message: 'Gagal mengambil data unit: ' + (error.message || 'Unknown error'),
+        message: errorMessage,
       };
     }
   }
