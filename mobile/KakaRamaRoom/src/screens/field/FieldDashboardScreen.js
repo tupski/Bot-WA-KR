@@ -52,16 +52,26 @@ const FieldDashboardScreen = ({ navigation }) => {
    */
   const loadActiveCheckins = async () => {
     try {
-      if (!currentUser) return;
+      if (!currentUser) {
+        console.log('FieldDashboardScreen: No current user, skipping load active checkins');
+        return;
+      }
 
+      console.log('FieldDashboardScreen: Loading active checkins for user:', currentUser.id);
       const result = await CheckinService.getActiveCheckins(currentUser.id);
+
+      console.log('FieldDashboardScreen: Active checkins result:', result);
+
       if (result.success) {
+        console.log('FieldDashboardScreen: Found active checkins:', result.data.length);
         setActiveCheckins(result.data);
       } else {
-        console.error('Load active checkins error:', result.message);
+        console.error('FieldDashboardScreen: Load active checkins error:', result.message);
+        setActiveCheckins([]); // Set empty array on error
       }
     } catch (error) {
-      console.error('Load active checkins error:', error);
+      console.error('FieldDashboardScreen: Load active checkins error:', error);
+      setActiveCheckins([]); // Set empty array on error
     } finally {
       setLoading(false);
     }

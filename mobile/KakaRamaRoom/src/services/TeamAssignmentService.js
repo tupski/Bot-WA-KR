@@ -250,6 +250,10 @@ class TeamAssignmentService {
         query = query.eq('team_id', filters.teamId);
       }
 
+      if (filters.createdBy) {
+        query = query.eq('created_by', filters.createdBy);
+      }
+
       const { data: checkins, error } = await query;
 
       if (error) {

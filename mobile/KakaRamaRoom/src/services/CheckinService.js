@@ -348,9 +348,10 @@ class CheckinService {
       console.log('CheckinService: Getting active checkins for team:', teamId);
 
       // Use TeamAssignmentService untuk filtering
+      // Note: teamId might be userId, so we filter by created_by instead
       const result = await TeamAssignmentService.getAccessibleCheckins({
         status: ['active', 'extended'],
-        teamId: teamId,
+        createdBy: teamId, // Use createdBy instead of teamId
       });
 
       if (!result.success) {
