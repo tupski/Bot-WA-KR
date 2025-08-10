@@ -7,6 +7,7 @@ import {
   Switch,
   Alert,
   StyleSheet,
+  Linking,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -150,6 +151,52 @@ const AppSettingsScreen = ({ navigation }) => {
       featuresText,
       [{ text: 'OK' }]
     );
+  };
+
+  const handleHelp = () => {
+    Alert.alert(
+      'Bantuan & Kontak Admin',
+      'Pilih kontak admin untuk bantuan:',
+      [
+        {
+          text: 'Admin KR 1',
+          onPress: () => openWhatsApp('081383138882', 'Admin KR 1'),
+        },
+        {
+          text: 'Admin KR 2',
+          onPress: () => openWhatsApp('089613413636', 'Admin KR 2'),
+        },
+        {
+          text: 'Batal',
+          style: 'cancel',
+        },
+      ]
+    );
+  };
+
+  const openWhatsApp = async (phoneNumber, adminName) => {
+    try {
+      const message = encodeURIComponent(`Halo ${adminName}, saya membutuhkan bantuan terkait aplikasi KakaRama Room.`);
+      const whatsappUrl = `whatsapp://send?phone=${phoneNumber}&text=${message}`;
+      const webUrl = `https://wa.me/${phoneNumber}?text=${message}`;
+
+      // Try to open WhatsApp app first
+      const canOpenWhatsApp = await Linking.canOpenURL(whatsappUrl);
+
+      if (canOpenWhatsApp) {
+        await Linking.openURL(whatsappUrl);
+      } else {
+        // Fallback to web WhatsApp
+        await Linking.openURL(webUrl);
+      }
+    } catch (error) {
+      console.error('Error opening WhatsApp:', error);
+      Alert.alert(
+        'Error',
+        'Tidak dapat membuka WhatsApp. Pastikan WhatsApp terinstall atau coba hubungi admin melalui cara lain.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   const showAbout = () => {
@@ -403,8 +450,8 @@ const AppSettingsScreen = ({ navigation }) => {
           <SettingItem
             icon="help"
             title="Bantuan"
-            subtitle="Panduan penggunaan aplikasi"
-            onPress={() => Alert.alert('Bantuan', 'Fitur bantuan akan segera tersedia')}
+            subtitle="Kontak admin dan panduan aplikasi"
+            onPress={handleHelp}
             showChevron={true}
           />
         </View>
