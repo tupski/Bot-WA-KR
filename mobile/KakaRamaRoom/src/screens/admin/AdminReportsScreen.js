@@ -14,6 +14,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { COLORS, SIZES } from '../../config/constants';
 import ReportService from '../../services/ReportService';
 import ApartmentService from '../../services/ApartmentService';
+import BusinessDayService from '../../services/BusinessDayService';
 
 /**
  * Screen dashboard laporan untuk admin
@@ -43,10 +44,29 @@ const AdminReportsScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [apartmentModalVisible, setApartmentModalVisible] = useState(false);
 
+  // State untuk current date/time
+  const [currentDateTime, setCurrentDateTime] = useState(new Date());
+  const [businessDate, setBusinessDate] = useState('');
+
   // Load data saat komponen dimount
   useEffect(() => {
     loadInitialData();
+    updateDateTime();
+
+    // Update time setiap menit
+    const interval = setInterval(updateDateTime, 60000);
+    return () => clearInterval(interval);
   }, []);
+
+  // Update current date/time dan business date
+  const updateDateTime = () => {
+    const now = new Date();
+    setCurrentDateTime(now);
+
+    const businessDateString = BusinessDayService.getBusinessDate(now);
+    const businessDayRange = BusinessDayService.getCurrentBusinessDayRange();
+    setBusinessDate(businessDayRange.businessDate);
+  };
 
   // Reload data saat filter berubah
   useEffect(() => {
@@ -77,15 +97,26 @@ const AdminReportsScreen = () => {
   };
 
   /**
-   * Load data laporan berdasarkan filter
+   * Load data laporan berdasarkan filter dengan business day logic
    */
   const loadReportData = async () => {
     try {
-      const filters = {
+      // Jika tidak ada filter tanggal, gunakan business day range
+      let filters = {
         apartmentId: selectedApartment?.id,
         startDate: dateRange.startDate,
         endDate: dateRange.endDate,
       };
+
+      // Jika tidak ada filter tanggal, gunakan current business day
+      if (!filters.startDate && !filters.endDate) {
+        const businessDayRange = BusinessDayService.getCurrentBusinessDayRange();
+        filters.startDate = businessDayRange.start;
+        filters.endDate = businessDayRange.end;
+        filters.useBusinessDay = true;
+      }
+
+      console.log('AdminReportsScreen: Loading report data with filters:', filters);
 
       // Load summary statistics
       const summaryResult = await ReportService.getSummaryStatistics(filters);
@@ -179,6 +210,37 @@ const AdminReportsScreen = () => {
         >
           <Icon name="filter-list" size={24} color={COLORS.primary} />
         </TouchableOpacity>
+      </View>
+
+      {/* Date Time Info */}
+      <View style={styles.dateTimeContainer}>
+        <View style={styles.dateTimeCard}>
+          <Icon name="today" size={20} color={COLORS.primary} />
+          <View style={styles.dateTimeInfo}>
+            <Text style={styles.currentDateTime}>
+              {currentDateTime.toLocaleDateString('id-ID', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })}
+            </Text>
+            <Text style={styles.currentTime}>
+              {currentDateTime.toLocaleTimeString('id-ID', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+              })} WIB
+            </Text>
+          </View>
+        </View>
+        <View style={styles.businessDateCard}>
+          <Icon name="business" size={20} color={COLORS.secondary} />
+          <View style={styles.dateTimeInfo}>
+            <Text style={styles.businessDateLabel}>Business Day</Text>
+            <Text style={styles.businessDateText}>{businessDate}</Text>
+          </View>
+        </View>
       </View>
 
       {/* Filter Info */}
@@ -525,6 +587,58 @@ const styles = StyleSheet.create({
     fontSize: SIZES.caption,
     color: COLORS.primary,
     fontWeight: '500',
+  },
+  dateTimeContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: SIZES.lg,
+    paddingBottom: SIZES.md,
+    gap: SIZES.sm,
+  },
+  dateTimeCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    padding: SIZES.md,
+    borderRadius: SIZES.sm,
+    borderWidth: 1,
+    borderColor: COLORS.gray200,
+    gap: SIZES.sm,
+  },
+  businessDateCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.secondary + '10',
+    padding: SIZES.md,
+    borderRadius: SIZES.sm,
+    borderWidth: 1,
+    borderColor: COLORS.secondary + '30',
+    gap: SIZES.sm,
+  },
+  dateTimeInfo: {
+    flex: 1,
+  },
+  currentDateTime: {
+    fontSize: SIZES.caption,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  currentTime: {
+    fontSize: SIZES.caption,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  businessDateLabel: {
+    fontSize: SIZES.caption,
+    color: COLORS.secondary,
+    fontWeight: '500',
+  },
+  businessDateText: {
+    fontSize: SIZES.caption,
+    color: COLORS.secondary,
+    fontWeight: '600',
+    marginTop: 2,
   },
   emptyState: {
     alignItems: 'center',
