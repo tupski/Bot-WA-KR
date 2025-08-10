@@ -12,6 +12,9 @@ class UnitService {
   // Get all units
   async getAllUnits() {
     try {
+      console.log('UnitService: Getting all units');
+
+      // Get all units with apartment info (simplified query)
       const { data: units, error } = await supabase
         .from('units')
         .select(`
@@ -19,71 +22,51 @@ class UnitService {
           apartments (
             name,
             code
-          ),
-          checkins!inner (
-            id,
-            checkout_time,
-            is_manual_checkin,
-            status
           )
         `)
-        .eq('checkins.status', 'active')
         .order('unit_number', { ascending: true });
 
       if (error) {
+        console.error('UnitService: Error getting units:', error);
         if (error.code === 'PGRST116') {
           return { success: true, data: [] };
         }
         throw error;
       }
 
-      // Get units without active checkins
-      const { data: unitsWithoutCheckins, error: unitsError } = await supabase
-        .from('units')
-        .select(`
-          *,
-          apartments (
-            name,
-            code
-          )
-        `)
-        .not('id', 'in', `(${units?.map(u => u.id).join(',') || '0'})`)
-        .order('unit_number', { ascending: true });
-
-      if (unitsError && unitsError.code !== 'PGRST116') {
-        console.error('Error getting units without checkins:', unitsError);
-      }
-
-      // Combine both results
-      const allUnits = [
-        ...(units || []),
-        ...(unitsWithoutCheckins || [])
-      ];
+      console.log(`UnitService: Retrieved ${units?.length || 0} units`);
 
       // Transform data to match expected format
-      const transformedUnits = allUnits.map(unit => {
-        const activeCheckin = Array.isArray(unit.checkins) ? unit.checkins[0] : unit.checkins;
-
-        return {
-          ...unit,
-          apartment_name: unit.apartments?.name,
-          apartment_code: unit.apartments?.code,
-          checkout_time: activeCheckin?.checkout_time,
-          is_manual_checkin: activeCheckin?.is_manual_checkin,
-          checkins: undefined, // Remove checkins array from final result
-          apartments: undefined, // Remove apartments object from final result
-        };
+      const transformedUnits = (units || []).map(unit => {
+        try {
+          return {
+            ...unit,
+            apartment_name: unit.apartments?.name || 'N/A',
+            apartment_code: unit.apartments?.code || 'N/A',
+            apartments: undefined, // Remove apartments object from final result
+          };
+        } catch (transformError) {
+          console.warn('UnitService: Error transforming unit:', unit, transformError);
+          return {
+            ...unit,
+            apartment_name: 'N/A',
+            apartment_code: 'N/A',
+            apartments: undefined,
+          };
+        }
       });
+
+      console.log(`UnitService: Transformed ${transformedUnits.length} units`);
 
       return {
         success: true,
         data: transformedUnits,
       };
     } catch (error) {
-      console.error('Error getting all units:', error);
+      console.error('UnitService: Error getting all units:', error);
       return {
         success: false,
-        message: 'Gagal mengambil data unit',
+        message: `Gagal mengambil data unit: ${error.message || 'Unknown error'}`,
       };
     }
   }

@@ -716,9 +716,28 @@ const AdminUnitsScreen = () => {
 
       {/* Unit List */}
       <FlatList
-        data={filteredUnits}
-        renderItem={renderUnitItem}
-        keyExtractor={(item) => item.id.toString()}
+        data={filteredUnits || []}
+        renderItem={({ item }) => {
+          try {
+            // Validate item data
+            if (!item || !item.id) {
+              console.warn('AdminUnitsScreen: Invalid unit item:', item);
+              return null;
+            }
+            return renderUnitItem({ item });
+          } catch (error) {
+            console.error('AdminUnitsScreen: Error rendering unit item:', error);
+            return null;
+          }
+        }}
+        keyExtractor={(item, index) => {
+          try {
+            return item?.id ? item.id.toString() : `unit-${index}`;
+          } catch (error) {
+            console.warn('AdminUnitsScreen: Error generating key for unit:', error);
+            return `unit-fallback-${index}`;
+          }
+        }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -735,6 +754,9 @@ const AdminUnitsScreen = () => {
             </Text>
           </View>
         }
+        onError={(error) => {
+          console.error('AdminUnitsScreen: FlatList error:', error);
+        }}
       />
 
       {/* Add/Edit Modal */}
