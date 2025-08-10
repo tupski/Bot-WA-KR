@@ -66,13 +66,13 @@ class Scheduler {
                         logger.error('Gagal mengirim laporan Excel harian via email');
                     }
 
-                    // Send apartment-specific reports with Excel attachment to each group
-                    const whatsappSent = await this.bot.sendDailyReportsWithAttachment(excelPath);
+                    // Send apartment-specific reports (text only) to each group
+                    const whatsappSent = await this.bot.sendDailyReportsToGroups();
 
                     if (whatsappSent) {
-                        logger.info('Laporan harian dengan attachment berhasil dikirim ke semua grup WhatsApp yang enabled');
+                        logger.info('Laporan harian teks berhasil dikirim ke semua grup WhatsApp yang enabled');
                     } else {
-                        logger.error('Gagal mengirim laporan harian dengan attachment ke grup WhatsApp');
+                        logger.error('Gagal mengirim laporan harian teks ke grup WhatsApp');
                     }
 
                     // Send daily reports with Excel attachment to owner numbers

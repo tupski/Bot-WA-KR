@@ -625,13 +625,13 @@ async function handleCommand(message, apartmentName) {
                         logger.error('Gagal mengirim ulang laporan Excel kemarin via email');
                     }
 
-                    // Send apartment-specific reports with Excel attachment to each group
-                    const whatsappSent = await bot.sendDailyReportsWithAttachment(excelPath);
+                    // Send apartment-specific reports (text only) to each group
+                    const whatsappSent = await bot.sendDailyReportsToGroups();
 
                     if (whatsappSent) {
-                        logger.info('Laporan kemarin dengan attachment berhasil dikirim ulang ke semua grup WhatsApp yang enabled');
+                        logger.info('Laporan kemarin teks berhasil dikirim ulang ke semua grup WhatsApp yang enabled');
                     } else {
-                        logger.error('Gagal mengirim ulang laporan kemarin dengan attachment ke grup WhatsApp');
+                        logger.error('Gagal mengirim ulang laporan kemarin teks ke grup WhatsApp');
                     }
 
                     // Send daily reports with Excel attachment to owner numbers
