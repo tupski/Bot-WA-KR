@@ -87,16 +87,37 @@ const AdminReportsScreen = () => {
    */
   const loadInitialData = async () => {
     try {
-      // Load apartemen untuk filter
-      const apartmentResult = await ApartmentService.getAllApartments();
-      if (apartmentResult.success) {
-        setApartments(apartmentResult.data);
+      console.log('AdminReportsScreen: Starting loadInitialData');
+      setLoading(true);
+
+      // Load apartemen untuk filter dengan error handling
+      try {
+        console.log('AdminReportsScreen: Loading apartments');
+        const apartmentResult = await ApartmentService.getAllApartments();
+        if (apartmentResult && apartmentResult.success) {
+          setApartments(apartmentResult.data || []);
+          console.log('AdminReportsScreen: Loaded apartments:', apartmentResult.data?.length || 0);
+        } else {
+          console.warn('AdminReportsScreen: Failed to load apartments:', apartmentResult);
+          setApartments([]);
+        }
+      } catch (apartmentError) {
+        console.error('AdminReportsScreen: Apartment loading error:', apartmentError);
+        setApartments([]);
       }
 
-      // Load data laporan
-      await loadReportData();
+      // Load data laporan dengan error handling
+      try {
+        console.log('AdminReportsScreen: Loading report data');
+        await loadReportData();
+      } catch (reportError) {
+        console.error('AdminReportsScreen: Report data loading error:', reportError);
+        Alert.alert('Error', 'Gagal memuat data laporan');
+      }
+
+      console.log('AdminReportsScreen: Finished loadInitialData');
     } catch (error) {
-      console.error('Load initial data error:', error);
+      console.error('AdminReportsScreen: Critical error in loadInitialData:', error);
       Alert.alert('Error', 'Gagal memuat data awal');
     } finally {
       setLoading(false);
@@ -108,6 +129,8 @@ const AdminReportsScreen = () => {
    */
   const loadReportData = async () => {
     try {
+      console.log('AdminReportsScreen: Starting loadReportData');
+
       // Jika tidak ada filter tanggal, gunakan business day range
       let filters = {
         apartmentIds: selectedApartments.length > 0 ? selectedApartments.map(apt => apt.id) : null,
@@ -117,42 +140,109 @@ const AdminReportsScreen = () => {
 
       // Jika tidak ada filter tanggal, gunakan current business day
       if (!filters.startDate && !filters.endDate) {
-        const businessDayRange = BusinessDayService.getCurrentBusinessDayRange();
-        filters.startDate = businessDayRange.start;
-        filters.endDate = businessDayRange.end;
-        filters.useBusinessDay = true;
+        try {
+          const businessDayRange = BusinessDayService.getCurrentBusinessDayRange();
+          filters.startDate = businessDayRange.start;
+          filters.endDate = businessDayRange.end;
+          filters.useBusinessDay = true;
+        } catch (businessDayError) {
+          console.error('AdminReportsScreen: BusinessDayService error:', businessDayError);
+          // Fallback to today
+          const today = new Date();
+          filters.startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+          filters.endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+        }
       }
 
       console.log('AdminReportsScreen: Loading report data with filters:', filters);
 
-      // Load summary statistics
-      const summaryResult = await ReportService.getSummaryStatistics(filters);
-      if (summaryResult.success) {
-        setSummaryStats(summaryResult.data);
+      // Load summary statistics with error handling
+      try {
+        console.log('AdminReportsScreen: Loading summary statistics');
+        const summaryResult = await ReportService.getSummaryStatistics(filters);
+        if (summaryResult && summaryResult.success) {
+          setSummaryStats(summaryResult.data);
+        } else {
+          console.warn('AdminReportsScreen: Summary statistics failed:', summaryResult);
+          setSummaryStats({
+            totalCheckins: 0,
+            todayCheckins: 0,
+            activeCheckins: 0,
+            totalRevenue: 0,
+          });
+        }
+      } catch (summaryError) {
+        console.error('AdminReportsScreen: Summary statistics error:', summaryError);
+        setSummaryStats({
+          totalCheckins: 0,
+          todayCheckins: 0,
+          activeCheckins: 0,
+          totalRevenue: 0,
+        });
       }
 
-      // Load apartment statistics
-      const apartmentResult = await ReportService.getApartmentStatistics(filters);
-      if (apartmentResult.success) {
-        setApartmentStats(apartmentResult.data);
+      // Load apartment statistics with error handling
+      try {
+        console.log('AdminReportsScreen: Loading apartment statistics');
+        const apartmentResult = await ReportService.getApartmentStatistics(filters);
+        if (apartmentResult && apartmentResult.success) {
+          setApartmentStats(apartmentResult.data || []);
+        } else {
+          console.warn('AdminReportsScreen: Apartment statistics failed:', apartmentResult);
+          setApartmentStats([]);
+        }
+      } catch (apartmentError) {
+        console.error('AdminReportsScreen: Apartment statistics error:', apartmentError);
+        setApartmentStats([]);
       }
 
-      // Load top marketing
-      const marketingResult = await ReportService.getTopMarketing({
-        ...filters,
-        limit: 10,
-      });
-      if (marketingResult.success) {
-        setTopMarketing(marketingResult.data);
+      // Load top marketing with error handling
+      try {
+        console.log('AdminReportsScreen: Loading top marketing');
+        const marketingResult = await ReportService.getTopMarketing({
+          ...filters,
+          limit: 10,
+        });
+        if (marketingResult && marketingResult.success) {
+          setTopMarketing(marketingResult.data || []);
+        } else {
+          console.warn('AdminReportsScreen: Top marketing failed:', marketingResult);
+          setTopMarketing([]);
+        }
+      } catch (marketingError) {
+        console.error('AdminReportsScreen: Top marketing error:', marketingError);
+        setTopMarketing([]);
       }
 
       // Load daily stats dengan business day logic
-      const dailyStatsResult = await ReportService.getDailyStatistics(filters);
-      if (dailyStatsResult.success) {
-        setDailyStats(dailyStatsResult.data);
+      try {
+        console.log('AdminReportsScreen: Loading daily statistics');
+        const dailyStatsResult = await ReportService.getDailyStatistics(filters);
+        if (dailyStatsResult && dailyStatsResult.success) {
+          setDailyStats(dailyStatsResult.data);
+        } else {
+          console.warn('AdminReportsScreen: Daily statistics failed:', dailyStatsResult);
+          setDailyStats({
+            activeCheckins: 0,
+            totalCheckins: 0,
+            cashTransactions: 0,
+            transferTransactions: 0,
+          });
+        }
+      } catch (dailyError) {
+        console.error('AdminReportsScreen: Daily statistics error:', dailyError);
+        setDailyStats({
+          activeCheckins: 0,
+          totalCheckins: 0,
+          cashTransactions: 0,
+          transferTransactions: 0,
+        });
       }
+
+      console.log('AdminReportsScreen: Finished loadReportData successfully');
     } catch (error) {
-      console.error('Load report data error:', error);
+      console.error('AdminReportsScreen: Critical error in loadReportData:', error);
+      Alert.alert('Error', 'Terjadi kesalahan saat memuat data laporan');
     }
   };
 
