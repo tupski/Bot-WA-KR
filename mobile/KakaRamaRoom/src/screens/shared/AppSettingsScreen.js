@@ -174,19 +174,49 @@ const AppSettingsScreen = ({ navigation }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              const result = await AuthService.logout();
-              if (result.success) {
-                // Reset navigation stack to login screen
+              console.log('AppSettingsScreen: Starting logout process');
+
+              // Show loading state
+              setLoading(true);
+
+              // Perform logout with timeout
+              const logoutPromise = AuthService.logout();
+              const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Logout timeout')), 10000)
+              );
+
+              const result = await Promise.race([logoutPromise, timeoutPromise]);
+
+              console.log('AppSettingsScreen: Logout result:', result);
+
+              if (result && result.success) {
+                console.log('AppSettingsScreen: Logout successful, navigating to login');
+
+                // Small delay to prevent flicker
+                setTimeout(() => {
+                  // Reset navigation stack to login screen
+                  navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Login' }],
+                  });
+                }, 100);
+              } else {
+                console.error('AppSettingsScreen: Logout failed:', result);
+                Alert.alert('Error', 'Gagal logout. Silakan coba lagi.');
+              }
+            } catch (error) {
+              console.error('AppSettingsScreen: Logout error:', error);
+
+              // Force logout even if there's an error
+              console.log('AppSettingsScreen: Force logout due to error');
+              setTimeout(() => {
                 navigation.reset({
                   index: 0,
                   routes: [{ name: 'Login' }],
                 });
-              } else {
-                Alert.alert('Error', 'Gagal logout. Silakan coba lagi.');
-              }
-            } catch (error) {
-              console.error('Logout error:', error);
-              Alert.alert('Error', 'Terjadi kesalahan saat logout.');
+              }, 100);
+            } finally {
+              setLoading(false);
             }
           },
         },

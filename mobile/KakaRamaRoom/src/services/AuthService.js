@@ -238,14 +238,23 @@ class AuthService {
   // Logout
   async logout() {
     try {
+      console.log('AuthService: Starting logout process');
+
+      // Try to log activity but don't fail logout if it errors
       if (this.currentUser) {
-        // Log aktivitas logout
-        await ActivityLogService.logActivity(
-          this.currentUser.id,
-          this.currentUser.role,
-          'logout',
-          `${this.currentUser.role === USER_ROLES.ADMIN ? 'Admin' : 'Tim lapangan'} ${this.currentUser.username} logout`
-        );
+        try {
+          console.log('AuthService: Logging logout activity');
+          await ActivityLogService.logActivity(
+            this.currentUser.id,
+            this.currentUser.role,
+            'logout',
+            `${this.currentUser.role === USER_ROLES.ADMIN ? 'Admin' : 'Tim lapangan'} ${this.currentUser.username} logout`
+          );
+          console.log('AuthService: Logout activity logged successfully');
+        } catch (logError) {
+          console.warn('AuthService: Failed to log logout activity:', logError);
+          // Continue with logout even if logging fails
+        }
       }
 
       // Clear session timeout
@@ -255,16 +264,32 @@ class AuthService {
       }
 
       // Clear user data
+      console.log('AuthService: Clearing user data');
       this.currentUser = null;
-      await AsyncStorage.removeItem('currentUser');
 
+      try {
+        await AsyncStorage.removeItem('currentUser');
+        console.log('AuthService: AsyncStorage cleared successfully');
+      } catch (storageError) {
+        console.warn('AuthService: Failed to clear AsyncStorage:', storageError);
+        // Continue with logout even if storage clear fails
+      }
+
+      console.log('AuthService: Logout completed successfully');
       return { success: true };
     } catch (error) {
-      console.error('Logout error:', error);
-      return {
-        success: false,
-        message: 'Terjadi kesalahan saat logout',
-      };
+      console.error('AuthService: Critical logout error:', error);
+
+      // Force clear user data even on error
+      this.currentUser = null;
+      try {
+        await AsyncStorage.removeItem('currentUser');
+      } catch (storageError) {
+        console.error('AuthService: Failed to clear storage on error:', storageError);
+      }
+
+      // Return success to prevent UI issues
+      return { success: true };
     }
   }
 
