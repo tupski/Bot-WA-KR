@@ -467,81 +467,76 @@ const FieldCheckinScreen = ({ navigation }) => {
   const validateForm = () => {
     console.log('FieldCheckinScreen: Validating form data:', formData);
 
+    const missingFields = [];
+    const invalidFields = [];
+
     // Validasi apartemen
     if (!formData.apartmentId || formData.apartmentId.trim() === '') {
-      showAlert({
-        type: 'warning',
-        title: 'Data Tidak Lengkap',
-        message: 'Pilih apartemen terlebih dahulu',
-      });
-      return false;
+      missingFields.push('Apartemen');
     }
 
     // Validasi unit
     if (!formData.unitId || formData.unitId.trim() === '') {
-      showAlert({
-        type: 'warning',
-        title: 'Data Tidak Lengkap',
-        message: 'Pilih unit terlebih dahulu',
-      });
-      return false;
+      missingFields.push('Unit');
     }
 
     // Validasi durasi
-    const durationHours = parseInt(formData.durationHours);
-    if (!formData.durationHours || isNaN(durationHours) || durationHours <= 0) {
-      showAlert({
-        type: 'warning',
-        title: 'Data Tidak Valid',
-        message: 'Masukkan durasi yang valid (minimal 1 jam)',
-      });
-      return false;
+    if (!formData.durationHours || formData.durationHours.trim() === '') {
+      missingFields.push('Durasi');
+    } else {
+      const durationHours = parseInt(formData.durationHours);
+      if (isNaN(durationHours) || durationHours <= 0) {
+        invalidFields.push('Durasi (minimal 1 jam)');
+      }
     }
 
     // Validasi metode pembayaran
     if (!formData.paymentMethod || formData.paymentMethod.trim() === '') {
-      showAlert({
-        type: 'warning',
-        title: 'Data Tidak Lengkap',
-        message: 'Pilih metode pembayaran',
-      });
-      return false;
+      missingFields.push('Metode Pembayaran');
     }
 
     // Validasi jumlah pembayaran
-    const paymentAmount = parseFloat(formData.paymentAmount);
-    if (!formData.paymentAmount || isNaN(paymentAmount) || paymentAmount <= 0) {
-      showAlert({
-        type: 'warning',
-        title: 'Data Tidak Valid',
-        message: 'Masukkan jumlah pembayaran yang valid (minimal Rp 1)',
-      });
-      return false;
+    if (!formData.paymentAmount || formData.paymentAmount.trim() === '') {
+      missingFields.push('Jumlah Pembayaran');
+    } else {
+      const paymentAmount = parseFloat(formData.paymentAmount);
+      if (isNaN(paymentAmount) || paymentAmount <= 0) {
+        invalidFields.push('Jumlah Pembayaran (minimal Rp 1)');
+      }
     }
 
     // Validasi komisi marketing (jika ada)
     if (formData.marketingCommission && formData.marketingCommission.trim() !== '') {
       const commission = parseFloat(formData.marketingCommission);
       if (isNaN(commission) || commission < 0) {
-        showAlert({
-          type: 'warning',
-          title: 'Data Tidak Valid',
-          message: 'Komisi marketing harus berupa angka yang valid (minimal 0)',
-        });
-        return false;
+        invalidFields.push('Komisi Marketing (harus angka valid)');
       }
     }
 
     // Validasi nama marketing (jika ada komisi)
     if (formData.marketingCommission && parseFloat(formData.marketingCommission) > 0) {
       if (!formData.marketingName || formData.marketingName.trim() === '') {
-        showAlert({
-          type: 'warning',
-          title: 'Data Tidak Lengkap',
-          message: 'Nama marketing harus diisi jika ada komisi',
-        });
-        return false;
+        missingFields.push('Nama Marketing (karena ada komisi)');
       }
+    }
+
+    // Tampilkan pesan error yang detail
+    if (missingFields.length > 0) {
+      showAlert({
+        type: 'warning',
+        title: 'Data Tidak Lengkap',
+        message: `Field yang harus diisi:\n• ${missingFields.join('\n• ')}`,
+      });
+      return false;
+    }
+
+    if (invalidFields.length > 0) {
+      showAlert({
+        type: 'warning',
+        title: 'Data Tidak Valid',
+        message: `Field yang tidak valid:\n• ${invalidFields.join('\n• ')}`,
+      });
+      return false;
     }
 
     console.log('FieldCheckinScreen: Form validation passed');

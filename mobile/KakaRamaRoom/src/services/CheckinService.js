@@ -45,11 +45,48 @@ class CheckinService {
         createdBy,
       } = checkinData;
 
-      // Validate required fields
-      if (!apartmentId || !unitId || !durationHours || !paymentAmount) {
+      // Validate required fields with detailed messages
+      const missingFields = [];
+
+      if (!apartmentId) missingFields.push('Apartemen');
+      if (!unitId) missingFields.push('Unit');
+      if (!durationHours) missingFields.push('Durasi');
+      if (!paymentAmount) missingFields.push('Jumlah Pembayaran');
+      if (!paymentMethod) missingFields.push('Metode Pembayaran');
+
+      if (missingFields.length > 0) {
         return {
           success: false,
-          message: 'Data checkin tidak lengkap',
+          message: `Data checkin tidak lengkap. Field yang kurang: ${missingFields.join(', ')}`,
+        };
+      }
+
+      // Validate data types and values
+      if (isNaN(parseInt(apartmentId))) {
+        return {
+          success: false,
+          message: 'ID Apartemen tidak valid',
+        };
+      }
+
+      if (isNaN(parseInt(unitId))) {
+        return {
+          success: false,
+          message: 'ID Unit tidak valid',
+        };
+      }
+
+      if (isNaN(parseInt(durationHours)) || parseInt(durationHours) <= 0) {
+        return {
+          success: false,
+          message: 'Durasi harus berupa angka positif',
+        };
+      }
+
+      if (isNaN(parseFloat(paymentAmount)) || parseFloat(paymentAmount) <= 0) {
+        return {
+          success: false,
+          message: 'Jumlah pembayaran harus berupa angka positif',
         };
       }
 
