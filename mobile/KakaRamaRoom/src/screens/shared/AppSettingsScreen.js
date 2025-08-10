@@ -355,14 +355,7 @@ const AppSettingsScreen = ({ navigation }) => {
             showSwitch={true}
           />
           
-          <SettingItem
-            icon="sync"
-            title="Sinkronisasi Otomatis"
-            subtitle="Sinkronkan data secara otomatis"
-            value={settings.autoSync}
-            onToggle={() => toggleSetting('autoSync')}
-            showSwitch={true}
-          />
+
           
           {currentUser?.role === 'admin' && (
             <SettingItem
@@ -380,13 +373,7 @@ const AppSettingsScreen = ({ navigation }) => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Data & Penyimpanan</Text>
 
-          <SettingItem
-            icon="history"
-            title="Log Aktivitas"
-            subtitle="Lihat riwayat aktivitas pengguna"
-            onPress={() => navigation.navigate('ActivityLog')}
-            showChevron={true}
-          />
+
 
           <SettingItem
             icon="clear"

@@ -215,13 +215,6 @@ const FieldDashboardScreen = ({ navigation }) => {
       onPress: () => navigation.navigate('FieldUnitsOverview'),
       color: COLORS.primary,
     },
-    {
-      title: 'Status Unit',
-      subtitle: 'Lihat status unit apartemen',
-      icon: 'meeting-room',
-      onPress: () => navigation.navigate('FieldUnits'),
-      color: COLORS.info,
-    },
   ];
 
   return (

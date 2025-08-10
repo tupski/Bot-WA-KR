@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: SIZES.h5,
     fontWeight: 'bold',
-    color: COLORS.text,
+    color: COLORS.textPrimary,
     marginBottom: SIZES.sm,
   },
   required: {
@@ -352,22 +352,22 @@ const styles = StyleSheet.create({
   },
   titleInput: {
     borderWidth: 1,
-    borderColor: COLORS.lightGray,
+    borderColor: COLORS.gray300,
     borderRadius: SIZES.radius,
     paddingHorizontal: SIZES.md,
     paddingVertical: SIZES.sm,
     fontSize: SIZES.body,
-    color: COLORS.text,
+    color: COLORS.textPrimary,
     backgroundColor: COLORS.white,
   },
   messageInput: {
     borderWidth: 1,
-    borderColor: COLORS.lightGray,
+    borderColor: COLORS.gray300,
     borderRadius: SIZES.radius,
     paddingHorizontal: SIZES.md,
     paddingVertical: SIZES.sm,
     fontSize: SIZES.body,
-    color: COLORS.text,
+    color: COLORS.textPrimary,
     backgroundColor: COLORS.white,
     minHeight: 120,
   },
@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
   previewTitle: {
     fontSize: SIZES.body,
     fontWeight: 'bold',
-    color: COLORS.text,
+    color: COLORS.textPrimary,
     marginLeft: SIZES.xs,
   },
   previewMessage: {
