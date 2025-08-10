@@ -39,8 +39,10 @@ const CheckinDetailScreen = ({ route, navigation }) => {
 
       // Validate parameters
       if (!checkinId && !unitId) {
-        Alert.alert('Error', 'Parameter tidak valid untuk memuat detail checkin');
-        navigation.goBack();
+        console.error('CheckinDetailScreen: No valid parameters provided');
+        Alert.alert('Error', 'Parameter tidak valid untuk memuat detail checkin', [
+          { text: 'OK', onPress: () => navigation.goBack() }
+        ]);
         return;
       }
 
@@ -58,17 +60,29 @@ const CheckinDetailScreen = ({ route, navigation }) => {
       console.log('CheckinDetailScreen: Service result:', result);
 
       if (result && result.success && result.data) {
+        console.log('CheckinDetailScreen: Successfully loaded checkin data');
         setCheckin(result.data);
       } else {
         const errorMessage = result?.message || 'Gagal memuat detail checkin';
         console.error('CheckinDetailScreen: Service error:', errorMessage);
-        Alert.alert('Error', errorMessage);
-        navigation.goBack();
+        Alert.alert('Error', errorMessage, [
+          { text: 'OK', onPress: () => navigation.goBack() }
+        ]);
       }
     } catch (error) {
       console.error('CheckinDetailScreen: Error loading checkin detail:', error);
-      Alert.alert('Error', `Gagal memuat detail checkin: ${error.message || 'Unknown error'}`);
-      navigation.goBack();
+      console.error('CheckinDetailScreen: Error stack:', error?.stack);
+
+      let errorMessage = 'Terjadi kesalahan yang tidak diketahui';
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+
+      Alert.alert('Error', `Gagal memuat detail checkin: ${errorMessage}`, [
+        { text: 'OK', onPress: () => navigation.goBack() }
+      ]);
     } finally {
       setLoading(false);
     }

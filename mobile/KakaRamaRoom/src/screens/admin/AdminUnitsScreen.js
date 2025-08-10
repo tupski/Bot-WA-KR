@@ -291,9 +291,36 @@ const AdminUnitsScreen = () => {
    * @param {Object} unit - Unit data
    */
   const handleUnitPress = (unit) => {
-    if (unit.status === UNIT_STATUS.OCCUPIED) {
-      // Navigate to checkin detail
-      navigation.navigate('CheckinDetail', { unitId: unit.id });
+    try {
+      console.log('AdminUnitsScreen: Unit pressed:', unit);
+
+      if (unit.status === UNIT_STATUS.OCCUPIED) {
+        console.log('AdminUnitsScreen: Navigating to CheckinDetail with unitId:', unit.id);
+
+        // Check if navigation is available
+        if (!navigation || !navigation.navigate) {
+          console.error('AdminUnitsScreen: Navigation not available');
+          Alert.alert('Error', 'Navigasi tidak tersedia');
+          return;
+        }
+
+        // Navigate to checkin detail with proper error handling
+        navigation.navigate('CheckinDetail', {
+          unitId: unit.id,
+          unitNumber: unit.unit_number,
+          apartmentName: unit.apartment_name
+        });
+      } else {
+        // Show unit info for non-occupied units
+        Alert.alert(
+          'Info Unit',
+          `Unit: ${unit.unit_number}\nApartemen: ${unit.apartment_name}\nStatus: ${UNIT_STATUS_LABELS[unit.status]}`,
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('AdminUnitsScreen: Error in handleUnitPress:', error);
+      Alert.alert('Error', 'Terjadi kesalahan saat membuka detail unit');
     }
   };
 
