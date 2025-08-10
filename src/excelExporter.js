@@ -217,26 +217,31 @@ class ExcelExporter {
     async createTransactionsSheet(workbook, transactions, date) {
         const worksheet = workbook.addWorksheet('Transaksi');
 
-        // Set column widths
+        // Set column widths (adjusted for new column positions starting from B)
         worksheet.columns = [
-            { width: 5 },   // No
-            { width: 12 },  // Tanggal
-            { width: 8 },   // Waktu
-            { width: 20 },  // Apartemen
-            { width: 10 },  // Unit
-            { width: 12 },  // Check Out
-            { width: 10 },  // Durasi
-            { width: 12 },  // Pembayaran
-            { width: 15 },  // Jumlah
-            { width: 10 },  // CS
-            { width: 15 }   // Komisi
+            { width: 3 },   // Column A (empty)
+            { width: 5 },   // Column B (No)
+            { width: 12 },  // Column C (Tanggal)
+            { width: 8 },   // Column D (Waktu)
+            { width: 20 },  // Column E (Apartemen)
+            { width: 10 },  // Column F (Unit)
+            { width: 12 },  // Column G (Check Out)
+            { width: 10 },  // Column H (Durasi)
+            { width: 12 },  // Column I (Pembayaran)
+            { width: 15 },  // Column J (Jumlah)
+            { width: 10 },  // Column K (CS)
+            { width: 15 }   // Column L (Komisi)
         ];
 
-        // Add title
+        // Add empty rows to start from B3
+        worksheet.addRow([]);
+        worksheet.addRow([]);
+
+        // Add title starting from B3
         const titleText = `Detail Transaksi - ${date}`;
-        worksheet.addRow([titleText]);
-        worksheet.mergeCells('A1:K1');
-        const titleRow = worksheet.getRow(1);
+        worksheet.getCell('B3').value = titleText;
+        worksheet.mergeCells('B3:L3');
+        const titleRow = worksheet.getRow(3);
         titleRow.font = { bold: true, size: 14 };
         titleRow.alignment = { horizontal: 'center' };
 
@@ -265,7 +270,7 @@ class ExcelExporter {
             ];
 
             let currentRowNumber = 1;
-            let currentRow = 3;
+            let currentRow = 5; // Start after title (B3) and empty row
             let grandTotalAmount = 0;
             let grandTotalCommission = 0;
 
@@ -274,10 +279,10 @@ class ExcelExporter {
                 if (apartmentGroups[apartmentName]) {
                     const apartmentTransactions = apartmentGroups[apartmentName];
 
-                    // Add apartment name header
+                    // Add apartment name header starting from column B
                     const colors = getApartmentColors(apartmentName);
-                    const apartmentNameRow = worksheet.addRow([apartmentName]);
-                    worksheet.mergeCells(`A${currentRow}:K${currentRow}`);
+                    const apartmentNameRow = worksheet.addRow(['', apartmentName]);
+                    worksheet.mergeCells(`B${currentRow}:L${currentRow}`);
                     apartmentNameRow.font = { bold: true, color: { argb: colors.font } };
                     apartmentNameRow.fill = {
                         type: 'pattern',
@@ -298,9 +303,9 @@ class ExcelExporter {
 
                     currentRow++;
 
-                    // Add column headers
+                    // Add column headers starting from column B
                     const apartmentHeaderRow = worksheet.addRow([
-                        'No', 'Tanggal', 'Waktu', 'Apartemen', 'Unit', 'Check Out', 'Durasi', 'Pembayaran', 'Jumlah', 'CS', 'Komisi'
+                        '', 'No', 'Tanggal', 'Waktu', 'Apartemen', 'Unit', 'Check Out', 'Durasi', 'Pembayaran', 'Jumlah', 'CS', 'Komisi'
                     ]);
                     apartmentHeaderRow.font = { bold: true, color: { argb: colors.font } };
                     apartmentHeaderRow.fill = {
@@ -328,6 +333,7 @@ class ExcelExporter {
                         const commission = parseFloat(transaction.commission || 0);
 
                         const row = worksheet.addRow([
+                            '', // Empty column A
                             currentRowNumber,
                             moment(transaction.created_at).tz(this.timezone).format('DD/MM/YYYY'),
                             moment(transaction.created_at).tz(this.timezone).format('HH:mm'),
@@ -341,9 +347,9 @@ class ExcelExporter {
                             commission
                         ]);
 
-                        // Format currency columns
-                        row.getCell(9).numFmt = 'Rp #,##0';  // Amount
-                        row.getCell(11).numFmt = 'Rp #,##0'; // Komisi
+                        // Format currency columns (adjusted for new column positions)
+                        row.getCell(10).numFmt = 'Rp #,##0';  // Amount
+                        row.getCell(12).numFmt = 'Rp #,##0'; // Komisi
 
                         // Add borders to data row
                         row.eachCell((cell) => {
@@ -372,10 +378,10 @@ class ExcelExporter {
                 if (!apartmentOrder.includes(apartmentName)) {
                     const apartmentTransactions = apartmentGroups[apartmentName];
 
-                    // Add apartment name header
+                    // Add apartment name header starting from column B
                     const colors = getApartmentColors(apartmentName);
-                    const apartmentNameRow = worksheet.addRow([apartmentName]);
-                    worksheet.mergeCells(`A${currentRow}:K${currentRow}`);
+                    const apartmentNameRow = worksheet.addRow(['', apartmentName]);
+                    worksheet.mergeCells(`B${currentRow}:L${currentRow}`);
                     apartmentNameRow.font = { bold: true, color: { argb: colors.font } };
                     apartmentNameRow.fill = {
                         type: 'pattern',
@@ -396,9 +402,9 @@ class ExcelExporter {
 
                     currentRow++;
 
-                    // Add column headers
+                    // Add column headers starting from column B
                     const apartmentHeaderRow = worksheet.addRow([
-                        'No', 'Tanggal', 'Waktu', 'Apartemen', 'Unit', 'Check Out', 'Durasi', 'Pembayaran', 'Jumlah', 'CS', 'Komisi'
+                        '', 'No', 'Tanggal', 'Waktu', 'Apartemen', 'Unit', 'Check Out', 'Durasi', 'Pembayaran', 'Jumlah', 'CS', 'Komisi'
                     ]);
                     apartmentHeaderRow.font = { bold: true, color: { argb: colors.font } };
                     apartmentHeaderRow.fill = {
@@ -426,6 +432,7 @@ class ExcelExporter {
                         const commission = parseFloat(transaction.commission || 0);
 
                         const row = worksheet.addRow([
+                            '', // Empty column A
                             currentRowNumber,
                             moment(transaction.created_at).tz(this.timezone).format('DD/MM/YYYY'),
                             moment(transaction.created_at).tz(this.timezone).format('HH:mm'),
@@ -439,9 +446,9 @@ class ExcelExporter {
                             commission
                         ]);
 
-                        // Format currency columns
-                        row.getCell(9).numFmt = 'Rp #,##0';  // Amount
-                        row.getCell(11).numFmt = 'Rp #,##0'; // Komisi
+                        // Format currency columns (adjusted for new column positions)
+                        row.getCell(10).numFmt = 'Rp #,##0';  // Amount
+                        row.getCell(12).numFmt = 'Rp #,##0'; // Komisi
 
                         // Add borders to data row
                         row.eachCell((cell) => {
@@ -465,11 +472,11 @@ class ExcelExporter {
                 }
             });
 
-            // Add grand total row
+            // Add grand total row (adjusted for new column positions)
             if (transactions.length > 0) {
                 worksheet.addRow([]); // Empty row before total
                 const grandTotalRow = worksheet.addRow([
-                    '', '', '', 'TOTAL:', '', '', '', '',
+                    '', '', '', '', 'TOTAL:', '', '', '', '',
                     grandTotalAmount, '', grandTotalCommission
                 ]);
                 grandTotalRow.font = { bold: true, size: 12 };
@@ -479,8 +486,8 @@ class ExcelExporter {
                     fgColor: { argb: 'D4E6F1' }
                 };
                 grandTotalRow.font = { bold: true, color: { argb: '000000' } };
-                grandTotalRow.getCell(9).numFmt = 'Rp #,##0';  // Amount
-                grandTotalRow.getCell(11).numFmt = 'Rp #,##0'; // Komisi
+                grandTotalRow.getCell(10).numFmt = 'Rp #,##0';  // Amount
+                grandTotalRow.getCell(12).numFmt = 'Rp #,##0'; // Komisi
 
                 // Add borders to grand total row
                 grandTotalRow.eachCell((cell, colNumber) => {
