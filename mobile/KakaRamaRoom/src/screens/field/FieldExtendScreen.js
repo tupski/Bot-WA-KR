@@ -34,6 +34,8 @@ const FieldExtendScreen = ({ navigation, route }) => {
     additionalHours: '',
     paymentMethod: 'cash',
     paymentAmount: '',
+    marketingCommission: '',
+    marketingName: '',
     paymentProofPath: '',
     notes: '',
   });
@@ -42,6 +44,12 @@ const FieldExtendScreen = ({ navigation, route }) => {
   const [loading, setLoading] = useState(false);
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+
+  // State untuk marketing modal
+  const [marketingModalVisible, setMarketingModalVisible] = useState(false);
+  const [marketingSources, setMarketingSources] = useState([]);
+  const [filteredMarketingSources, setFilteredMarketingSources] = useState([]);
+  const [marketingSearchQuery, setMarketingSearchQuery] = useState('');
 
   // Load data saat komponen dimount
   useEffect(() => {
@@ -118,29 +126,107 @@ const FieldExtendScreen = ({ navigation, route }) => {
    * @returns {string} - Waktu checkout baru dalam format string
    */
   const calculateNewCheckoutTime = () => {
-    if (!formData.additionalHours || !checkinData) return '';
+    if (!formData.additionalHours || !checkin) return '';
 
-    const currentCheckoutTime = new Date(checkinData.checkout_time);
-    const newCheckoutTime = new Date(
-      currentCheckoutTime.getTime() + (parseInt(formData.additionalHours) * 60 * 60 * 1000)
-    );
+    try {
+      const currentCheckoutTime = new Date(checkin.checkout_time);
+      const additionalHours = parseInt(formData.additionalHours);
 
-    return newCheckoutTime.toLocaleString('id-ID', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+      if (isNaN(additionalHours) || additionalHours <= 0) return '';
+
+      const newCheckoutTime = new Date(
+        currentCheckoutTime.getTime() + (additionalHours * 60 * 60 * 1000)
+      );
+
+      // Format dengan lebih jelas
+      return newCheckoutTime.toLocaleString('id-ID', {
+        weekday: 'long',
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Asia/Jakarta'
+      });
+    } catch (error) {
+      console.error('FieldExtendScreen: Error calculating new checkout time:', error);
+      return 'Error menghitung waktu';
+    }
   };
 
   /**
-   * Buka kamera atau galeri untuk upload bukti transfer
+   * Format currency input dengan ribuan
+   */
+  const formatCurrencyInput = (value) => {
+    // Remove non-numeric characters
+    const numericValue = value.replace(/[^\d]/g, '');
+
+    // Format with thousands separator
+    if (numericValue) {
+      return parseInt(numericValue).toLocaleString('id-ID');
+    }
+    return '';
+  };
+
+  /**
+   * Handle payment amount change dengan format ribuan
+   */
+  const handlePaymentAmountChange = (value) => {
+    const formatted = formatCurrencyInput(value);
+    setFormData({ ...formData, paymentAmount: formatted });
+  };
+
+  /**
+   * Handle marketing commission change dengan format ribuan
+   */
+  const handleMarketingCommissionChange = (value) => {
+    const formatted = formatCurrencyInput(value);
+    setFormData({ ...formData, marketingCommission: formatted });
+  };
+
+  /**
+   * Handle marketing search
+   */
+  const handleMarketingSearch = (query) => {
+    setMarketingSearchQuery(query);
+
+    if (!query.trim()) {
+      setFilteredMarketingSources(marketingSources);
+      return;
+    }
+
+    const filtered = marketingSources.filter(source =>
+      source.name.toLowerCase().includes(query.toLowerCase())
+    );
+
+    // Add option to create new marketing if not found
+    const exactMatch = filtered.find(source =>
+      source.name.toLowerCase() === query.toLowerCase()
+    );
+
+    if (!exactMatch && query.trim()) {
+      filtered.unshift({ id: 'new', name: query.trim() });
+    }
+
+    setFilteredMarketingSources(filtered);
+  };
+
+  /**
+   * Select marketing source
+   */
+  const selectMarketingSource = (source) => {
+    setFormData({ ...formData, marketingName: source.name });
+    setMarketingModalVisible(false);
+    setMarketingSearchQuery('');
+  };
+
+  /**
+   * Buka kamera atau galeri untuk upload bukti pembayaran
    */
   const selectPaymentProof = () => {
     Alert.alert(
       'Pilih Sumber Gambar',
-      'Pilih dari mana Anda ingin mengambil bukti transfer',
+      'Pilih dari mana Anda ingin mengambil bukti pembayaran',
       [
         { text: 'Batal', style: 'cancel' },
         { text: 'Kamera', onPress: openCamera },
@@ -150,17 +236,17 @@ const FieldExtendScreen = ({ navigation, route }) => {
   };
 
   /**
-   * Buka kamera untuk foto bukti transfer
+   * Buka kamera untuk foto bukti pembayaran
    */
   const openCamera = () => {
-    Alert.alert('Info', 'Fitur kamera akan tersedia setelah instalasi react-native-image-picker');
+    Alert.alert('Info', 'Fitur akan tersedia setelah instalasi react-native-image-picker');
   };
 
   /**
-   * Buka galeri untuk pilih bukti transfer
+   * Buka galeri untuk pilih bukti pembayaran
    */
   const openGallery = () => {
-    Alert.alert('Info', 'Fitur galeri akan tersedia setelah instalasi react-native-image-picker');
+    Alert.alert('Info', 'Fitur akan tersedia setelah instalasi react-native-image-picker');
   };
 
   /**
@@ -176,6 +262,23 @@ const FieldExtendScreen = ({ navigation, route }) => {
     if (!formData.paymentMethod) {
       Alert.alert('Error', 'Pilih metode pembayaran');
       return false;
+    }
+
+    // Validasi komisi marketing (jika ada)
+    if (formData.marketingCommission && formData.marketingCommission.trim() !== '') {
+      const commission = parseFloat(formData.marketingCommission.replace(/[^\d]/g, ''));
+      if (isNaN(commission) || commission < 0) {
+        Alert.alert('Error', 'Komisi marketing harus berupa angka yang valid');
+        return false;
+      }
+    }
+
+    // Validasi nama marketing (jika ada komisi)
+    if (formData.marketingCommission && parseFloat(formData.marketingCommission.replace(/[^\d]/g, '')) > 0) {
+      if (!formData.marketingName || formData.marketingName.trim() === '') {
+        Alert.alert('Error', 'Nama marketing harus diisi jika ada komisi');
+        return false;
+      }
     }
 
     return true;
@@ -206,6 +309,8 @@ const FieldExtendScreen = ({ navigation, route }) => {
         additionalHours: parseInt(formData.additionalHours),
         paymentMethod: formData.paymentMethod,
         paymentAmount: formData.paymentAmount ? parseFloat(formData.paymentAmount.replace(/[^\d]/g, '')) : null,
+        marketingCommission: formData.marketingCommission ? parseFloat(formData.marketingCommission.replace(/[^\d]/g, '')) : 0,
+        marketingName: formData.marketingName.trim() || null,
         paymentProofPath: formData.paymentProofPath,
         notes: formData.notes.trim() || null,
       };
@@ -371,19 +476,58 @@ const FieldExtendScreen = ({ navigation, route }) => {
           {/* Payment Amount Input */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Nominal Pembayaran (Opsional)</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.paymentAmount}
-              onChangeText={(text) => setFormData({ ...formData, paymentAmount: text })}
-              placeholder="Masukkan nominal pembayaran"
-              placeholderTextColor={COLORS.gray400}
-              keyboardType="numeric"
-            />
+            <View style={styles.currencyInputContainer}>
+              <Text style={styles.currencyPrefix}>Rp</Text>
+              <TextInput
+                style={styles.currencyInput}
+                value={formData.paymentAmount}
+                onChangeText={handlePaymentAmountChange}
+                placeholder="150 (untuk Rp 150.000)"
+                placeholderTextColor={COLORS.gray400}
+                keyboardType="numeric"
+              />
+            </View>
+            <Text style={styles.inputHint}>
+              Masukkan angka saja (contoh: 150 untuk Rp 150.000)
+            </Text>
+          </View>
+
+          {/* Marketing Commission */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Komisi Marketing (Opsional)</Text>
+            <View style={styles.currencyInputContainer}>
+              <Text style={styles.currencyPrefix}>Rp</Text>
+              <TextInput
+                style={styles.currencyInput}
+                value={formData.marketingCommission}
+                onChangeText={handleMarketingCommissionChange}
+                placeholder="0"
+                placeholderTextColor={COLORS.gray400}
+                keyboardType="numeric"
+              />
+            </View>
+          </View>
+
+          {/* Marketing Name */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Nama Marketing</Text>
+            <TouchableOpacity
+              style={styles.selectorButton}
+              onPress={() => setMarketingModalVisible(true)}
+            >
+              <Text style={[
+                styles.selectorText,
+                formData.marketingName ? styles.selectorTextSelected : styles.selectorTextPlaceholder
+              ]}>
+                {formData.marketingName || 'Pilih atau tambah marketing...'}
+              </Text>
+              <Icon name="arrow-drop-down" size={24} color={COLORS.gray400} />
+            </TouchableOpacity>
           </View>
 
           {/* Payment Proof Upload */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Bukti Transfer (Opsional)</Text>
+            <Text style={styles.inputLabel}>Bukti Pembayaran (Opsional)</Text>
             <TouchableOpacity
               style={styles.uploadButton}
               onPress={selectPaymentProof}
@@ -472,6 +616,69 @@ const FieldExtendScreen = ({ navigation, route }) => {
               </TouchableOpacity>
             )}
             contentContainerStyle={styles.modalContent}
+          />
+        </View>
+      </Modal>
+
+      {/* Marketing Selection Modal */}
+      <Modal
+        visible={marketingModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Pilih Marketing</Text>
+            <TouchableOpacity onPress={() => setMarketingModalVisible(false)}>
+              <Icon name="close" size={24} color={COLORS.textPrimary} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.searchContainer}>
+            <Icon name="search" size={20} color={COLORS.gray400} />
+            <TextInput
+              style={styles.searchInput}
+              value={marketingSearchQuery}
+              onChangeText={handleMarketingSearch}
+              placeholder="Cari atau tambah marketing baru..."
+              placeholderTextColor={COLORS.gray400}
+            />
+          </View>
+
+          <FlatList
+            data={filteredMarketingSources}
+            keyExtractor={(item) => item.id?.toString() || item.name}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={[
+                  styles.modalItem,
+                  item.id === 'new' && styles.modalItemNew
+                ]}
+                onPress={() => selectMarketingSource(item)}
+              >
+                <View style={styles.modalItemContent}>
+                  {item.id === 'new' && (
+                    <Icon name="add" size={20} color={COLORS.primary} />
+                  )}
+                  <Text style={[
+                    styles.modalItemText,
+                    item.id === 'new' && styles.modalItemTextNew
+                  ]}>
+                    {item.id === 'new' ? `Tambah "${item.name}"` : item.name}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            )}
+            contentContainerStyle={styles.modalContent}
+            ListEmptyComponent={() => (
+              <View style={styles.emptyState}>
+                <Icon name="person-add" size={48} color={COLORS.gray400} />
+                <Text style={styles.emptyText}>Belum ada data marketing</Text>
+                <Text style={styles.emptySubtext}>
+                  Ketik nama marketing untuk menambahkan
+                </Text>
+              </View>
+            )}
           />
         </View>
       </Modal>
@@ -682,6 +889,54 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  currencyInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: SIZES.radius,
+    backgroundColor: COLORS.background,
+  },
+  currencyPrefix: {
+    paddingHorizontal: SIZES.md,
+    fontSize: SIZES.body,
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+  },
+  currencyInput: {
+    flex: 1,
+    paddingVertical: SIZES.md,
+    paddingRight: SIZES.md,
+    fontSize: SIZES.body,
+    color: COLORS.textPrimary,
+  },
+  inputHint: {
+    fontSize: SIZES.caption,
+    color: COLORS.textSecondary,
+    marginTop: SIZES.xs,
+    fontStyle: 'italic',
+  },
+  selectorButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: SIZES.radius,
+    paddingHorizontal: SIZES.md,
+    paddingVertical: SIZES.md,
+    backgroundColor: COLORS.background,
+  },
+  selectorText: {
+    fontSize: SIZES.body,
+    flex: 1,
+  },
+  selectorTextSelected: {
+    color: COLORS.textPrimary,
+  },
+  selectorTextPlaceholder: {
+    color: COLORS.gray400,
+  },
   submitButton: {
     backgroundColor: COLORS.warning,
     borderRadius: SIZES.radius,
@@ -768,6 +1023,53 @@ const styles = StyleSheet.create({
     fontSize: SIZES.body,
     fontWeight: '600',
     color: COLORS.background,
+    textAlign: 'center',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.lightGray,
+    borderRadius: SIZES.radius,
+    paddingHorizontal: SIZES.md,
+    marginHorizontal: SIZES.lg,
+    marginBottom: SIZES.md,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: SIZES.md,
+    paddingLeft: SIZES.sm,
+    fontSize: SIZES.body,
+    color: COLORS.textPrimary,
+  },
+  modalItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  modalItemNew: {
+    backgroundColor: COLORS.lightBlue,
+    borderColor: COLORS.primary,
+  },
+  modalItemTextNew: {
+    color: COLORS.primary,
+    fontWeight: '600',
+    marginLeft: SIZES.sm,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SIZES.xxl,
+  },
+  emptyText: {
+    fontSize: SIZES.h6,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginTop: SIZES.md,
+    textAlign: 'center',
+  },
+  emptySubtext: {
+    fontSize: SIZES.body,
+    color: COLORS.gray400,
+    marginTop: SIZES.sm,
     textAlign: 'center',
   },
 });
