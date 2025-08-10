@@ -44,9 +44,29 @@ const FieldUnitsOverviewScreen = ({ navigation }) => {
   const [selectedUnitForStatus, setSelectedUnitForStatus] = useState(null);
 
   useEffect(() => {
-    loadCurrentUser();
-    loadUnits();
+    const initializeScreen = async () => {
+      try {
+        console.log('FieldUnitsOverviewScreen: Initializing screen');
+        await loadCurrentUser();
+        // Wait a bit for currentUser to be set
+        setTimeout(() => {
+          loadUnits();
+        }, 100);
+      } catch (error) {
+        console.error('FieldUnitsOverviewScreen: Error initializing screen:', error);
+      }
+    };
+
+    initializeScreen();
   }, []);
+
+  // Load units when currentUser changes
+  useEffect(() => {
+    if (currentUser) {
+      console.log('FieldUnitsOverviewScreen: Current user changed, loading units');
+      loadUnits();
+    }
+  }, [currentUser]);
 
   // Filter units based on search query
   useEffect(() => {
@@ -63,22 +83,55 @@ const FieldUnitsOverviewScreen = ({ navigation }) => {
   }, [units, searchQuery]);
 
   const loadCurrentUser = async () => {
-    const user = AuthService.getCurrentUser();
-    setCurrentUser(user);
+    try {
+      console.log('FieldUnitsOverviewScreen: Loading current user');
+      const user = AuthService.getCurrentUser();
+      if (user) {
+        setCurrentUser(user);
+        console.log('FieldUnitsOverviewScreen: Current user loaded:', user.id);
+      } else {
+        console.warn('FieldUnitsOverviewScreen: No current user found');
+        setCurrentUser(null);
+      }
+    } catch (error) {
+      console.error('FieldUnitsOverviewScreen: Error loading current user:', error);
+      setCurrentUser(null);
+    }
   };
 
   const loadUnits = async () => {
     try {
+      console.log('FieldUnitsOverviewScreen: Starting loadUnits');
       setLoading(true);
+
+      // Check if user is available
+      if (!currentUser) {
+        console.warn('FieldUnitsOverviewScreen: No current user, cannot load units');
+        setUnits([]);
+        setFilteredUnits([]);
+        return;
+      }
+
+      console.log('FieldUnitsOverviewScreen: Calling TeamAssignmentService.getAccessibleUnits');
       const result = await TeamAssignmentService.getAccessibleUnits();
-      
-      if (result.success) {
-        setUnits(result.data);
-        setFilteredUnits(result.data);
+
+      console.log('FieldUnitsOverviewScreen: getAccessibleUnits result:', result);
+
+      if (result && result.success) {
+        const unitsData = result.data || [];
+        console.log('FieldUnitsOverviewScreen: Loaded units:', unitsData.length);
+        setUnits(unitsData);
+        setFilteredUnits(unitsData);
       } else {
-        Alert.alert('Error', result.message);
+        console.warn('FieldUnitsOverviewScreen: Failed to load units:', result);
+        setUnits([]);
+        setFilteredUnits([]);
+        Alert.alert('Error', result?.message || 'Gagal memuat data unit');
       }
     } catch (error) {
+      console.error('FieldUnitsOverviewScreen: Error loading units:', error);
+      setUnits([]);
+      setFilteredUnits([]);
       Alert.alert('Error', 'Gagal memuat data unit');
     } finally {
       setLoading(false);

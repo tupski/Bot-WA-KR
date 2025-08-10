@@ -14,11 +14,10 @@ import {
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { COLORS, SIZES } from '../../config/constants';
 import CheckinService from '../../services/CheckinService';
-import UnitService from '../../services/UnitService';
-import ApartmentService from '../../services/ApartmentService';
 import AuthService from '../../services/AuthService';
 import MarketingSourceService from '../../services/MarketingSourceService';
 import ImagePickerService from '../../services/ImagePickerService';
+import TeamAssignmentService from '../../services/TeamAssignmentService';
 import CurrencyInput from '../../components/CurrencyInput';
 
 /**
@@ -97,40 +96,78 @@ const FieldCheckinScreen = ({ navigation }) => {
    */
   const loadInitialData = async () => {
     try {
+      console.log('FieldCheckinScreen: Starting loadInitialData');
+
       const user = AuthService.getCurrentUser();
       setCurrentUser(user);
 
-      const promises = [];
+      if (!user) {
+        console.error('FieldCheckinScreen: No current user found');
+        Alert.alert('Error', 'User tidak ditemukan');
+        return;
+      }
 
-      if (user && user.apartmentIds) {
-        // Load apartemen yang ditugaskan ke tim
-        promises.push(ApartmentService.getApartmentsByIds(user.apartmentIds));
-        // Load unit tersedia dari apartemen yang ditugaskan (pass null untuk semua apartemen yang accessible)
-        promises.push(UnitService.getAvailableUnits(null));
+      console.log('FieldCheckinScreen: Current user:', user.id, user.role);
+
+      // Load apartemen yang accessible menggunakan TeamAssignmentService
+      try {
+        console.log('FieldCheckinScreen: Loading accessible apartments');
+        const apartmentResult = await TeamAssignmentService.getAccessibleApartments();
+
+        if (apartmentResult && apartmentResult.success) {
+          console.log('FieldCheckinScreen: Loaded apartments:', apartmentResult.data?.length || 0);
+          setApartments(apartmentResult.data || []);
+        } else {
+          console.warn('FieldCheckinScreen: Failed to load apartments:', apartmentResult);
+          setApartments([]);
+        }
+      } catch (apartmentError) {
+        console.error('FieldCheckinScreen: Error loading apartments:', apartmentError);
+        setApartments([]);
+      }
+
+      // Load unit tersedia menggunakan TeamAssignmentService
+      try {
+        console.log('FieldCheckinScreen: Loading available units');
+        const unitResult = await TeamAssignmentService.getAccessibleUnits({
+          status: 'available'
+        });
+
+        if (unitResult && unitResult.success) {
+          console.log('FieldCheckinScreen: Loaded available units:', unitResult.data?.length || 0);
+          setAvailableUnits(unitResult.data || []);
+        } else {
+          console.warn('FieldCheckinScreen: Failed to load units:', unitResult);
+          setAvailableUnits([]);
+        }
+      } catch (unitError) {
+        console.error('FieldCheckinScreen: Error loading units:', unitError);
+        setAvailableUnits([]);
       }
 
       // Load marketing sources
-      promises.push(MarketingSourceService.getAllMarketingSources());
+      try {
+        console.log('FieldCheckinScreen: Loading marketing sources');
+        const marketingResult = await MarketingSourceService.getAllMarketingSources();
 
-      const [apartmentResult, unitResult, marketingResult] = await Promise.all(promises);
-
-      if (apartmentResult && apartmentResult.success) {
-        setApartments(apartmentResult.data);
+        if (marketingResult && marketingResult.success) {
+          console.log('FieldCheckinScreen: Loaded marketing sources:', marketingResult.data?.length || 0);
+          setMarketingSources(marketingResult.data || []);
+          setFilteredMarketingSources(marketingResult.data || []);
+        } else {
+          console.warn('FieldCheckinScreen: Failed to load marketing sources:', marketingResult);
+          setMarketingSources([]);
+          setFilteredMarketingSources([]);
+        }
+      } catch (marketingError) {
+        console.error('FieldCheckinScreen: Error loading marketing sources:', marketingError);
+        setMarketingSources([]);
+        setFilteredMarketingSources([]);
       }
 
-      if (unitResult && unitResult.success) {
-        console.log('FieldCheckinScreen: Loaded available units:', unitResult.data.length);
-        setAvailableUnits(unitResult.data);
-      } else {
-        console.error('FieldCheckinScreen: Failed to load units:', unitResult);
-      }
-
-      if (marketingResult && marketingResult.success) {
-        setMarketingSources(marketingResult.data);
-        setFilteredMarketingSources(marketingResult.data);
-      }
+      console.log('FieldCheckinScreen: Finished loadInitialData');
     } catch (error) {
-      console.error('Load initial data error:', error);
+      console.error('FieldCheckinScreen: Critical error in loadInitialData:', error);
       Alert.alert('Error', 'Gagal memuat data awal');
     }
   };
