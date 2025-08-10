@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase';
+import DatabaseManager from '../config/supabase';
 import { ACTIVITY_ACTIONS } from '../config/constants';
 import AuthService from './AuthService';
 

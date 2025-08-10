@@ -1,4 +1,4 @@
-import { supabase } from '../config/database';
+import { supabase } from '../config/supabase';
 import ActivityLogService from './ActivityLogService';
 import { ACTIVITY_ACTIONS } from '../config/constants';
 
