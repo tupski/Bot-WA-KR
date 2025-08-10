@@ -9,13 +9,18 @@ import {
   RefreshControl,
   TextInput,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { COLORS, SIZES, APARTMENTS } from '../../config/constants';
 import ApartmentService from '../../services/ApartmentService';
 import AuthService from '../../services/AuthService';
+import { useModernAlert } from '../../components/ModernAlert';
 
 const AdminApartmentsScreen = ({ navigation }) => {
+  // Modern Alert Hook
+  const { showAlert, AlertComponent } = useModernAlert();
+
   const [apartments, setApartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -37,19 +42,36 @@ const AdminApartmentsScreen = ({ navigation }) => {
   const loadApartments = async () => {
     try {
       console.log('AdminApartmentsScreen: Loading apartments...');
+
+      // Validate ApartmentService
+      if (!ApartmentService || typeof ApartmentService.getAllApartments !== 'function') {
+        throw new Error('ApartmentService tidak tersedia atau tidak valid');
+      }
+
       const result = await ApartmentService.getAllApartments();
       console.log('AdminApartmentsScreen: Service result:', result);
 
-      if (result.success) {
-        console.log(`AdminApartmentsScreen: Setting ${result.data.length} apartments`);
-        setApartments(result.data);
+      if (result && result.success) {
+        const apartmentData = Array.isArray(result.data) ? result.data : [];
+        console.log(`AdminApartmentsScreen: Setting ${apartmentData.length} apartments`);
+        setApartments(apartmentData);
       } else {
-        console.error('AdminApartmentsScreen: Service error:', result.message);
-        Alert.alert('Error', result.message);
+        console.error('AdminApartmentsScreen: Service error:', result?.message || 'Unknown error');
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: result?.message || 'Gagal memuat data apartemen',
+        });
+        setApartments([]); // Set empty array as fallback
       }
     } catch (error) {
       console.error('AdminApartmentsScreen: Load apartments error:', error);
-      Alert.alert('Error', 'Gagal memuat data apartemen: ' + error.message);
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: `Gagal memuat data apartemen: ${error.message || 'Unknown error'}`,
+      });
+      setApartments([]); // Set empty array as fallback
     } finally {
       setLoading(false);
     }
@@ -86,16 +108,38 @@ const AdminApartmentsScreen = ({ navigation }) => {
   };
 
   const handleSave = async () => {
-    if (!formData.name.trim() || !formData.code.trim()) {
-      Alert.alert('Error', 'Nama dan kode apartemen harus diisi');
+    // Validasi input
+    if (!formData.name?.trim() || !formData.code?.trim()) {
+      showAlert({
+        type: 'warning',
+        title: 'Validasi Error',
+        message: 'Nama dan kode apartemen harus diisi',
+      });
       return;
     }
 
     try {
+      // Validasi user
       const currentUser = AuthService.getCurrentUser();
-      let result;
+      if (!currentUser || !currentUser.id) {
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: 'User tidak valid. Silakan login ulang.',
+        });
+        return;
+      }
 
-      if (editingApartment) {
+      // Validasi service methods
+      const isUpdate = editingApartment && editingApartment.id;
+      const serviceMethod = isUpdate ? 'updateApartment' : 'createApartment';
+
+      if (!ApartmentService || typeof ApartmentService[serviceMethod] !== 'function') {
+        throw new Error(`ApartmentService.${serviceMethod} tidak tersedia`);
+      }
+
+      let result;
+      if (isUpdate) {
         result = await ApartmentService.updateApartment(
           editingApartment.id,
           formData,
@@ -105,59 +149,146 @@ const AdminApartmentsScreen = ({ navigation }) => {
         result = await ApartmentService.createApartment(formData, currentUser.id);
       }
 
-      if (result.success) {
-        Alert.alert('Sukses', result.message);
-        setModalVisible(false);
-        await loadApartments();
+      if (result && result.success) {
+        showAlert({
+          type: 'success',
+          title: 'Sukses',
+          message: result.message || `Apartemen berhasil ${isUpdate ? 'diperbarui' : 'dibuat'}`,
+          onDismiss: () => {
+            setModalVisible(false);
+            loadApartments(); // Reload data
+          },
+        });
       } else {
-        Alert.alert('Error', result.message);
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: result?.message || 'Gagal menyimpan data apartemen',
+        });
       }
     } catch (error) {
-      console.error('Save apartment error:', error);
-      Alert.alert('Error', 'Gagal menyimpan data apartemen');
+      console.error('AdminApartmentsScreen: Save apartment error:', error);
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: `Gagal menyimpan data apartemen: ${error.message || 'Unknown error'}`,
+      });
     }
   };
 
   const handleDelete = (apartment) => {
-    Alert.alert(
-      'Konfirmasi Hapus',
-      `Apakah Anda yakin ingin menghapus apartemen "${apartment.name}"?`,
-      [
-        { text: 'Batal', style: 'cancel' },
+    // Validasi apartment object
+    if (!apartment || !apartment.id || !apartment.name) {
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: 'Data apartemen tidak valid',
+      });
+      return;
+    }
+
+    showAlert({
+      type: 'confirm',
+      title: 'Konfirmasi Hapus',
+      message: `Apakah Anda yakin ingin menghapus apartemen "${apartment.name}"?\n\nTindakan ini tidak dapat dibatalkan.`,
+      buttons: [
+        {
+          text: 'Batal',
+          style: 'cancel',
+        },
         {
           text: 'Hapus',
           style: 'destructive',
           onPress: () => deleteApartment(apartment.id),
         },
-      ]
-    );
+      ],
+    });
   };
 
   const deleteApartment = async (id) => {
     try {
+      // Validasi user
       const currentUser = AuthService.getCurrentUser();
+      if (!currentUser || !currentUser.id) {
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: 'User tidak valid. Silakan login ulang.',
+        });
+        return;
+      }
+
+      // Validasi service method
+      if (!ApartmentService || typeof ApartmentService.deleteApartment !== 'function') {
+        throw new Error('ApartmentService.deleteApartment tidak tersedia');
+      }
+
       const result = await ApartmentService.deleteApartment(id, currentUser.id);
 
-      if (result.success) {
-        Alert.alert('Sukses', result.message);
-        await loadApartments();
+      if (result && result.success) {
+        showAlert({
+          type: 'success',
+          title: 'Sukses',
+          message: result.message || 'Apartemen berhasil dihapus',
+          onDismiss: () => {
+            loadApartments(); // Reload data
+          },
+        });
       } else {
-        Alert.alert('Error', result.message);
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: result?.message || 'Gagal menghapus apartemen',
+        });
       }
     } catch (error) {
-      console.error('Delete apartment error:', error);
-      Alert.alert('Error', 'Gagal menghapus apartemen');
+      console.error('AdminApartmentsScreen: Delete apartment error:', error);
+      showAlert({
+        type: 'error',
+        title: 'Error',
+        message: `Gagal menghapus apartemen: ${error.message || 'Unknown error'}`,
+      });
     }
   };
 
-  const filteredApartments = apartments.filter(
-    (apartment) =>
-      apartment.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      apartment.code.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Filter apartments dengan safe operations
+  const filteredApartments = Array.isArray(apartments) ? apartments.filter(
+    (apartment) => {
+      if (!apartment || typeof apartment !== 'object') return false;
+      const name = apartment.name || '';
+      const code = apartment.code || '';
+      const query = searchQuery.toLowerCase();
+      return name.toLowerCase().includes(query) || code.toLowerCase().includes(query);
+    }
+  ) : [];
 
+  // Safe function untuk mendapatkan warna apartemen
   const getApartmentColor = (code) => {
-    return APARTMENTS[code]?.color || COLORS.gray500;
+    try {
+      if (!code || typeof code !== 'string') {
+        return COLORS.gray500;
+      }
+
+      // Check if APARTMENTS is defined and has the code
+      if (APARTMENTS && typeof APARTMENTS === 'object' && APARTMENTS[code]) {
+        return APARTMENTS[code].color || COLORS.gray500;
+      }
+
+      // Fallback colors based on code
+      const colorMap = {
+        'TREEPARK': '#4CAF50',
+        'SKYHOUSE': '#2196F3',
+        'SPRINGWOOD': '#87CEEB',
+        'EMERALD': '#009688',
+        'GOLDFINCH': '#FFD700',
+        'BLUEBIRD': '#1E90FF',
+      };
+
+      return colorMap[code] || COLORS.gray500;
+    } catch (error) {
+      console.error('AdminApartmentsScreen: Error getting apartment color:', error);
+      return COLORS.gray500;
+    }
   };
 
   const renderApartmentItem = ({ item }) => {
@@ -167,15 +298,29 @@ const AdminApartmentsScreen = ({ navigation }) => {
 
         if (!item || !item.id) {
           console.error('AdminApartmentsScreen: Invalid apartment item:', item);
-          Alert.alert('Error', 'Data apartemen tidak valid');
+          showAlert({
+            type: 'error',
+            title: 'Error',
+            message: 'Data apartemen tidak valid',
+          });
           return;
         }
 
         console.log('AdminApartmentsScreen: Navigating to detail with ID:', item.id);
+
+        // Check if navigation is available
+        if (!navigation || typeof navigation.navigate !== 'function') {
+          throw new Error('Navigation tidak tersedia');
+        }
+
         navigation.navigate('AdminApartmentDetail', { apartmentId: item.id });
       } catch (error) {
         console.error('AdminApartmentsScreen: Error navigating to apartment detail:', error);
-        Alert.alert('Error', 'Gagal membuka detail apartemen');
+        showAlert({
+          type: 'error',
+          title: 'Error',
+          message: `Gagal membuka detail apartemen: ${error.message || 'Unknown error'}`,
+        });
       }
     };
 
@@ -236,6 +381,17 @@ const AdminApartmentsScreen = ({ navigation }) => {
     </TouchableOpacity>
     );
   };
+
+  // Show loading indicator saat pertama kali load
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loadingText}>Memuat data apartemen...</Text>
+        <AlertComponent />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -356,6 +512,9 @@ const AdminApartmentsScreen = ({ navigation }) => {
           </View>
         </View>
       </Modal>
+
+      {/* Modern Alert Component */}
+      <AlertComponent />
     </View>
   );
 };
@@ -561,6 +720,19 @@ const styles = StyleSheet.create({
     fontSize: SIZES.h6,
     fontWeight: '600',
     color: COLORS.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.gray100,
+    padding: SIZES.lg,
+  },
+  loadingText: {
+    fontSize: SIZES.body,
+    color: COLORS.textSecondary,
+    marginTop: SIZES.md,
+    textAlign: 'center',
   },
 });
 
