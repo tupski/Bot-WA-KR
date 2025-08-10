@@ -9,75 +9,181 @@ import { ACTIVITY_ACTIONS, UNIT_STATUS, CHECKIN_STATUS } from '../config/constan
  */
 class AutoCheckoutService {
   /**
-   * Proses auto-checkout untuk semua checkin yang sudah habis waktu
+   * Proses auto-checkout untuk semua checkin yang sudah habis waktu dengan error handling yang robust
    * @returns {Object} - Result dengan jumlah unit yang di-checkout
    */
   async processAutoCheckout() {
     try {
-      console.log('AutoCheckoutService: Processing auto-checkout...');
-      const now = new Date().toISOString();
+      console.log('AutoCheckoutService: Starting auto-checkout process...');
+      const now = new Date();
+      const nowISO = now.toISOString();
 
-      // Get checkin yang sudah habis waktu tapi masih aktif
-      const { data: expiredCheckins, error } = await supabase
-        .from('checkins')
-        .select(`
-          *,
-          units (
-            unit_number,
-            apartments (
-              name
-            )
-          )
-        `)
-        .in('status', ['active', 'extended'])
-        .lte('checkout_time', now)
-        .order('checkout_time', { ascending: true });
+      // Validasi supabase connection
+      if (!supabase) {
+        throw new Error('Supabase connection not available');
+      }
 
-      if (error) {
-        console.error('Error fetching expired checkins:', error);
+      console.log(`AutoCheckoutService: Checking for expired checkins at ${nowISO}`);
+
+      // Get checkin yang sudah habis waktu tapi masih aktif dengan retry mechanism
+      let expiredCheckins = [];
+      let queryAttempts = 0;
+      const maxQueryAttempts = 3;
+
+      while (queryAttempts < maxQueryAttempts) {
+        try {
+          const { data, error } = await supabase
+            .from('checkins')
+            .select(`
+              *,
+              units (
+                unit_number,
+                apartments (
+                  name
+                )
+              )
+            `)
+            .in('status', ['active', 'extended'])
+            .lte('checkout_time', nowISO)
+            .order('checkout_time', { ascending: true });
+
+          if (error) {
+            if (error.code === 'PGRST116') {
+              console.log('AutoCheckoutService: Checkins table not found');
+              return {
+                success: true,
+                processedCount: 0,
+                processedUnits: [],
+                message: 'No checkins table found',
+              };
+            }
+
+            if (error.code === 'PGRST301' && queryAttempts < maxQueryAttempts - 1) {
+              // Connection error, retry
+              queryAttempts++;
+              console.warn(`AutoCheckoutService: Connection error, retrying (${queryAttempts}/${maxQueryAttempts}):`, error);
+              await new Promise(resolve => setTimeout(resolve, 1000 * queryAttempts));
+              continue;
+            }
+
+            throw error;
+          }
+
+          expiredCheckins = data || [];
+          break;
+
+        } catch (queryError) {
+          queryAttempts++;
+          if (queryAttempts >= maxQueryAttempts) {
+            throw queryError;
+          }
+          console.warn(`AutoCheckoutService: Query error, retrying (${queryAttempts}/${maxQueryAttempts}):`, queryError);
+          await new Promise(resolve => setTimeout(resolve, 1000 * queryAttempts));
+        }
+      }
+
+      console.log(`AutoCheckoutService: Found ${expiredCheckins.length} expired checkins`);
+
+      if (expiredCheckins.length === 0) {
         return {
-          success: false,
-          message: 'Gagal mengambil data checkin expired',
+          success: true,
+          processedCount: 0,
+          processedUnits: [],
+          message: 'No expired checkins found',
         };
       }
 
       let processedCount = 0;
+      let failedCount = 0;
       const processedUnits = [];
+      const failedUnits = [];
 
-      // Process setiap checkin yang expired
-      for (const checkin of expiredCheckins || []) {
+      // Process setiap checkin yang expired dengan error handling yang robust
+      for (const checkin of expiredCheckins) {
         try {
-          // Update status checkin menjadi completed
-          const { error: updateError } = await supabase
-            .from('checkins')
-            .update({
-              status: 'completed',
-              updated_at: now
-            })
-            .eq('id', checkin.id);
+          console.log(`AutoCheckoutService: Processing checkin ${checkin.id} for unit ${checkin.units?.unit_number}`);
 
-          if (updateError) {
-            console.error(`Error updating checkin ${checkin.id}:`, updateError);
+          // Validasi data checkin
+          if (!checkin.id || !checkin.unit_id) {
+            console.error(`AutoCheckoutService: Invalid checkin data:`, checkin);
+            failedCount++;
+            failedUnits.push({
+              checkinId: checkin.id,
+              unitNumber: checkin.units?.unit_number,
+              error: 'Invalid checkin data',
+            });
             continue;
           }
 
-          // Update status unit menjadi cleaning
-          await UnitService.updateUnitStatus(
-            checkin.unit_id,
-            UNIT_STATUS.CLEANING,
-            1, // System user ID
-            'system'
-          );
+          // Update status checkin menjadi completed dengan retry
+          let updateAttempts = 0;
+          const maxUpdateAttempts = 3;
+          let updateSuccess = false;
 
-          // Log aktivitas auto-checkout
-          await ActivityLogService.logActivity(
-            1, // System user ID
-            'system',
-            ACTIVITY_ACTIONS.AUTO_CHECKOUT,
-            `Auto-checkout unit ${checkin.units?.unit_number} (${checkin.units?.apartments?.name}) - Checkin ID: ${checkin.id}`,
-            'checkins',
-            checkin.id
-          );
+          while (updateAttempts < maxUpdateAttempts && !updateSuccess) {
+            try {
+              const { error: updateError } = await supabase
+                .from('checkins')
+                .update({
+                  status: 'completed',
+                  updated_at: nowISO
+                })
+                .eq('id', checkin.id);
+
+              if (updateError) {
+                if (updateError.code === 'PGRST301' && updateAttempts < maxUpdateAttempts - 1) {
+                  // Connection error, retry
+                  updateAttempts++;
+                  console.warn(`AutoCheckoutService: Update error, retrying (${updateAttempts}/${maxUpdateAttempts}):`, updateError);
+                  await new Promise(resolve => setTimeout(resolve, 1000 * updateAttempts));
+                  continue;
+                }
+                throw updateError;
+              }
+
+              updateSuccess = true;
+            } catch (updateError) {
+              updateAttempts++;
+              if (updateAttempts >= maxUpdateAttempts) {
+                throw updateError;
+              }
+              console.warn(`AutoCheckoutService: Update retry ${updateAttempts}/${maxUpdateAttempts} for checkin ${checkin.id}:`, updateError);
+              await new Promise(resolve => setTimeout(resolve, 1000 * updateAttempts));
+            }
+          }
+
+          // Update status unit menjadi cleaning dengan error handling
+          try {
+            const unitUpdateResult = await UnitService.updateUnitStatus(
+              checkin.unit_id,
+              UNIT_STATUS.CLEANING,
+              1, // System user ID
+              'system'
+            );
+
+            if (!unitUpdateResult || !unitUpdateResult.success) {
+              console.warn(`AutoCheckoutService: Unit status update failed for unit ${checkin.unit_id}:`, unitUpdateResult);
+              // Continue anyway, don't fail the whole process
+            }
+          } catch (unitError) {
+            console.error(`AutoCheckoutService: Error updating unit status for unit ${checkin.unit_id}:`, unitError);
+            // Continue anyway, don't fail the whole process
+          }
+
+          // Log aktivitas auto-checkout dengan error handling
+          try {
+            await ActivityLogService.logActivity(
+              1, // System user ID
+              'system',
+              ACTIVITY_ACTIONS.AUTO_CHECKOUT,
+              `Auto-checkout unit ${checkin.units?.unit_number} (${checkin.units?.apartments?.name}) - Checkin ID: ${checkin.id}`,
+              'checkins',
+              checkin.id
+            );
+          } catch (logError) {
+            console.error(`AutoCheckoutService: Error logging activity for checkin ${checkin.id}:`, logError);
+            // Continue anyway, don't fail the whole process
+          }
 
           processedCount++;
           processedUnits.push({
@@ -87,23 +193,48 @@ class AutoCheckoutService {
             checkoutTime: checkin.checkout_time,
           });
 
-          console.log(`Auto-checkout processed: Unit ${checkin.units?.unit_number} (${checkin.units?.apartments?.name})`);
+          console.log(`AutoCheckoutService: Successfully processed auto-checkout for unit ${checkin.units?.unit_number} (${checkin.units?.apartments?.name})`);
+
         } catch (error) {
-          console.error(`Error processing auto-checkout for checkin ${checkin.id}:`, error);
+          console.error(`AutoCheckoutService: Critical error processing auto-checkout for checkin ${checkin.id}:`, error);
+          failedCount++;
+          failedUnits.push({
+            checkinId: checkin.id,
+            unitNumber: checkin.units?.unit_number,
+            apartmentName: checkin.units?.apartments?.name,
+            error: error.message || 'Unknown error',
+          });
         }
       }
+
+      // Prepare detailed result
+      const totalCheckins = expiredCheckins.length;
+      const successRate = totalCheckins > 0 ? (processedCount / totalCheckins * 100).toFixed(1) : 0;
+
+      console.log(`AutoCheckoutService: Auto-checkout completed. Processed: ${processedCount}/${totalCheckins} (${successRate}%), Failed: ${failedCount}`);
 
       return {
         success: true,
         processedCount,
+        failedCount,
+        totalCheckins,
+        successRate: parseFloat(successRate),
         processedUnits,
-        message: `${processedCount} unit berhasil di-auto-checkout`,
+        failedUnits,
+        message: `Auto-checkout completed: ${processedCount} unit berhasil, ${failedCount} gagal dari ${totalCheckins} total`,
       };
     } catch (error) {
-      console.error('Error in processAutoCheckout:', error);
+      console.error('AutoCheckoutService: Critical error in processAutoCheckout:', error);
       return {
         success: false,
-        message: 'Gagal memproses auto-checkout',
+        processedCount: 0,
+        failedCount: 0,
+        totalCheckins: 0,
+        successRate: 0,
+        processedUnits: [],
+        failedUnits: [],
+        message: `Gagal melakukan auto-checkout: ${error.message || 'Unknown error'}`,
+        error: error.message,
       };
     }
   }
@@ -326,26 +457,58 @@ class AutoCheckoutService {
   }
 
   /**
-   * Start auto-checkout scheduler (untuk implementasi background task)
+   * Start auto-checkout scheduler dengan error handling yang robust
    * @param {number} intervalMinutes - Interval dalam menit untuk menjalankan auto-checkout
+   * @returns {number} - Interval ID untuk menghentikan scheduler
    */
   startAutoCheckoutScheduler(intervalMinutes = 5) {
-    console.log(`Starting auto-checkout scheduler with ${intervalMinutes} minute interval`);
-    
-    // Jalankan auto-checkout pertama kali
-    this.processAutoCheckout();
-    
-    // Set interval untuk menjalankan auto-checkout secara berkala
-    const intervalId = setInterval(async () => {
-      console.log('Running scheduled auto-checkout...');
-      const result = await this.processAutoCheckout();
-      
-      if (result.success && result.processedCount > 0) {
-        console.log(`Scheduled auto-checkout processed ${result.processedCount} units`);
-      }
-    }, intervalMinutes * 60 * 1000);
+    try {
+      console.log(`AutoCheckoutService: Starting auto-checkout scheduler with ${intervalMinutes} minute interval`);
 
-    return intervalId;
+      // Validasi parameter
+      if (isNaN(intervalMinutes) || intervalMinutes <= 0) {
+        throw new Error('Invalid interval minutes');
+      }
+
+      // Jalankan auto-checkout pertama kali dengan error handling
+      this.processAutoCheckout()
+        .then(result => {
+          console.log('AutoCheckoutService: Initial auto-checkout completed:', result);
+        })
+        .catch(error => {
+          console.error('AutoCheckoutService: Error in initial auto-checkout:', error);
+        });
+
+      // Set interval untuk menjalankan auto-checkout secara berkala
+      const intervalId = setInterval(async () => {
+        try {
+          console.log('AutoCheckoutService: Running scheduled auto-checkout...');
+          const result = await this.processAutoCheckout();
+
+          if (result.success) {
+            if (result.processedCount > 0) {
+              console.log(`AutoCheckoutService: Scheduled auto-checkout processed ${result.processedCount} units (${result.successRate}% success rate)`);
+            } else {
+              console.log('AutoCheckoutService: Scheduled auto-checkout completed - no expired checkins found');
+            }
+
+            if (result.failedCount > 0) {
+              console.warn(`AutoCheckoutService: ${result.failedCount} units failed during auto-checkout`);
+            }
+          } else {
+            console.error('AutoCheckoutService: Scheduled auto-checkout failed:', result.message);
+          }
+        } catch (scheduledError) {
+          console.error('AutoCheckoutService: Critical error in scheduled auto-checkout:', scheduledError);
+        }
+      }, intervalMinutes * 60 * 1000);
+
+      console.log(`AutoCheckoutService: Auto-checkout scheduler started with interval ID: ${intervalId}`);
+      return intervalId;
+    } catch (error) {
+      console.error('AutoCheckoutService: Error starting auto-checkout scheduler:', error);
+      throw error;
+    }
   }
 
   /**
