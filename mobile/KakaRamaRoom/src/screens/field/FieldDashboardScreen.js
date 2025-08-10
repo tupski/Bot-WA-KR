@@ -14,12 +14,19 @@ import { COLORS, SIZES, CHECKIN_STATUS } from '../../config/constants';
 import NotificationIcon from '../../components/NotificationIcon';
 import AuthService from '../../services/AuthService';
 import CheckinService from '../../services/CheckinService';
+import UnitService from '../../services/UnitService';
+import TeamAssignmentService from '../../services/TeamAssignmentService';
 
 const FieldDashboardScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [activeCheckins, setActiveCheckins] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [dashboardStats, setDashboardStats] = useState({
+    availableUnits: 0,
+    activeCheckins: 0,
+    remainingUnits: 0,
+  });
 
   useEffect(() => {
     loadUserData();
@@ -28,6 +35,7 @@ const FieldDashboardScreen = ({ navigation }) => {
   useEffect(() => {
     if (currentUser) {
       loadActiveCheckins();
+      loadDashboardStats();
     }
   }, [currentUser]);
 
@@ -45,6 +53,56 @@ const FieldDashboardScreen = ({ navigation }) => {
   const loadUserData = () => {
     const user = AuthService.getCurrentUser();
     setCurrentUser(user);
+  };
+
+  /**
+   * Load dashboard stats untuk tim lapangan
+   */
+  const loadDashboardStats = async () => {
+    try {
+      if (!currentUser) {
+        console.log('FieldDashboardScreen: No current user, skipping load dashboard stats');
+        return;
+      }
+
+      console.log('FieldDashboardScreen: Loading dashboard stats for user:', currentUser.id);
+
+      // Get accessible units for this team
+      const unitsResult = await TeamAssignmentService.getAccessibleUnits(currentUser.id);
+
+      if (unitsResult.success) {
+        const allUnits = unitsResult.data || [];
+        const availableUnits = allUnits.filter(unit => unit.status === 'available').length;
+        const occupiedUnits = allUnits.filter(unit => unit.status === 'occupied').length;
+        const remainingUnits = availableUnits;
+
+        setDashboardStats({
+          availableUnits,
+          activeCheckins: occupiedUnits, // Occupied units = active checkins
+          remainingUnits,
+        });
+
+        console.log('FieldDashboardScreen: Dashboard stats loaded:', {
+          availableUnits,
+          activeCheckins: occupiedUnits,
+          remainingUnits,
+        });
+      } else {
+        console.error('FieldDashboardScreen: Failed to load units:', unitsResult.message);
+        setDashboardStats({
+          availableUnits: 0,
+          activeCheckins: 0,
+          remainingUnits: 0,
+        });
+      }
+    } catch (error) {
+      console.error('FieldDashboardScreen: Load dashboard stats error:', error);
+      setDashboardStats({
+        availableUnits: 0,
+        activeCheckins: 0,
+        remainingUnits: 0,
+      });
+    }
   };
 
   /**
@@ -80,6 +138,7 @@ const FieldDashboardScreen = ({ navigation }) => {
   const onRefresh = async () => {
     setRefreshing(true);
     await loadActiveCheckins();
+    await loadDashboardStats();
     setRefreshing(false);
   };
 
@@ -247,21 +306,25 @@ const FieldDashboardScreen = ({ navigation }) => {
       {/* Quick Stats */}
       <View style={styles.statsContainer}>
         <View style={styles.statCard}>
-          <Icon name="apartment" size={32} color={COLORS.primary} />
+          <Icon name="meeting-room" size={32} color={COLORS.success} />
           <Text style={styles.statNumber}>
-            {currentUser?.apartmentIds?.length || 0}
+            {dashboardStats.availableUnits}
           </Text>
-          <Text style={styles.statLabel}>Apartemen</Text>
+          <Text style={styles.statLabel}>Unit Tersedia</Text>
         </View>
         <View style={styles.statCard}>
-          <Icon name="check-circle" size={32} color={COLORS.success} />
-          <Text style={styles.statNumber}>-</Text>
-          <Text style={styles.statLabel}>Checkin Hari Ini</Text>
+          <Icon name="check-circle" size={32} color={COLORS.primary} />
+          <Text style={styles.statNumber}>
+            {dashboardStats.activeCheckins}
+          </Text>
+          <Text style={styles.statLabel}>Checkin Aktif</Text>
         </View>
         <View style={styles.statCard}>
-          <Icon name="meeting-room" size={32} color={COLORS.warning} />
-          <Text style={styles.statNumber}>-</Text>
-          <Text style={styles.statLabel}>Unit Terisi</Text>
+          <Icon name="home" size={32} color={COLORS.warning} />
+          <Text style={styles.statNumber}>
+            {dashboardStats.remainingUnits}
+          </Text>
+          <Text style={styles.statLabel}>Unit Tersisa</Text>
         </View>
       </View>
 
