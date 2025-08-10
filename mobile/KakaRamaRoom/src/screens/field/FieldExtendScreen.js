@@ -10,6 +10,7 @@ import {
   Modal,
   FlatList,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { COLORS, SIZES, PAYMENT_METHODS, CHECKIN_STATUS } from '../../config/constants';
@@ -21,13 +22,17 @@ import AuthService from '../../services/AuthService';
  * Fitur: Form extend dengan data pre-filled, upload bukti transfer tambahan
  */
 const FieldExtendScreen = ({ navigation, route }) => {
-  // Get checkin data dari navigation params
-  const { checkinData } = route.params || {};
+  // Get checkin data atau checkin ID dari navigation params
+  const { checkinData, checkinId } = route.params || {};
+
+  // State untuk checkin data
+  const [checkin, setCheckin] = useState(checkinData || null);
+  const [loadingCheckin, setLoadingCheckin] = useState(false);
 
   // State untuk form extend
   const [formData, setFormData] = useState({
     additionalHours: '',
-    paymentMethod: '',
+    paymentMethod: 'cash',
     paymentAmount: '',
     paymentProofPath: '',
     notes: '',
@@ -42,8 +47,11 @@ const FieldExtendScreen = ({ navigation, route }) => {
   useEffect(() => {
     loadUserData();
 
-    // Jika tidak ada data checkin, kembali ke screen sebelumnya
-    if (!checkinData) {
+    // Jika ada checkinId tapi tidak ada checkinData, load data checkin
+    if (checkinId && !checkinData) {
+      loadCheckinData();
+    } else if (!checkinData && !checkinId) {
+      // Jika tidak ada data checkin sama sekali
       Alert.alert(
         'Error',
         'Data checkin tidak ditemukan',
@@ -51,6 +59,39 @@ const FieldExtendScreen = ({ navigation, route }) => {
       );
     }
   }, []);
+
+  /**
+   * Load data checkin berdasarkan ID
+   */
+  const loadCheckinData = async () => {
+    try {
+      setLoadingCheckin(true);
+      console.log('FieldExtendScreen: Loading checkin data for ID:', checkinId);
+
+      const result = await CheckinService.getCheckinById(checkinId);
+
+      if (result.success && result.data) {
+        console.log('FieldExtendScreen: Loaded checkin data:', result.data);
+        setCheckin(result.data);
+      } else {
+        console.error('FieldExtendScreen: Failed to load checkin:', result.message);
+        Alert.alert(
+          'Error',
+          result.message || 'Gagal memuat data checkin',
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+      }
+    } catch (error) {
+      console.error('FieldExtendScreen: Error loading checkin data:', error);
+      Alert.alert(
+        'Error',
+        'Terjadi kesalahan saat memuat data checkin',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
+    } finally {
+      setLoadingCheckin(false);
+    }
+  };
 
   /**
    * Load data user yang sedang login
@@ -144,30 +185,50 @@ const FieldExtendScreen = ({ navigation, route }) => {
    * Submit form extend checkin
    */
   const handleSubmit = async () => {
-    if (!validateForm()) return;
-
-    setLoading(true);
-
     try {
+      // Validasi checkin data
+      if (!checkin || !checkin.id) {
+        Alert.alert('Error', 'Data checkin tidak valid. Silakan coba lagi.');
+        return;
+      }
+
+      // Validasi user
+      if (!currentUser || !currentUser.id) {
+        Alert.alert('Error', 'Data pengguna tidak valid. Silakan login ulang.');
+        return;
+      }
+
+      if (!validateForm()) return;
+
+      setLoading(true);
+
       const extendData = {
         additionalHours: parseInt(formData.additionalHours),
         paymentMethod: formData.paymentMethod,
-        paymentAmount: formData.paymentAmount ? parseFloat(formData.paymentAmount) : null,
+        paymentAmount: formData.paymentAmount ? parseFloat(formData.paymentAmount.replace(/[^\d]/g, '')) : null,
         paymentProofPath: formData.paymentProofPath,
-        notes: formData.notes.trim(),
+        notes: formData.notes.trim() || null,
       };
 
+      console.log('FieldExtendScreen: Submitting extend with data:', {
+        checkinId: checkin.id,
+        extendData,
+        userId: currentUser.id,
+      });
+
       const result = await CheckinService.extendCheckin(
-        checkinData.id,
+        checkin.id,
         extendData,
         currentUser.id,
         'field_team'
       );
 
+      console.log('FieldExtendScreen: Extend result:', result);
+
       if (result.success) {
         Alert.alert(
           'Sukses',
-          'Checkin berhasil di-extend!',
+          'Checkin berhasil diperpanjang!',
           [
             {
               text: 'OK',
@@ -179,22 +240,38 @@ const FieldExtendScreen = ({ navigation, route }) => {
           ]
         );
       } else {
-        Alert.alert('Error', result.message);
+        Alert.alert('Error', result.message || 'Gagal memperpanjang checkin');
       }
     } catch (error) {
-      console.error('Submit extend error:', error);
-      Alert.alert('Error', 'Gagal extend checkin');
+      console.error('FieldExtendScreen: Submit extend error:', error);
+      Alert.alert('Error', `Gagal memperpanjang checkin: ${error.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // Jika tidak ada data checkin, tampilkan loading atau error
-  if (!checkinData) {
+  // Jika sedang loading checkin data
+  if (loadingCheckin) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loadingText}>Memuat data checkin...</Text>
+      </View>
+    );
+  }
+
+  // Jika tidak ada data checkin, tampilkan error
+  if (!checkin) {
     return (
       <View style={styles.errorContainer}>
         <Icon name="error" size={64} color={COLORS.error} />
         <Text style={styles.errorText}>Data checkin tidak ditemukan</Text>
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.retryButtonText}>Kembali</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -207,7 +284,7 @@ const FieldExtendScreen = ({ navigation, route }) => {
           <Icon name="access-time" size={32} color={COLORS.warning} />
           <Text style={styles.headerTitle}>Extend Check-in</Text>
           <Text style={styles.headerSubtitle}>
-            Perpanjang waktu checkin untuk unit {checkinData.unit_number}
+            Perpanjang waktu checkin untuk unit {checkin.units?.unit_number || checkin.unit_number || 'N/A'}
           </Text>
         </View>
 
@@ -218,20 +295,20 @@ const FieldExtendScreen = ({ navigation, route }) => {
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Unit:</Text>
             <Text style={styles.infoValue}>
-              {checkinData.unit_number} - {checkinData.apartment_name}
+              {checkin.units?.unit_number || checkin.unit_number || 'N/A'} - {checkin.apartments?.name || checkin.apartment_name || 'N/A'}
             </Text>
           </View>
 
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Waktu Checkout Saat Ini:</Text>
             <Text style={styles.infoValue}>
-              {new Date(checkinData.checkout_time).toLocaleString('id-ID', {
+              {checkin.checkout_time ? new Date(checkin.checkout_time).toLocaleString('id-ID', {
                 day: '2-digit',
                 month: '2-digit',
                 year: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit',
-              })}
+              }) : 'N/A'}
             </Text>
           </View>
 
@@ -239,10 +316,10 @@ const FieldExtendScreen = ({ navigation, route }) => {
             <Text style={styles.infoLabel}>Status:</Text>
             <View style={[
               styles.statusBadge,
-              { backgroundColor: checkinData.status === CHECKIN_STATUS.ACTIVE ? COLORS.success : COLORS.warning }
+              { backgroundColor: checkin.status === 'active' ? COLORS.success : COLORS.warning }
             ]}>
               <Text style={styles.statusText}>
-                {checkinData.status === CHECKIN_STATUS.ACTIVE ? 'Aktif' : 'Extended'}
+                {checkin.status === 'active' ? 'Aktif' : 'Extended'}
               </Text>
             </View>
           </View>
@@ -666,6 +743,32 @@ const styles = StyleSheet.create({
   },
   modalItemTextSelected: {
     color: COLORS.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    padding: SIZES.lg,
+  },
+  loadingText: {
+    fontSize: SIZES.body,
+    color: COLORS.textSecondary,
+    marginTop: SIZES.md,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SIZES.lg,
+    paddingVertical: SIZES.md,
+    borderRadius: SIZES.radius,
+    marginTop: SIZES.lg,
+  },
+  retryButtonText: {
+    fontSize: SIZES.body,
+    fontWeight: '600',
+    color: COLORS.background,
+    textAlign: 'center',
   },
 });
 
