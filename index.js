@@ -1,5 +1,4 @@
-// Bot WhatsApp untuk Manajemen Booking Kamar Kakarama Room
-// Entry point utama
+// Bot WhatsApp untuk Manajemen Data Checkin Apartemen Kakarama Room
 
 // Load environment variables FIRST
 require('dotenv').config();
@@ -64,7 +63,7 @@ async function handleMessage(message, isEdit = false) {
         if (message.from.includes('@g.us')) {
             groupName = await bot.getGroupName(message.from);
             if (!groupName) {
-                groupName = 'Unknown Group';
+                groupName = 'Grup Tidak Diketahui';
             }
 
             // Cek apakah grup diizinkan berdasarkan ID grup
@@ -76,7 +75,7 @@ async function handleMessage(message, isEdit = false) {
             apartmentName = bot.getApartmentName(message.from);
 
             // Debug logging untuk troubleshooting
-            logger.info(`Debug mapping - Group ID: ${message.from}, Group Name: ${groupName}, Apartment Name: ${apartmentName}`);
+            logger.info(`Debug mapping - ID Grup: ${message.from}, Nama Grup: ${groupName}, Nama Apartemen: ${apartmentName}`);
         }
 
         // Cek apakah pesan adalah command
@@ -115,7 +114,7 @@ async function handleNewBookingMessage(message, apartmentName) {
     // Cek apakah pesan sudah diproses sebelumnya
     const isProcessed = await database.isMessageProcessed(message.id.id);
     if (isProcessed) {
-        logger.info(`Pesan ${message.id.id} sudah diproses sebelumnya, dilewati.`);
+        logger.info(`Pesan ${message.id.id} sudah diproses sebelumnya, saya lewati.`);
         return;
     }
 
@@ -600,25 +599,25 @@ async function handleCommand(message, apartmentName) {
                 const apartmentName = bot.getApartmentName(message.from);
                 helpMessage = `📋 *PANDUAN PERINTAH BOT KAKARAMA ROOM*\n🏠 *${apartmentName}*\n\n`;
 
-                helpMessage += `*📊 LAPORAN & REKAP*\n`;
+                helpMessage += `📊 *LAPORAN & REKAP*\n`;
                 helpMessage += `• \`!rekap\` - Rekap hari ini (business day)\n`;
                 helpMessage += `• \`!rekap DDMMYYYY\` - Rekap tanggal tertentu\n`;
                 helpMessage += `• \`!detailrekap\` - Detail transaksi hari ini\n`;
                 helpMessage += `• \`!detailrekap DDMMYYYY\` - Detail tanggal tertentu\n\n`;
 
-                helpMessage += `*📝 CONTOH PENGGUNAAN*\n`;
+                helpMessage += `📝 *CONTOH PENGGUNAAN*\n`;
                 helpMessage += `• \`!rekap\` - Rekap hari ini\n`;
                 helpMessage += `• \`!rekap 08082025\` - Rekap 8 Agustus 2025\n`;
                 helpMessage += `• \`!detailrekap\` - Detail hari ini\n\n`;
 
-                helpMessage += `*📋 FORMAT BOOKING*\n`;
-                helpMessage += `Kirim pesan dengan format:\n`;
+                helpMessage += `📋 *FORMAT BOOKING*\n`;
+                helpMessage += `Kirim pesan dengan format, contoh:\n`;
                 helpMessage += `\`\`\`\n🟢${apartmentName}\nUnit      : L3/10D\nCek out: 23:05\nUntuk   : 9 jam\nCash/tf: transfer 200\nCs         : dreamy\nkomisi : 50\`\`\`\n\n`;
 
-                helpMessage += `*⏰ BUSINESS DAY*\n`;
+                helpMessage += `⏰ *BUSINESS DAY*\n`;
                 helpMessage += `Laporan harian: jam 12:00 - 11:59 hari berikutnya\n\n`;
 
-                helpMessage += `*ℹ️ INFO*\n`;
+                helpMessage += `ℹ️ * INFO*\n`;
                 helpMessage += `Bot otomatis memproses pesan booking dan mengirim laporan harian jam 12:00 WIB`;
             } else {
                 // Help untuk private message (owner)
@@ -668,6 +667,7 @@ async function handleCommand(message, apartmentName) {
                     helpMessage += `• \`springwood\` → SPRINGWOOD\n`;
                     helpMessage += `• \`serpong\` → SERPONG GARDEN\n`;
                     helpMessage += `• \`tokyo\` → TOKYO PIK 2\n\n`;
+                    helpMessage += `• \`transpark\` → Transpark Bintaro\n\n`;
 
                     helpMessage += `*📝 CONTOH PENGGUNAAN*\n`;
                     helpMessage += `• \`!export 2\` - Export 2 hari terakhir\n`;
@@ -675,9 +675,9 @@ async function handleCommand(message, apartmentName) {
                     helpMessage += `• \`!export sky 08082025\` - Export Sky House 8 Agustus\n`;
                     helpMessage += `• \`!rekap emerald\` - Rekap Emerald Bintaro hari ini\n\n`;
 
-                    helpMessage += `*⏰ BUSINESS DAY LOGIC*\n`;
+                    helpMessage += `*⏰ Logika Jam Kerja*\n`;
                     helpMessage += `Laporan harian: jam 12:00 - 11:59 hari berikutnya\n`;
-                    helpMessage += `Export otomatis dikirim ke WhatsApp + Email`;
+                    helpMessage += `Export otomatis dikirim ke WhatsApp + Email Owner`;
                 }
             }
 
@@ -704,10 +704,10 @@ async function handleCommand(message, apartmentName) {
                 debugMessage += `• GROUP_SKYHOUSE_ENABLED: ${process.env.GROUP_SKYHOUSE_ENABLED}\n\n`;
 
                 // Config check
-                debugMessage += `⚙️ *Config Status:*\n`;
-                debugMessage += `• Group Mapping: ${Object.keys(config.apartments.groupMapping).length} entries\n`;
-                debugMessage += `• Allowed Groups: ${config.apartments.allowedGroups.length} groups\n`;
-                debugMessage += `• Owner Numbers: ${config.owner.allowedNumbers.length} numbers\n\n`;
+                debugMessage += `⚙️ *Status Konfigurasi:*\n`;
+                debugMessage += `• Mapping Grup: ${Object.keys(config.apartments.groupMapping).length} Grup\n`;
+                debugMessage += `• Grup Diizinkan: ${config.apartments.allowedGroups.length} Grup\n`;
+                debugMessage += `• Nomor Pemilik: ${config.owner.allowedNumbers.length} nomor\n\n`;
 
                 // Specific group check
                 const testGroupId = '120363317169602122@g.us';
@@ -719,10 +719,10 @@ async function handleCommand(message, apartmentName) {
 
                 // Owner check
                 const testNumber = message.from.replace('@c.us', '');
-                debugMessage += `👤 *Owner Test:*\n`;
-                debugMessage += `• Your Number: ${testNumber}\n`;
-                debugMessage += `• Is Owner: ${bot.isOwner(message.from) ? '✅ Yes' : '❌ No'}\n`;
-                debugMessage += `• Owner List: ${config.owner.allowedNumbers.join(', ')}\n`;
+                debugMessage += `👤 *Tes Pemilik:*\n`;
+                debugMessage += `• Nomor Anda: ${testNumber}\n`;
+                debugMessage += `• Apakah Owner? ${bot.isOwner(message.from) ? '✅ Yes' : '❌ No'}\n`;
+                debugMessage += `• Daftar Nomor Owner: ${config.owner.allowedNumbers.join(', ')}\n`;
 
                 await bot.sendMessage(message.from, debugMessage);
                 logger.info('Debug info berhasil dikirim');
@@ -900,7 +900,7 @@ async function handleCommand(message, apartmentName) {
                         return;
                     }
 
-                    // Check if second parameter is a number (days) or date
+                    // cek jika parameter kedua adalah nomor (hari) atau tanggal
                     if (/^\d+$/.test(secondParam)) {
                         // !export <apartemen> <angka> - Export apartemen X hari terakhir
                         const days = parseInt(secondParam);
@@ -921,7 +921,7 @@ async function handleCommand(message, apartmentName) {
                         // !export <apartemen> DDMMYYYY - Export apartemen tanggal tertentu
                         const parsedDate = moment(secondParam, 'DDMMYYYY').tz('Asia/Jakarta');
                         if (!parsedDate.isValid()) {
-                            await bot.sendMessage(message.from, '❌ Format tanggal tidak valid. Gunakan DDMMYYYY (contoh: 01082025)');
+                            await bot.sendMessage(message.from, '❌ Format tanggal tidak valid. Gunakan DDMMYYYY (contoh: 01082025 untuk 1 Agustus 2025)');
                             return;
                         }
 
@@ -951,11 +951,11 @@ async function handleCommand(message, apartmentName) {
 
                 if (transactions.length === 0) {
                     const noDataText = apartmentName ? `${apartmentName} pada periode ${displayDate}` : `periode ${displayDate}`;
-                    await bot.sendMessage(message.from, `❌ Tidak ada transaksi ditemukan untuk ${noDataText}.`);
+                    await bot.sendMessage(message.from, `❌ Tidak ada transaksi yang ditemukan untuk ${noDataText}.`);
                     return;
                 }
 
-                // Create Excel file dengan 3 sheets
+                // buat Excel file dengan 3 sheets
                 const path = require('path');
                 const fs = require('fs');
 
@@ -963,20 +963,20 @@ async function handleCommand(message, apartmentName) {
                 const csSummary = calculateCSSummaryFromTransactions(transactions);
                 const marketingCommission = calculateMarketingCommissionFromTransactions(transactions);
 
-                // Create workbook dengan 3 sheets
+                // buat workbook dengan 3 sheets
                 const ExcelJS = require('exceljs');
                 const workbook = new ExcelJS.Workbook();
-                workbook.creator = 'KAKARAMA ROOM';
-                workbook.lastModifiedBy = 'WhatsApp Bot';
+                workbook.creator = 'KakaRama Room';
+                workbook.lastModifiedBy = 'KR WA Bot';
                 workbook.created = new Date();
                 workbook.modified = new Date();
 
-                // Create sheets
+                // buat sheets
                 await createTransactionsSheetForExport(workbook, transactions, displayDate, apartmentName);
                 await createCashReportSheetForExport(workbook, transactions, displayDate, apartmentName);
                 await createCombinedSummarySheetForExport(workbook, csSummary, marketingCommission, displayDate, apartmentName);
 
-                // Save file
+                // simpan file
                 const apartmentPrefix = apartmentName ? `${apartmentName.replace(/\s+/g, '_')}_` : '';
                 const filename = `Laporan_Export_${apartmentPrefix}${displayDate.replace(/\//g, '')}_${Date.now()}.xlsx`;
                 const exportDir = './exports';
@@ -987,16 +987,16 @@ async function handleCommand(message, apartmentName) {
 
                 await workbook.xlsx.writeFile(filepath);
 
-                // Send via email and WhatsApp
+                // kirim via email dan whatsapp
                 const emailSent = await emailService.sendDailyReport(filepath, targetDate, apartmentName, true);
 
                 const apartmentInfo = apartmentName ? `\n- Apartemen: ${apartmentName}` : '';
-                const reportSummary = `📊 *LAPORAN EXPORT*\n\n📅 Periode: ${displayDate}${apartmentInfo}\n📈 Total transaksi: ${transactions.length}\n📄 File: ${filename}`;
+                const reportSummary = `📊 *LAPORAN EXPORT*\n\n📅 Periode: ${displayDate}${apartmentInfo}\n📈 Total transaksi: ${transactions.length}`;
 
-                // Send report with attachment to WhatsApp
+                // kirim laporan dan attachment ke whatsapp
                 const whatsappSent = await bot.sendReportWithAttachment(message.from, reportSummary, filepath);
 
-                // Send status message
+                // pesan untuk status pengiriman attachment
                 let statusMessage = '';
                 if (emailSent && whatsappSent) {
                     statusMessage = `✅ Export laporan berhasil!\n\n${reportSummary}\n\n📧 Laporan telah dikirim via email ke ${config.email.to}\n💬 File attachment telah dikirim ke chat ini`;
@@ -1014,7 +1014,7 @@ async function handleCommand(message, apartmentName) {
 
             } catch (error) {
                 logger.error('Error dalam export laporan:', error);
-                await bot.sendMessage(message.from, '❌ Terjadi error saat export laporan. Silakan coba lagi atau hubungi administrator.');
+                await bot.sendMessage(message.from, '❌ Terjadi error saat export laporan. Silakan coba lagi atau hubungi WA Om Tupas 082211219993.');
             }
 
         } else if (message.body.startsWith('!fixenv')) {
@@ -1272,8 +1272,8 @@ async function handleCommand(message, apartmentName) {
 
                     envMsg += `📋 *${group}:*\n`;
                     envMsg += `- ID: ${id || '❌ undefined'}\n`;
-                    envMsg += `- NAME: ${name || '❌ undefined'}\n`;
-                    envMsg += `- ENABLED: ${enabled || '❌ undefined'}\n`;
+                    envMsg += `- NAMA: ${name || '❌ undefined'}\n`;
+                    envMsg += `- AKTIF: ${enabled || '❌ undefined'}\n`;
 
                     // Debug: Cek apakah value benar-benar ada
                     if (id) {
@@ -1333,8 +1333,8 @@ async function handleCommand(message, apartmentName) {
 
                     envMsg += `📋 *${group}:*\n`;
                     envMsg += `- ID: ${id || '❌ undefined'}\n`;
-                    envMsg += `- NAME: ${name || '❌ undefined'}\n`;
-                    envMsg += `- ENABLED: ${enabled || '❌ undefined'}\n\n`;
+                    envMsg += `- NAMA: ${name || '❌ undefined'}\n`;
+                    envMsg += `- AKTIF: ${enabled || '❌ undefined'}\n\n`;
                 });
 
                 // Test dotenv loading
@@ -1507,19 +1507,19 @@ async function handleCommand(message, apartmentName) {
                 config.apartments.allowedGroups = newAllowedGroups;
 
                 let reloadMsg = `✅ *Konfigurasi berhasil di-reload!*\n\n`;
-                reloadMsg += `🔧 *Group Mapping (${Object.keys(newGroupMapping).length} entries):*\n`;
+                reloadMsg += `🔧 *Grup Mapping (${Object.keys(newGroupMapping).length} grup):*\n`;
                 Object.entries(newGroupMapping).forEach(([groupId, apartmentName]) => {
                     reloadMsg += `- ${groupId.substring(0, 25)}...: "${apartmentName}"\n`;
                 });
 
-                reloadMsg += `\n✅ *Allowed Groups (${newAllowedGroups.length} groups):*\n`;
+                reloadMsg += `\n✅ *Grup Diizinkan (${newAllowedGroups.length} grup):*\n`;
                 newAllowedGroups.forEach(groupId => {
                     reloadMsg += `- ${groupId.substring(0, 25)}...\n`;
                 });
 
                 await bot.sendMessage(message.from, reloadMsg);
                 logger.info('Konfigurasi berhasil di-reload');
-                logger.info(`New mapping: ${JSON.stringify(newGroupMapping, null, 2)}`);
+                logger.info(`Mapping baru: ${JSON.stringify(newGroupMapping, null, 2)}`);
 
             } catch (error) {
                 logger.error('Error dalam reload command:', error);
@@ -1549,17 +1549,18 @@ async function handleCommand(message, apartmentName) {
                 testMsg += `📊 *5 Transaksi Terbaru:*\n`;
 
                 recentTransactions.forEach((transaction, index) => {
-                    testMsg += `${index + 1}. Message ID: ${transaction.message_id}\n`;
-                    testMsg += `   Unit: ${transaction.unit}, CS: ${transaction.cs_name}\n`;
-                    testMsg += `   Amount: ${transaction.amount.toLocaleString('id-ID')}\n`;
-                    testMsg += `   Date: ${transaction.date_only}\n\n`;
+                    testMsg += `${index + 1}. ID Pesan: ${transaction.message_id}\n`;
+                    testMsg += `   Unit: ${transaction.unit}\n`;
+                    testMsg += `   CS: ${transaction.cs_name}\n`;
+                    testMsg += `   Jumlah: Rp${transaction.amount.toLocaleString('id-ID')}\n`;
+                    testMsg += `   Tanggal: ${transaction.date_only}\n\n`;
                 });
 
                 testMsg += `🧪 *Cara test sinkronisasi:*\n`;
-                testMsg += `1. *Edit Message*: Edit pesan booking di grup\n`;
+                testMsg += `1. *Edit Pesan*: Edit pesan booking di grup\n`;
                 testMsg += `   → Bot akan update database otomatis\n`;
                 testMsg += `   → Kirim konfirmasi perubahan\n\n`;
-                testMsg += `2. *Delete Message*: Hapus pesan booking di grup\n`;
+                testMsg += `2. *Hapus Pesan*: Hapus pesan booking di grup\n`;
                 testMsg += `   → Bot akan hapus data dari database\n`;
                 testMsg += `   → Kirim notifikasi penghapusan\n\n`;
                 testMsg += `3. *Cek Log*: Monitor log untuk detail proses\n`;
@@ -1596,9 +1597,10 @@ async function handleCommand(message, apartmentName) {
                 testMsg += `📊 *5 Transaksi Terbaru:*\n`;
 
                 recentTransactions.forEach((transaction, index) => {
-                    testMsg += `${index + 1}. Message ID: ${transaction.message_id}\n`;
-                    testMsg += `   Unit: ${transaction.unit}, CS: ${transaction.cs_name}\n`;
-                    testMsg += `   Amount: ${transaction.amount.toLocaleString('id-ID')}\n\n`;
+                    testMsg += `${index + 1}. ID Pesan: ${transaction.message_id}\n`;
+                    testMsg += `   Unit: ${transaction.unit}`;
+                    testMsg += `   CS: ${transaction.cs_name}\n`;
+                    testMsg += `   Jumlah: Rp${transaction.amount.toLocaleString('id-ID')}\n\n`;
                 });
 
                 testMsg += `💡 *Cara test edit:*\n`;
@@ -1629,16 +1631,16 @@ async function handleCommand(message, apartmentName) {
                 const now = moment().tz('Asia/Jakarta');
 
                 let debugMsg = `🕐 *Debug DateTime - Business Day Logic*\n\n`;
-                debugMsg += `📅 *Current Time:*\n`;
-                debugMsg += `- Jakarta Time: ${now.format('YYYY-MM-DD HH:mm:ss')}\n`;
-                debugMsg += `- Hour: ${now.hour()}\n`;
-                debugMsg += `- Is before 12:00? ${now.hour() < 12 ? 'Yes' : 'No'}\n\n`;
+                debugMsg += `📅 *Waktu saat ini:*\n`;
+                debugMsg += `- Waktu Jakarta: ${now.format('YYYY-MM-DD HH:mm:ss')}\n`;
+                debugMsg += `- Jam: ${now.hour()}\n`;
+                debugMsg += `- Belum jam 12:00? ${now.hour() < 12 ? 'Ya' : 'Tidak'}\n\n`;
 
                 // Business day logic
                 let businessDay;
                 if (now.hour() < 12) {
                     businessDay = now.clone().subtract(1, 'day');
-                    debugMsg += `🏢 *Business Day (Before 12:00):*\n`;
+                    debugMsg += `🏢 *Business Day (Sebelum 12:00):*\n`;
                     debugMsg += `- Current business day: ${businessDay.format('DD/MM/YYYY')} (kemarin)\n`;
                 } else {
                     businessDay = now.clone();
@@ -1782,11 +1784,11 @@ async function handleCommand(message, apartmentName) {
                         debugMsg += `${index + 1}. *${transaction.location}*\n`;
                         debugMsg += `   Unit: ${transaction.unit}\n`;
                         debugMsg += `   CS: ${transaction.cs_name}\n`;
-                        debugMsg += `   Amount: ${transaction.amount.toLocaleString('id-ID')}\n`;
-                        debugMsg += `   Date: ${transaction.date_only}\n`;
-                        debugMsg += `   Created: ${transaction.created_at}\n`;
-                        debugMsg += `   Message ID: \`${transaction.message_id}\`\n`;
-                        debugMsg += `   ID Length: ${transaction.message_id ? transaction.message_id.length : 'null'}\n\n`;
+                        debugMsg += `   Jumlah: Rp${transaction.amount.toLocaleString('id-ID')}\n`;
+                        debugMsg += `   Tanggal: ${transaction.date_only}\n`;
+                        debugMsg += `   Dibuat: ${transaction.created_at}\n`;
+                        debugMsg += `   ID Pesan: \`${transaction.message_id}\`\n`;
+                        debugMsg += `   Panjang: ${transaction.message_id ? transaction.message_id.length : 'null'}\n\n`;
                     });
 
                     debugMsg += `💡 *Tips untuk Debug:*\n`;
@@ -1861,9 +1863,9 @@ async function handleCommand(message, apartmentName) {
                     const confirmMsg = `✅ *Transaksi berhasil dihapus paksa*\n` +
                         `📝 Unit: ${targetTransaction.unit}\n` +
                         `👤 CS: ${targetTransaction.cs_name}\n` +
-                        `💰 Amount: ${targetTransaction.amount.toLocaleString('id-ID')}\n` +
-                        `📅 Date: ${targetTransaction.date_only}\n` +
-                        `🔑 Message ID: ${targetTransaction.message_id || 'N/A'}\n` +
+                        `💰 Jumlah: Rp${targetTransaction.amount.toLocaleString('id-ID')}\n` +
+                        `📅 Tanggal: ${targetTransaction.date_only}\n` +
+                        `🔑 ID Pesan: ${targetTransaction.message_id || 'N/A'}\n` +
                         `⚠️ Data telah dihapus dari sistem`;
 
                     await bot.sendMessage(message.from, confirmMsg);
@@ -1900,10 +1902,10 @@ async function handleCommand(message, apartmentName) {
                         rawMsg += `${index + 1}. *${transaction.location}*\n`;
                         rawMsg += `   Unit: ${transaction.unit}\n`;
                         rawMsg += `   CS: ${transaction.cs_name}\n`;
-                        rawMsg += `   Amount: ${transaction.amount.toLocaleString('id-ID')}\n`;
-                        rawMsg += `   Date: ${transaction.date_only}\n`;
-                        rawMsg += `   Created: ${transaction.created_at}\n`;
-                        rawMsg += `   Message ID: ${transaction.message_id}\n\n`;
+                        rawMsg += `   Jumlah: Rp${transaction.amount.toLocaleString('id-ID')}\n`;
+                        rawMsg += `   Tanggal: ${transaction.date_only}\n`;
+                        rawMsg += `   Dibuat: ${transaction.created_at}\n`;
+                        rawMsg += `   ID Pesan: ${transaction.message_id}\n\n`;
                     });
 
                     // Statistik per lokasi
@@ -2210,7 +2212,9 @@ function findApartmentByPartialName(partialName) {
         'emerald': 'EMERALD BINTARO',
         'springwood': 'SPRINGWOOD',
         'serpong': 'SERPONG GARDEN',
+        'sg' : 'SERPONG GARDEN',
         'tokyo': 'TOKYO PIK 2',
+        'pik' : 'TOKYO PIK 2',
         'testing': 'TESTING BOT',
         'test': 'TESTING BOT'
     };
@@ -2353,14 +2357,14 @@ async function createTransactionsSheetForExport(workbook, transactions, displayD
         { width: 5 },   // No
         { width: 12 },  // Tanggal
         { width: 8 },   // Waktu
-        { width: 20 },  // Apartemen
+        { width: 25 },  // Apartemen
         { width: 12 },  // Unit
         { width: 10 },  // Check Out
         { width: 10 },  // Durasi
         { width: 12 },  // Payment
-        { width: 15 },  // Amount
+        { width: 25 },  // Amount
         { width: 15 },  // CS
-        { width: 15 }   // Komisi
+        { width: 23 }   // Komisi
     ];
 
     // Add data
