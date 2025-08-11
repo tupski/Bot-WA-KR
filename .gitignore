@@ -7,6 +7,10 @@ yarn-error.log*
 # Environment variables
 .env
 
+# Firebase credentials (sensitive)
+credentials/firebase-service-account.json
+credentials/*.json
+
 # Database files
 data/*.db
 data/*.sqlite
