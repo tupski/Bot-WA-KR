@@ -583,6 +583,17 @@ const FieldCheckinScreen = ({ navigation, route }) => {
       );
 
       if (result.success) {
+        // Save marketing name to database if provided
+        if (formData.marketingName && formData.marketingName.trim()) {
+          try {
+            console.log('FieldCheckinScreen: Saving marketing name to database:', formData.marketingName);
+            await MarketingSourceService.addMarketingSourceIfNotExists(formData.marketingName.trim());
+          } catch (marketingError) {
+            console.error('FieldCheckinScreen: Error saving marketing source:', marketingError);
+            // Don't fail the main operation
+          }
+        }
+
         showAlert({
           type: 'success',
           title: 'Sukses',

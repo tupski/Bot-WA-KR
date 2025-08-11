@@ -305,6 +305,17 @@ const AdminCheckinScreen = ({ navigation }) => {
       if (result && result.success) {
         console.log('AdminCheckinScreen: Checkin successful, resetting form');
 
+        // Save marketing name to database if provided
+        if (formData.marketingName && formData.marketingName.trim()) {
+          try {
+            console.log('AdminCheckinScreen: Saving marketing name to database:', formData.marketingName);
+            await MarketingSourceService.addMarketingSourceIfNotExists(formData.marketingName.trim());
+          } catch (marketingError) {
+            console.error('AdminCheckinScreen: Error saving marketing source:', marketingError);
+            // Don't fail the main operation
+          }
+        }
+
         // Show success message first
         Alert.alert('Sukses', 'Checkin berhasil dibuat!', [
           {
