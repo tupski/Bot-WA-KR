@@ -112,7 +112,7 @@ const FieldUnitsScreen = ({ navigation }) => {
   }, {});
 
   /**
-   * Handle unit press - show checkin detail if occupied
+   * Handle unit press - show checkin detail if occupied, or options for available units
    * @param {Object} unit - Unit data
    */
   const handleUnitPress = (unit) => {
@@ -128,30 +128,70 @@ const FieldUnitsScreen = ({ navigation }) => {
           console.error('FieldUnitsScreen: Navigation not available');
           Alert.alert('Error', 'Tidak dapat membuka detail checkin');
         }
-      } else {
-        // Show unit info for non-occupied units
-        let statusLabel = 'Tidak diketahui';
-        switch (unit.status) {
-          case UNIT_STATUS.AVAILABLE:
-            statusLabel = 'Tersedia';
-            break;
-          case UNIT_STATUS.CLEANING:
-            statusLabel = 'Sedang dibersihkan';
-            break;
-          case UNIT_STATUS.MAINTENANCE:
-            statusLabel = 'Dalam maintenance';
-            break;
-        }
-
+      } else if (unit.status === UNIT_STATUS.AVAILABLE) {
+        // Show options for available units
         Alert.alert(
-          'Info Unit',
-          `Unit ${unit.unit_number}\nStatus: ${statusLabel}\n\nUnit ini tidak sedang terisi tamu.`
+          'Unit Tersedia',
+          `Unit ${unit.unit_number} - ${unit.apartment_name}\n\nPilih aksi yang ingin dilakukan:`,
+          [
+            { text: 'Batal', style: 'cancel' },
+            {
+              text: 'Buat Checkin',
+              onPress: () => {
+                console.log('FieldUnitsScreen: Navigating to checkin with pre-filled data');
+                navigation.navigate('FieldCheckin', {
+                  prefilledData: {
+                    apartmentId: unit.apartment_id.toString(),
+                    unitId: unit.id.toString(),
+                    apartmentName: unit.apartment_name,
+                    unitNumber: unit.unit_number,
+                  }
+                });
+              }
+            },
+            {
+              text: 'Info Unit',
+              onPress: () => showUnitInfo(unit)
+            }
+          ]
         );
+      } else {
+        // Show unit info for other statuses
+        showUnitInfo(unit);
       }
     } catch (error) {
       console.error('FieldUnitsScreen: Error in handleUnitPress:', error);
       Alert.alert('Error', 'Terjadi kesalahan saat membuka detail unit');
     }
+  };
+
+  /**
+   * Show unit information
+   * @param {Object} unit - Unit data
+   */
+  const showUnitInfo = (unit) => {
+    let statusLabel = 'Tidak diketahui';
+    let statusMessage = '';
+
+    switch (unit.status) {
+      case UNIT_STATUS.AVAILABLE:
+        statusLabel = 'Tersedia';
+        statusMessage = 'Unit ini siap untuk checkin tamu baru.';
+        break;
+      case UNIT_STATUS.CLEANING:
+        statusLabel = 'Sedang dibersihkan';
+        statusMessage = 'Unit sedang dalam proses pembersihan.';
+        break;
+      case UNIT_STATUS.MAINTENANCE:
+        statusLabel = 'Dalam maintenance';
+        statusMessage = 'Unit sedang dalam perbaikan atau perawatan.';
+        break;
+    }
+
+    Alert.alert(
+      'Info Unit',
+      `Unit: ${unit.unit_number}\nApartemen: ${unit.apartment_name}\nStatus: ${statusLabel}\n\n${statusMessage}`
+    );
   };
 
   /**
@@ -196,11 +236,18 @@ const FieldUnitsScreen = ({ navigation }) => {
         </View>
       )}
 
-      {/* Tap hint for occupied units */}
+      {/* Tap hint for different unit statuses */}
       {item.status === UNIT_STATUS.OCCUPIED && (
         <View style={styles.tapHint}>
           <Icon name="touch-app" size={16} color={COLORS.primary} />
           <Text style={styles.tapHintText}>Tap untuk lihat detail checkin</Text>
+        </View>
+      )}
+
+      {item.status === UNIT_STATUS.AVAILABLE && (
+        <View style={styles.tapHintAvailable}>
+          <Icon name="add-circle" size={16} color={COLORS.success} />
+          <Text style={styles.tapHintTextAvailable}>Tap untuk buat checkin</Text>
         </View>
       )}
     </TouchableOpacity>
@@ -518,6 +565,21 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     marginLeft: SIZES.xs,
     fontStyle: 'italic',
+  },
+  tapHintAvailable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: SIZES.xs,
+    paddingTop: SIZES.xs,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  tapHintTextAvailable: {
+    fontSize: SIZES.caption,
+    color: COLORS.success,
+    marginLeft: SIZES.xs,
+    fontStyle: 'italic',
+    fontWeight: '600',
   },
 });
 

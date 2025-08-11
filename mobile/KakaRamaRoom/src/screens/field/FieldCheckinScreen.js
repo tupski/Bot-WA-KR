@@ -27,14 +27,16 @@ import TimeUtils from '../../utils/TimeUtils';
  * Screen untuk form checkin tim lapangan
  * Fitur: Input data checkin dengan validasi, upload bukti transfer, kalkulasi checkout time
  */
-const FieldCheckinScreen = ({ navigation }) => {
+const FieldCheckinScreen = ({ navigation, route }) => {
+  // Get prefilled data from navigation params
+  const { prefilledData } = route.params || {};
   // Modern Alert Hook
   const { showAlert, AlertComponent } = useModernAlert();
 
   // State untuk data form
   const [formData, setFormData] = useState({
-    apartmentId: '',
-    unitId: '',
+    apartmentId: prefilledData?.apartmentId || '',
+    unitId: prefilledData?.unitId || '',
     durationHours: '3',
     paymentMethod: 'cash',
     paymentAmount: '',
@@ -68,6 +70,16 @@ const FieldCheckinScreen = ({ navigation }) => {
   // Load data saat komponen dimount
   useEffect(() => {
     loadInitialData();
+
+    // Show info if unit is prefilled
+    if (prefilledData && prefilledData.unitNumber && prefilledData.apartmentName) {
+      showAlert({
+        type: 'info',
+        title: 'Unit Dipilih',
+        message: `Unit ${prefilledData.unitNumber} - ${prefilledData.apartmentName} telah dipilih otomatis.`,
+        autoClose: 3000,
+      });
+    }
   }, []);
 
   // Filter unit saat apartemen dipilih
