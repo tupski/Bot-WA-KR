@@ -238,17 +238,19 @@ const AppNavigator = () => {
   useEffect(() => {
     checkAuthState();
 
-    // Set up interval to check auth state changes
+    // Set up interval to check auth state changes, but skip during logout
     const interval = setInterval(() => {
-      const user = AuthService.getCurrentUser();
-      if (JSON.stringify(user) !== JSON.stringify(currentUser)) {
-        console.log('AppNavigator: Auth state changed:', user);
-        setCurrentUser(user);
+      if (!isLoggingOut) {
+        const user = AuthService.getCurrentUser();
+        if (JSON.stringify(user) !== JSON.stringify(currentUser)) {
+          console.log('AppNavigator: Auth state changed:', user);
+          setCurrentUser(user);
+        }
       }
-    }, 1000);
+    }, 2000); // Increase interval to 2 seconds to reduce flicker
 
     return () => clearInterval(interval);
-  }, [currentUser]);
+  }, [currentUser, isLoggingOut]);
 
   const checkAuthState = async () => {
     try {
@@ -261,6 +263,33 @@ const AppNavigator = () => {
       setLoading(false);
     }
   };
+
+  // Handle logout to prevent flicker
+  const handleLogout = async () => {
+    console.log('AppNavigator: Starting logout process');
+    setIsLoggingOut(true);
+
+    try {
+      // Clear user immediately
+      setCurrentUser(null);
+
+      // Perform logout in background
+      await AuthService.logout();
+      console.log('AppNavigator: Logout completed');
+    } catch (error) {
+      console.error('AppNavigator: Logout error:', error);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
+  // Expose logout function globally for other components
+  React.useEffect(() => {
+    global.appNavigatorLogout = handleLogout;
+    return () => {
+      delete global.appNavigatorLogout;
+    };
+  }, []);
 
   if (loading) {
     return null; // Or loading screen

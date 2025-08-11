@@ -8,6 +8,7 @@ class AuthService {
   constructor() {
     this.currentUser = null;
     this.sessionTimeout = null;
+    this.isLoggingOut = false;
   }
 
   // Helper: sign in to Supabase Auth with email/password
@@ -196,8 +197,12 @@ class AuthService {
     await AsyncStorage.setItem('currentUser', JSON.stringify(userData));
   }
 
-  // Get current user
+  // Get current user (with logout check)
   getCurrentUser() {
+    // Return null if logout is in progress
+    if (this.isLoggingOut) {
+      return null;
+    }
     return this.currentUser;
   }
 
@@ -237,8 +242,15 @@ class AuthService {
 
   // Logout
   async logout() {
+    // Prevent multiple logout calls
+    if (this.isLoggingOut) {
+      console.log('AuthService: Logout already in progress, skipping');
+      return { success: true };
+    }
+
     try {
       console.log('AuthService: Starting logout process');
+      this.isLoggingOut = true;
 
       // Clear session timeout immediately
       if (this.sessionTimeout) {
@@ -285,6 +297,8 @@ class AuthService {
 
       // Return success to prevent UI issues
       return { success: true };
+    } finally {
+      this.isLoggingOut = false;
     }
   }
 
