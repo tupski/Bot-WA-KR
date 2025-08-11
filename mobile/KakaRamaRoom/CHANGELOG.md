@@ -5,6 +5,22 @@ Semua perubahan penting pada proyek KakaRama Room akan didokumentasikan di file 
 Format berdasarkan [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 dan proyek ini mengikuti [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1] - 2025-08-11
+
+### Fixed
+- **🔓 Field Team Checkin Access**: Tim lapangan sekarang bisa input data checkin di semua apartemen
+  - **Removed**: Pembatasan akses checkin berdasarkan apartment assignment
+  - **Enhanced**: UI tetap menampilkan apartemen assigned untuk kemudahan workflow
+  - **Added**: Fallback ke semua apartemen jika tidak ada assignment
+  - **Added**: TestFieldTeamCheckin.js untuk testing akses
+  - **Improved**: Fleksibilitas operasional untuk emergency checkin
+
+### Technical Changes
+- **CheckinService**: Removed validateAccess() restriction untuk field teams
+- **TeamAssignmentService**: Added getAllApartmentsForCheckin() dan getAllUnitsForCheckin()
+- **FieldCheckinScreen**: Enhanced UI dengan hint text dan fallback logic
+- **AdminDashboard**: Added test utility untuk field team access
+
 ## [2.2.0] - 2025-08-11
 
 ### Added
