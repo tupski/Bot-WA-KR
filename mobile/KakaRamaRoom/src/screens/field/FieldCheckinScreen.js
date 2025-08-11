@@ -134,6 +134,11 @@ const FieldCheckinScreen = ({ navigation, route }) => {
 
         if (apartmentResult && apartmentResult.success) {
           console.log('FieldCheckinScreen: Loaded assigned apartments:', apartmentResult.data?.length || 0);
+          console.log('FieldCheckinScreen: Apartment details:', apartmentResult.data?.map(apt => ({
+            id: apt.id,
+            name: apt.name,
+            code: apt.code
+          })));
           setApartments(apartmentResult.data || []);
         } else {
           console.warn('FieldCheckinScreen: Failed to load assigned apartments, loading all apartments');
@@ -141,6 +146,11 @@ const FieldCheckinScreen = ({ navigation, route }) => {
           const allApartmentResult = await TeamAssignmentService.getAllApartmentsForCheckin();
           if (allApartmentResult && allApartmentResult.success) {
             console.log('FieldCheckinScreen: Loaded all apartments as fallback:', allApartmentResult.data?.length || 0);
+            console.log('FieldCheckinScreen: All apartment details:', allApartmentResult.data?.map(apt => ({
+              id: apt.id,
+              name: apt.name,
+              code: apt.code
+            })));
             setApartments(allApartmentResult.data || []);
           } else {
             setApartments([]);
@@ -160,9 +170,25 @@ const FieldCheckinScreen = ({ navigation, route }) => {
           const allUnits = unitResult.data || [];
           console.log('FieldCheckinScreen: Loaded all units:', allUnits.length);
 
+          // Log apartment distribution
+          const apartmentDistribution = {};
+          allUnits.forEach(unit => {
+            const aptName = unit.apartments?.name || 'Unknown';
+            apartmentDistribution[aptName] = (apartmentDistribution[aptName] || 0) + 1;
+          });
+          console.log('FieldCheckinScreen: Units by apartment:', apartmentDistribution);
+
           // Filter hanya unit yang available
           const availableUnitsOnly = allUnits.filter(unit => unit.status === 'available');
           console.log('FieldCheckinScreen: Available units after filtering:', availableUnitsOnly.length);
+
+          // Log available units by apartment
+          const availableDistribution = {};
+          availableUnitsOnly.forEach(unit => {
+            const aptName = unit.apartments?.name || 'Unknown';
+            availableDistribution[aptName] = (availableDistribution[aptName] || 0) + 1;
+          });
+          console.log('FieldCheckinScreen: Available units by apartment:', availableDistribution);
 
           setAvailableUnits(availableUnitsOnly);
 

@@ -99,25 +99,58 @@ class CheckinService {
       // Use createdBy from checkinData if provided, otherwise use userId
       const finalUserId = createdBy || userId;
 
-      // Cek apakah unit tersedia
+      // Cek apakah unit tersedia dengan detailed logging
+      console.log('CheckinService: Checking unit availability for unitId:', unitId);
+
       const { data: unit, error: unitError } = await supabase
         .from('units')
-        .select('status')
+        .select(`
+          id,
+          status,
+          unit_number,
+          apartment_id,
+          apartments (
+            id,
+            name,
+            code
+          )
+        `)
         .eq('id', unitId)
         .single();
 
       if (unitError) {
         console.error('CheckinService: Unit check error:', unitError);
+        console.error('CheckinService: Unit ID that failed:', unitId);
+
+        // Check if unit exists at all
+        const { data: unitExists, error: existsError } = await supabase
+          .from('units')
+          .select('id, unit_number, apartment_id')
+          .eq('id', unitId);
+
+        if (existsError) {
+          console.error('CheckinService: Error checking unit existence:', existsError);
+        } else {
+          console.log('CheckinService: Unit existence check result:', unitExists);
+        }
+
         return {
           success: false,
-          message: 'Unit tidak ditemukan',
+          message: `Unit tidak ditemukan (ID: ${unitId}). Pastikan unit sudah terdaftar di sistem.`,
         };
       }
+
+      console.log('CheckinService: Unit found:', {
+        id: unit.id,
+        status: unit.status,
+        unit_number: unit.unit_number,
+        apartment: unit.apartments?.name
+      });
 
       if (unit?.status !== 'available') {
         return {
           success: false,
-          message: 'Unit tidak tersedia untuk checkin',
+          message: `Unit ${unit.unit_number} tidak tersedia untuk checkin (status: ${unit.status})`,
         };
       }
 
