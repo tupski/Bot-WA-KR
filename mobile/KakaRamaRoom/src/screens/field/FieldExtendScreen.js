@@ -326,19 +326,19 @@ const FieldExtendScreen = ({ navigation, route }) => {
       return false;
     }
 
-    // Validasi komisi marketing (jika ada)
+    // Validasi komisi marketing (jika ada) - allow 0
     if (formData.marketingCommission && formData.marketingCommission.trim() !== '') {
       const commission = parseFloat(formData.marketingCommission.replace(/[^\d]/g, ''));
       if (isNaN(commission) || commission < 0) {
-        Alert.alert('Error', 'Komisi marketing harus berupa angka yang valid');
+        Alert.alert('Error', 'Komisi marketing harus berupa angka yang valid (minimal Rp 0)');
         return false;
       }
     }
 
-    // Validasi nama marketing (jika ada komisi)
+    // Validasi nama marketing (jika ada komisi > 0)
     if (formData.marketingCommission && parseFloat(formData.marketingCommission.replace(/[^\d]/g, '')) > 0) {
       if (!formData.marketingName || formData.marketingName.trim() === '') {
-        Alert.alert('Error', 'Nama marketing harus diisi jika ada komisi');
+        Alert.alert('Error', 'Nama marketing harus diisi jika ada komisi > 0');
         return false;
       }
     }
