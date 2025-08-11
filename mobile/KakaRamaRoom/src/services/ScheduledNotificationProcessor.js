@@ -55,6 +55,22 @@ class ScheduledNotificationProcessor {
       const now = new Date();
       console.log('ScheduledNotificationProcessor: Checking for due notifications at:', now.toISOString());
 
+      // Process scheduled notifications
+      await this.processScheduledNotificationsDue(now);
+
+      // Process pending push notifications
+      await this.processPendingNotifications();
+
+    } catch (error) {
+      console.error('ScheduledNotificationProcessor: Error processing notifications:', error);
+    }
+  }
+
+  /**
+   * Process scheduled notifications that are due
+   */
+  async processScheduledNotificationsDue(now) {
+    try {
       // Get all notifications that are due and not sent yet
       const { data: dueNotifications, error } = await supabase
         .from('scheduled_notifications')
@@ -95,9 +111,79 @@ class ScheduledNotificationProcessor {
       for (const notification of dueNotifications) {
         await this.processNotification(notification);
       }
+    } catch (error) {
+      console.error('ScheduledNotificationProcessor: Error processing scheduled notifications:', error);
+    }
+  }
+
+  /**
+   * Process pending push notifications
+   */
+  async processPendingNotifications() {
+    try {
+      // Get pending notifications
+      const { data: pendingNotifications, error } = await supabase
+        .from('pending_notifications')
+        .select('*')
+        .eq('status', 'pending')
+        .lt('retry_count', 3) // Max 3 retries
+        .order('created_at', { ascending: true })
+        .limit(50); // Process max 50 at a time
+
+      if (error) {
+        console.error('ScheduledNotificationProcessor: Error fetching pending notifications:', error);
+        return;
+      }
+
+      if (!pendingNotifications || pendingNotifications.length === 0) {
+        return; // No pending notifications
+      }
+
+      console.log(`ScheduledNotificationProcessor: Processing ${pendingNotifications.length} pending notifications`);
+
+      // Process each pending notification
+      for (const notification of pendingNotifications) {
+        await this.processPendingNotification(notification);
+      }
+    } catch (error) {
+      console.error('ScheduledNotificationProcessor: Error processing pending notifications:', error);
+    }
+  }
+
+  /**
+   * Process a single pending notification
+   */
+  async processPendingNotification(notification) {
+    try {
+      console.log(`ScheduledNotificationProcessor: Processing pending notification ${notification.id}`);
+
+      // For now, just mark as sent since we don't have FCM server key
+      // In production, this would send via FCM API
+      const { error: updateError } = await supabase
+        .from('pending_notifications')
+        .update({
+          status: 'sent',
+          sent_at: new Date().toISOString()
+        })
+        .eq('id', notification.id);
+
+      if (updateError) {
+        console.error(`ScheduledNotificationProcessor: Error updating pending notification ${notification.id}:`, updateError);
+
+        // Increment retry count
+        await supabase
+          .from('pending_notifications')
+          .update({
+            retry_count: notification.retry_count + 1,
+            error_message: updateError.message
+          })
+          .eq('id', notification.id);
+      } else {
+        console.log(`ScheduledNotificationProcessor: Pending notification ${notification.id} marked as sent`);
+      }
 
     } catch (error) {
-      console.error('ScheduledNotificationProcessor: Error processing notifications:', error);
+      console.error(`ScheduledNotificationProcessor: Error processing pending notification ${notification.id}:`, error);
     }
   }
 

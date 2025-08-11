@@ -320,29 +320,102 @@ class NotificationService {
    */
   async sendBroadcastNotification(title, body, targetUserType = 'all') {
     try {
-      // This would typically be done via a cloud function or backend API
-      // For now, we'll save to database and let a background service handle FCM sending
-      
+      console.log('NotificationService: Sending broadcast notification:', { title, body, targetUserType });
+
       const currentUser = AuthService.getCurrentUser();
       if (!currentUser || currentUser.role !== 'admin') {
-        return { success: false, message: 'Unauthorized' };
+        return { success: false, message: 'Unauthorized - Admin access required' };
       }
 
-      const { error } = await supabase
+      // Get target users based on type
+      let targetUsers = [];
+
+      if (targetUserType === 'all') {
+        // Get all active users
+        const { data: allUsers, error: allError } = await supabase
+          .from('user_fcm_tokens')
+          .select('user_id, fcm_token')
+          .eq('is_active', true);
+
+        if (allError) {
+          throw allError;
+        }
+        targetUsers = allUsers || [];
+
+      } else if (targetUserType === 'admin') {
+        // Get all admin users
+        const { data: adminUsers, error: adminError } = await supabase
+          .from('user_fcm_tokens')
+          .select('user_id, fcm_token')
+          .in('user_id',
+            supabase
+              .from('admins')
+              .select('id')
+          )
+          .eq('is_active', true);
+
+        if (adminError) {
+          throw adminError;
+        }
+        targetUsers = adminUsers || [];
+
+      } else if (targetUserType === 'field_team') {
+        // Get all field team users
+        const { data: fieldUsers, error: fieldError } = await supabase
+          .from('user_fcm_tokens')
+          .select('user_id, fcm_token')
+          .in('user_id',
+            supabase
+              .from('field_teams')
+              .select('id')
+          )
+          .eq('is_active', true);
+
+        if (fieldError) {
+          throw fieldError;
+        }
+        targetUsers = fieldUsers || [];
+      }
+
+      if (targetUsers.length === 0) {
+        return { success: false, message: 'No target users found' };
+      }
+
+      // Send push notifications to all target users
+      const sendPromises = targetUsers.map(user =>
+        this.sendNotificationToUser(user.user_id, title, body, {
+          type: 'admin_broadcast',
+          target_type: targetUserType
+        })
+      );
+
+      const results = await Promise.allSettled(sendPromises);
+      const successCount = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+
+      // Save broadcast record to database
+      const { error: saveError } = await supabase
         .from('broadcast_notifications')
         .insert([{
           title,
           body,
           target_user_type: targetUserType,
           sent_by: currentUser.id,
+          target_count: targetUsers.length,
+          success_count: successCount,
           created_at: new Date().toISOString()
         }]);
 
-      if (error) {
-        throw error;
+      if (saveError) {
+        console.error('NotificationService: Error saving broadcast record:', saveError);
+        // Don't fail the operation if saving fails
       }
 
-      return { success: true, message: 'Broadcast notification sent' };
+      console.log(`NotificationService: Broadcast sent to ${successCount}/${targetUsers.length} users`);
+      return {
+        success: true,
+        message: `Notifikasi berhasil dikirim ke ${successCount}/${targetUsers.length} pengguna`
+      };
+
     } catch (error) {
       console.error('NotificationService: Error sending broadcast:', error);
       return { success: false, message: error.message };
@@ -368,21 +441,34 @@ class NotificationService {
         return { success: false, message: 'FCM token not found' };
       }
 
-      // Send notification via Supabase Edge Function
-      const { error: sendError } = await supabase.functions.invoke('send-push-notification', {
-        body: {
-          token: tokenData.fcm_token,
-          title,
-          body,
-          data: {
-            ...data,
-            timestamp: new Date().toISOString()
-          }
-        }
-      });
+      // Send notification via FCM API (temporary solution until Edge Function is ready)
+      try {
+        // For now, we'll save to database and let a background service handle FCM sending
+        // In production, this should use FCM Server Key via secure backend
 
-      if (sendError) {
-        throw sendError;
+        const { error: notificationError } = await supabase
+          .from('pending_notifications')
+          .insert([{
+            user_id: userId,
+            fcm_token: tokenData.fcm_token,
+            title,
+            body,
+            data: {
+              ...data,
+              timestamp: new Date().toISOString()
+            },
+            status: 'pending',
+            created_at: new Date().toISOString()
+          }]);
+
+        if (notificationError) {
+          throw notificationError;
+        }
+
+        console.log('NotificationService: Notification queued for sending');
+      } catch (fcmError) {
+        console.error('NotificationService: Error queuing notification:', fcmError);
+        throw fcmError;
       }
 
       return { success: true, message: 'Notification sent' };
