@@ -17,6 +17,7 @@ import { useAutoRefresh } from '../../hooks/useRealtime';
 import ApartmentService from '../../services/ApartmentService';
 import UnitService from '../../services/UnitService';
 import CheckinService from '../../services/CheckinService';
+import TestNotification from '../../utils/TestNotification';
 import BusinessDayService from '../../services/BusinessDayService';
 import { supabase } from '../../config/supabase';
 
@@ -139,6 +140,51 @@ const AdminDashboardScreen = ({ navigation }) => {
     }, 1000);
   };
 
+  const testPushNotification = async () => {
+    Alert.alert(
+      'Test Push Notification',
+      'Pilih jenis test yang ingin dijalankan:',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Test FCM Token',
+          onPress: async () => {
+            const result = await TestNotification.testFCMToken();
+            Alert.alert(
+              result ? 'Success' : 'Failed',
+              result ? 'FCM Token test passed!' : 'FCM Token test failed. Check console logs.'
+            );
+          },
+        },
+        {
+          text: 'Test Manual Push',
+          onPress: async () => {
+            const result = await TestNotification.testManualPushNotification();
+            Alert.alert(
+              result ? 'Success' : 'Failed',
+              result ? 'Manual push notification sent!' : 'Manual push failed. Check console logs.'
+            );
+          },
+        },
+        {
+          text: 'Run All Tests',
+          onPress: async () => {
+            const results = await TestNotification.runAllTests();
+            const passedCount = Object.values(results).filter(Boolean).length;
+            const totalCount = Object.keys(results).length;
+            Alert.alert(
+              'Test Results',
+              `${passedCount}/${totalCount} tests passed. Check console for details.`
+            );
+          },
+        },
+      ]
+    );
+  };
+
 
 
   const menuItems = [
@@ -192,6 +238,12 @@ const AdminDashboardScreen = ({ navigation }) => {
       icon: 'campaign',
       onPress: () => navigation.navigate('AdminBroadcast'),
       color: '#E91E63',
+    },
+    {
+      title: 'Test Push Notification',
+      icon: 'bug-report',
+      onPress: () => testPushNotification(),
+      color: '#FF9800',
     },
   ];
 
