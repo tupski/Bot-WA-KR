@@ -5,6 +5,38 @@ Semua perubahan penting pada proyek KakaRama Room akan didokumentasikan di file 
 Format berdasarkan [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 dan proyek ini mengikuti [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.2] - 2025-08-11
+
+### Fixed
+- **🔄 Auto Status Cleaning**: Unit sekarang otomatis berubah status ke 'cleaning' saat durasi checkin habis
+  - **Enhanced**: ScheduledNotificationProcessor dengan conditional updates
+  - **Added**: Detailed logging untuk troubleshooting
+  - **Fixed**: Unit status update hanya jika currently 'occupied'
+  - **Improved**: Error handling dan status validation
+
+### Added
+- **🛠️ UnitStatusFixService**: Service untuk memperbaiki status unit yang inconsistent
+  - **Fix Orphaned Occupied**: Perbaiki unit 'occupied' tanpa checkin aktif
+  - **Fix Stuck Cleaning**: Perbaiki unit 'cleaning' terlalu lama (>2 jam)
+  - **Smart Detection**: Tentukan status berdasarkan recent checkin activity
+  - **Batch Processing**: Process multiple units sekaligus
+- **🎨 Activity Log Colors**: Warna background berbeda untuk setiap jenis aktivitas
+  - **Color Mapping**: 15+ warna berbeda berdasarkan action type
+  - **Visual Enhancement**: Easier distinction antar aktivitas
+  - **Tipis & Subtle**: Warna background yang tidak mengganggu readability
+
+### Changed
+- **🎛️ Admin Dashboard**: Replaced "Test Field Team Access" dengan "Fix Unit Status"
+  - **Removed**: Menu test yang tidak diperlukan lagi
+  - **Added**: Utility untuk fix unit status issues
+  - **Options**: Fix orphaned, stuck cleaning, atau all issues
+
+### Technical
+- **Conditional Updates**: Unit status update dengan proper conditions
+- **Enhanced Logging**: Detailed logs untuk debugging auto status
+- **Error Recovery**: Robust error handling untuk status updates
+- **Performance**: Efficient queries untuk unit status fixing
+
 ## [2.2.1] - 2025-08-11
 
 ### Fixed
