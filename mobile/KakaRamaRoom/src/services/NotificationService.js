@@ -1,5 +1,6 @@
 import messaging from '@react-native-firebase/messaging';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform, PermissionsAndroid, Alert } from 'react-native';
 import { supabase } from '../config/supabase';
 import AuthService from './AuthService';
 
@@ -346,6 +347,215 @@ class NotificationService {
       console.error('NotificationService: Error sending broadcast:', error);
       return { success: false, message: error.message };
     }
+  }
+
+  /**
+   * Send push notification to specific user
+   */
+  async sendNotificationToUser(userId, title, body, data = {}) {
+    try {
+      console.log('NotificationService: Sending notification to user:', userId);
+
+      // Get user's FCM token from database
+      const { data: tokenData, error } = await supabase
+        .from('user_fcm_tokens')
+        .select('fcm_token')
+        .eq('user_id', userId)
+        .single();
+
+      if (error || !tokenData?.fcm_token) {
+        console.warn('NotificationService: No FCM token found for user:', userId);
+        return { success: false, message: 'FCM token not found' };
+      }
+
+      // Send notification via Supabase Edge Function
+      const { error: sendError } = await supabase.functions.invoke('send-push-notification', {
+        body: {
+          token: tokenData.fcm_token,
+          title,
+          body,
+          data: {
+            ...data,
+            timestamp: new Date().toISOString()
+          }
+        }
+      });
+
+      if (sendError) {
+        throw sendError;
+      }
+
+      return { success: true, message: 'Notification sent' };
+    } catch (error) {
+      console.error('NotificationService: Send notification error:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  /**
+   * Send notification to all admin users
+   */
+  async sendNotificationToAdmins(title, body, data = {}) {
+    try {
+      console.log('NotificationService: Sending notification to all admins');
+
+      // Get all admin FCM tokens
+      const { data: adminTokens, error } = await supabase
+        .from('user_fcm_tokens')
+        .select('fcm_token, user_id')
+        .in('user_id',
+          supabase
+            .from('admins')
+            .select('id')
+        );
+
+      if (error || !adminTokens?.length) {
+        console.warn('NotificationService: No admin FCM tokens found');
+        return { success: false, message: 'No admin tokens found' };
+      }
+
+      // Send to all admin tokens
+      const results = await Promise.allSettled(
+        adminTokens.map(tokenData =>
+          this.sendNotificationToUser(tokenData.user_id, title, body, data)
+        )
+      );
+
+      const successCount = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+
+      return {
+        success: true,
+        message: `Notification sent to ${successCount}/${adminTokens.length} admins`
+      };
+    } catch (error) {
+      console.error('NotificationService: Send admin notification error:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  /**
+   * Schedule notification for checkout reminder (30 minutes before)
+   */
+  async scheduleCheckoutReminder(checkinId, checkoutTime, unitName) {
+    try {
+      const reminderTime = new Date(checkoutTime);
+      reminderTime.setMinutes(reminderTime.getMinutes() - 30);
+
+      const now = new Date();
+      if (reminderTime <= now) {
+        console.log('NotificationService: Reminder time has passed, skipping');
+        return { success: false, message: 'Reminder time has passed' };
+      }
+
+      // Save scheduled notification to database
+      const { error } = await supabase
+        .from('scheduled_notifications')
+        .insert({
+          checkin_id: checkinId,
+          notification_type: 'checkout_reminder',
+          scheduled_time: reminderTime.toISOString(),
+          title: '⏰ Reminder Checkout',
+          body: `Unit ${unitName} akan checkout dalam 30 menit`,
+          data: {
+            type: 'checkout_reminder',
+            checkin_id: checkinId,
+            unit_name: unitName
+          }
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      console.log('NotificationService: Checkout reminder scheduled for:', reminderTime);
+      return { success: true, message: 'Checkout reminder scheduled' };
+    } catch (error) {
+      console.error('NotificationService: Schedule reminder error:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  /**
+   * Schedule notification for checkout time
+   */
+  async scheduleCheckoutNotification(checkinId, checkoutTime, unitName) {
+    try {
+      // Save scheduled notification to database
+      const { error } = await supabase
+        .from('scheduled_notifications')
+        .insert({
+          checkin_id: checkinId,
+          notification_type: 'checkout_time',
+          scheduled_time: new Date(checkoutTime).toISOString(),
+          title: '🏁 Waktu Checkout',
+          body: `Unit ${unitName} sudah waktunya checkout`,
+          data: {
+            type: 'checkout_time',
+            checkin_id: checkinId,
+            unit_name: unitName
+          }
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      console.log('NotificationService: Checkout notification scheduled for:', checkoutTime);
+      return { success: true, message: 'Checkout notification scheduled' };
+    } catch (error) {
+      console.error('NotificationService: Schedule checkout error:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  /**
+   * Schedule notification for cleaning time
+   */
+  async scheduleCleaningNotification(checkinId, checkoutTime, unitName) {
+    try {
+      const cleaningTime = new Date(checkoutTime);
+      cleaningTime.setMinutes(cleaningTime.getMinutes() + 15); // 15 minutes after checkout
+
+      // Save scheduled notification to database
+      const { error } = await supabase
+        .from('scheduled_notifications')
+        .insert({
+          checkin_id: checkinId,
+          notification_type: 'cleaning_time',
+          scheduled_time: cleaningTime.toISOString(),
+          title: '🧹 Waktu Cleaning',
+          body: `Unit ${unitName} sudah siap untuk dibersihkan`,
+          data: {
+            type: 'cleaning_time',
+            checkin_id: checkinId,
+            unit_name: unitName
+          }
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      console.log('NotificationService: Cleaning notification scheduled for:', cleaningTime);
+      return { success: true, message: 'Cleaning notification scheduled' };
+    } catch (error) {
+      console.error('NotificationService: Schedule cleaning error:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  /**
+   * Get current FCM token
+   */
+  getCurrentToken() {
+    return this.fcmToken;
+  }
+
+  /**
+   * Check if service is initialized
+   */
+  isServiceInitialized() {
+    return this.isInitialized;
   }
 }
 
