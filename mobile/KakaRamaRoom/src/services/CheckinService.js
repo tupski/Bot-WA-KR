@@ -91,32 +91,10 @@ class CheckinService {
         };
       }
 
-      // Validate access untuk tim lapangan dengan error handling yang lebih baik
-      if (userType === 'field_team') {
-        try {
-          console.log('CheckinService: Validating apartment access for field team:', userId, apartmentId);
-
-          const canAccess = await TeamAssignmentService.validateAccess('apartment', apartmentId);
-          console.log('CheckinService: Access validation result:', canAccess);
-
-          if (!canAccess) {
-            // Get user's accessible apartments for better error message
-            const userApartmentIds = await TeamAssignmentService.getCurrentUserApartmentIdsAsync();
-            console.log('CheckinService: User accessible apartments:', userApartmentIds);
-
-            return {
-              success: false,
-              message: `Tidak memiliki akses ke apartemen ini. Tim lapangan hanya dapat mengakses apartemen yang telah ditugaskan. Apartemen yang dapat diakses: ${Array.isArray(userApartmentIds) ? userApartmentIds.join(', ') : 'Belum ada assignment'}`,
-            };
-          }
-        } catch (accessError) {
-          console.error('CheckinService: Error validating apartment access:', accessError);
-          return {
-            success: false,
-            message: 'Gagal memvalidasi akses apartemen. Silakan coba lagi atau hubungi administrator.',
-          };
-        }
-      }
+      // REMOVED: Access validation for field teams
+      // Tim lapangan sekarang bisa checkin di semua apartemen
+      // UI akan memfilter apartemen berdasarkan assignment untuk kemudahan workflow
+      console.log('CheckinService: Field team can now checkin in any apartment:', userId, apartmentId);
 
       // Use createdBy from checkinData if provided, otherwise use userId
       const finalUserId = createdBy || userId;

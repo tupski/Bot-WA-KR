@@ -559,6 +559,97 @@ class TeamAssignmentService {
       return false;
     }
   }
+
+  /**
+   * Get all apartments untuk checkin (tim lapangan bisa checkin di semua apartemen)
+   * @returns {Promise<Object>}
+   */
+  async getAllApartmentsForCheckin() {
+    try {
+      console.log('TeamAssignmentService: Getting all apartments for checkin');
+
+      const { data: apartments, error } = await supabase
+        .from('apartments')
+        .select('*')
+        .eq('status', 'active')
+        .order('name', { ascending: true });
+
+      if (error) {
+        console.error('TeamAssignmentService: Error fetching all apartments:', error);
+        return {
+          success: false,
+          message: 'Gagal memuat data apartemen',
+          data: []
+        };
+      }
+
+      console.log('TeamAssignmentService: Loaded all apartments for checkin:', apartments?.length || 0);
+
+      return {
+        success: true,
+        data: apartments || []
+      };
+    } catch (error) {
+      console.error('TeamAssignmentService: Error in getAllApartmentsForCheckin:', error);
+      return {
+        success: false,
+        message: error.message || 'Gagal memuat data apartemen',
+        data: []
+      };
+    }
+  }
+
+  /**
+   * Get all units untuk checkin (tim lapangan bisa checkin di semua unit)
+   * @param {string} apartmentId - Optional filter by apartment
+   * @returns {Promise<Object>}
+   */
+  async getAllUnitsForCheckin(apartmentId = null) {
+    try {
+      console.log('TeamAssignmentService: Getting all units for checkin, apartmentId:', apartmentId);
+
+      let query = supabase
+        .from('units')
+        .select(`
+          *,
+          apartments (
+            name,
+            code
+          )
+        `)
+        .order('unit_number', { ascending: true });
+
+      // Filter by apartment if specified
+      if (apartmentId) {
+        query = query.eq('apartment_id', apartmentId);
+      }
+
+      const { data: units, error } = await query;
+
+      if (error) {
+        console.error('TeamAssignmentService: Error fetching all units:', error);
+        return {
+          success: false,
+          message: 'Gagal memuat data unit',
+          data: []
+        };
+      }
+
+      console.log('TeamAssignmentService: Loaded all units for checkin:', units?.length || 0);
+
+      return {
+        success: true,
+        data: units || []
+      };
+    } catch (error) {
+      console.error('TeamAssignmentService: Error in getAllUnitsForCheckin:', error);
+      return {
+        success: false,
+        message: error.message || 'Gagal memuat data unit',
+        data: []
+      };
+    }
+  }
 }
 
 export default new TeamAssignmentService();

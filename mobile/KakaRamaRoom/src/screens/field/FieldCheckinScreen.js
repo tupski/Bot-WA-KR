@@ -127,27 +127,34 @@ const FieldCheckinScreen = ({ navigation, route }) => {
 
       console.log('FieldCheckinScreen: Current user:', user.id, user.role);
 
-      // Load apartemen yang accessible menggunakan TeamAssignmentService
+      // Load apartemen untuk UI dropdown (hanya apartemen yang di-assign untuk kemudahan workflow)
       try {
-        console.log('FieldCheckinScreen: Loading accessible apartments');
+        console.log('FieldCheckinScreen: Loading assigned apartments for UI');
         const apartmentResult = await TeamAssignmentService.getAccessibleApartments();
 
         if (apartmentResult && apartmentResult.success) {
-          console.log('FieldCheckinScreen: Loaded apartments:', apartmentResult.data?.length || 0);
+          console.log('FieldCheckinScreen: Loaded assigned apartments:', apartmentResult.data?.length || 0);
           setApartments(apartmentResult.data || []);
         } else {
-          console.warn('FieldCheckinScreen: Failed to load apartments:', apartmentResult);
-          setApartments([]);
+          console.warn('FieldCheckinScreen: Failed to load assigned apartments, loading all apartments');
+          // Fallback: load all apartments if no assignment
+          const allApartmentResult = await TeamAssignmentService.getAllApartmentsForCheckin();
+          if (allApartmentResult && allApartmentResult.success) {
+            console.log('FieldCheckinScreen: Loaded all apartments as fallback:', allApartmentResult.data?.length || 0);
+            setApartments(allApartmentResult.data || []);
+          } else {
+            setApartments([]);
+          }
         }
       } catch (apartmentError) {
         console.error('FieldCheckinScreen: Error loading apartments:', apartmentError);
         setApartments([]);
       }
 
-      // Load unit tersedia menggunakan TeamAssignmentService
+      // Load semua unit untuk checkin (tim lapangan bisa checkin di semua unit)
       try {
-        console.log('FieldCheckinScreen: Loading available units');
-        const unitResult = await TeamAssignmentService.getAccessibleUnits();
+        console.log('FieldCheckinScreen: Loading all units for checkin');
+        const unitResult = await TeamAssignmentService.getAllUnitsForCheckin();
 
         if (unitResult && unitResult.success) {
           const allUnits = unitResult.data || [];
@@ -655,6 +662,9 @@ const FieldCheckinScreen = ({ navigation, route }) => {
         {/* Apartemen Selection */}
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Pilih Apartemen *</Text>
+          <Text style={styles.inputHint}>
+            Menampilkan apartemen yang Anda handle untuk kemudahan workflow
+          </Text>
           <TouchableOpacity
             style={styles.selectorButton}
             onPress={() => setApartmentModalVisible(true)}
@@ -1159,6 +1169,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.textPrimary,
     marginBottom: SIZES.sm,
+  },
+  inputHint: {
+    fontSize: 12,
+    color: COLORS.gray500,
+    marginBottom: SIZES.sm,
+    fontStyle: 'italic',
   },
   input: {
     borderWidth: 1,

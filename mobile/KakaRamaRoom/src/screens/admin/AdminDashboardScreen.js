@@ -18,6 +18,7 @@ import ApartmentService from '../../services/ApartmentService';
 import UnitService from '../../services/UnitService';
 import CheckinService from '../../services/CheckinService';
 import TestNotification from '../../utils/TestNotification';
+import TestFieldTeamCheckin from '../../utils/TestFieldTeamCheckin';
 import BusinessDayService from '../../services/BusinessDayService';
 import { supabase } from '../../config/supabase';
 
@@ -185,6 +186,51 @@ const AdminDashboardScreen = ({ navigation }) => {
     );
   };
 
+  const testFieldTeamAccess = async () => {
+    Alert.alert(
+      'Test Field Team Access',
+      'Test akses checkin tim lapangan di semua apartemen:',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Test Checkin Access',
+          onPress: async () => {
+            const result = await TestFieldTeamCheckin.testCheckinAccessAllApartments();
+            Alert.alert(
+              result.success ? 'Success' : 'Failed',
+              result.message + (result.testApartment ? `\nTest apartment: ${result.testApartment}` : '')
+            );
+          },
+        },
+        {
+          text: 'Test UI Filtering',
+          onPress: async () => {
+            const result = await TestFieldTeamCheckin.testUIApartmentFiltering();
+            Alert.alert(
+              result.success ? 'Success' : 'Failed',
+              `UI: ${result.uiApartments || 0} apartments, Backend: ${result.allApartments || 0} apartments`
+            );
+          },
+        },
+        {
+          text: 'Run All Tests',
+          onPress: async () => {
+            const results = await TestFieldTeamCheckin.runAllTests();
+            const passedCount = Object.values(results).filter(r => r.success).length;
+            const totalCount = Object.keys(results).length;
+            Alert.alert(
+              'Test Results',
+              `${passedCount}/${totalCount} tests passed. Check console for details.`
+            );
+          },
+        },
+      ]
+    );
+  };
+
 
 
   const menuItems = [
@@ -244,6 +290,12 @@ const AdminDashboardScreen = ({ navigation }) => {
       icon: 'bug-report',
       onPress: () => testPushNotification(),
       color: '#FF9800',
+    },
+    {
+      title: 'Test Field Team Access',
+      icon: 'verified-user',
+      onPress: () => testFieldTeamAccess(),
+      color: '#9C27B0',
     },
   ];
 
