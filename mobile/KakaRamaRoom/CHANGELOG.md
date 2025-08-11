@@ -5,6 +5,50 @@ Semua perubahan penting pada proyek KakaRama Room akan didokumentasikan di file 
 Format berdasarkan [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 dan proyek ini mengikuti [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2025-08-11
+
+### Added
+- **🔔 Firebase Push Notification System**: Sistem notifikasi push real-time yang lengkap
+  - **Auto Notifications**: Notifikasi otomatis untuk lifecycle checkin
+    - Reminder 30 menit sebelum checkout
+    - Notifikasi saat waktu checkout tiba
+    - Notifikasi cleaning 15 menit setelah checkout
+    - Notifikasi unit available 30 menit setelah cleaning
+  - **Admin Broadcast**: Kirim notifikasi ke semua pengguna, admin saja, atau field team
+  - **Firebase Integration**:
+    - Sender ID: 241468377
+    - Project ID: kr-app-12092
+    - Service Account Key management yang aman
+  - **Supabase Edge Function**: `send-push-notification` untuk FCM messaging
+  - **Database Tables**:
+    - `user_fcm_tokens` - FCM token storage
+    - `notification_logs` - Sent notification tracking
+    - `scheduled_notifications` - Auto notification queue
+    - `pending_notifications` - Failed notification retry
+    - `broadcast_notifications` - Admin broadcast history
+  - **Testing Utility**: TestNotification.js dengan comprehensive testing
+  - **Admin Test Panel**: Test push notification dari admin dashboard
+
+### Enhanced
+- **NotificationService**: Complete FCM integration dengan error handling
+- **ScheduledNotificationProcessor**: Background processor untuk auto notifications
+- **CheckinService**: Auto-schedule notifications saat checkin dibuat
+- **Security**: Firebase credentials disimpan aman di folder credentials/
+
+### Technical Details
+- Firebase SDK configuration untuk Android
+- Notification channels (default, checkin, admin, cleaning)
+- Retry mechanism untuk failed notifications
+- Real-time FCM token management
+- Background processing setiap 1 menit
+- Comprehensive error logging dan monitoring
+
+### Documentation
+- `TESTING_PUSH_NOTIFICATION.md` - Testing guide lengkap
+- `supabase/DEPLOYMENT.md` - Edge Function deployment guide
+- `QUICK_START_FIREBASE.md` - Quick start guide
+- Setup scripts untuk Windows (PowerShell & Batch)
+
 ## [2.1.0] - 2025-08-10
 
 ### Added
