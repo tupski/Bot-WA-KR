@@ -444,33 +444,60 @@ class NotificationService {
         return { success: false, message: 'FCM token not found' };
       }
 
-      // Send notification via FCM API (temporary solution until Edge Function is ready)
+      // Send notification via Supabase Edge Function
       try {
-        // For now, we'll save to database and let a background service handle FCM sending
-        // In production, this should use FCM Server Key via secure backend
-
-        const { error: notificationError } = await supabase
-          .from('pending_notifications')
-          .insert([{
-            user_id: userId,
-            fcm_token: tokenData.fcm_token,
+        const { data: response, error: sendError } = await supabase.functions.invoke('send-push-notification', {
+          body: {
+            token: tokenData.fcm_token,
             title,
             body,
             data: {
               ...data,
-              timestamp: new Date().toISOString()
-            },
-            status: 'pending',
-            created_at: new Date().toISOString()
-          }]);
+              timestamp: new Date().toISOString(),
+              channel: getNotificationChannel(data.type || 'default').id
+            }
+          }
+        });
 
-        if (notificationError) {
-          throw notificationError;
+        if (sendError) {
+          throw sendError;
         }
 
-        console.log('NotificationService: Notification queued for sending');
+        if (!response?.success) {
+          throw new Error(response?.error || 'Failed to send notification');
+        }
+
+        console.log('NotificationService: Push notification sent successfully:', response.messageId);
       } catch (fcmError) {
-        console.error('NotificationService: Error queuing notification:', fcmError);
+        console.error('NotificationService: Error sending push notification:', fcmError);
+
+        // Fallback: Save to pending_notifications for retry
+        try {
+          const { error: fallbackError } = await supabase
+            .from('pending_notifications')
+            .insert([{
+              user_id: userId,
+              fcm_token: tokenData.fcm_token,
+              title,
+              body,
+              data: {
+                ...data,
+                timestamp: new Date().toISOString()
+              },
+              status: 'pending',
+              error_message: fcmError.message,
+              created_at: new Date().toISOString()
+            }]);
+
+          if (fallbackError) {
+            console.error('NotificationService: Fallback queue error:', fallbackError);
+          } else {
+            console.log('NotificationService: Notification queued for retry');
+          }
+        } catch (fallbackError) {
+          console.error('NotificationService: Critical error - cannot queue notification:', fallbackError);
+        }
+
         throw fcmError;
       }
 
