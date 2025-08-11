@@ -80,21 +80,28 @@ const AdminProfileScreen = ({ navigation }) => {
    */
   const handleImagePicker = async () => {
     try {
-      const result = await ImagePickerService.showImagePicker({
-        title: 'Pilih Foto Profil',
-        options: ['Kamera', 'Galeri'],
-        maxImages: 1,
-        quality: 0.8,
-      });
+      ImagePickerService.showProfileImagePicker((selectedImage) => {
+        console.log('AdminProfileScreen: Image selected:', selectedImage);
 
-      if (result.success && result.images && result.images.length > 0) {
-        setProfileImage(result.images[0].uri);
+        // Validate image
+        const validation = ImagePickerService.validateImage(selectedImage);
+        if (!validation.valid) {
+          showAlert({
+            type: 'error',
+            title: 'Error',
+            message: validation.message
+          });
+          return;
+        }
+
+        // Set profile image
+        setProfileImage(selectedImage.uri);
         showAlert({
           type: 'success',
           title: 'Berhasil',
           message: 'Foto profil berhasil dipilih'
         });
-      }
+      });
     } catch (error) {
       console.error('AdminProfileScreen: Error picking image:', error);
       showAlert({

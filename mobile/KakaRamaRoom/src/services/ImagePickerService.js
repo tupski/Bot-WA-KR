@@ -74,6 +74,15 @@ class ImagePickerService {
     try {
       console.log('ImagePickerService: Opening camera...');
 
+      // Check if react-native-image-picker is available
+      if (!launchCamera) {
+        Alert.alert(
+          'Fitur Tidak Tersedia',
+          'Fitur kamera akan tersedia setelah instalasi react-native-image-picker'
+        );
+        return {success: false, message: 'Camera not available'};
+      }
+
       // Request camera permission
       const hasPermission = await this.requestCameraPermission();
       if (!hasPermission) {
@@ -105,7 +114,7 @@ class ImagePickerService {
           if (response.assets && response.assets.length > 0) {
             const asset = response.assets[0];
             console.log('ImagePickerService: Camera photo taken:', asset);
-            
+
             // Process and resize image
             const processedImage = await this.processImage(asset);
             resolve({success: true, data: processedImage});
@@ -116,7 +125,7 @@ class ImagePickerService {
       });
     } catch (error) {
       console.error('ImagePickerService: Camera error:', error);
-      return {success: false, message: error.message};
+      return {success: false, message: 'Fitur kamera akan tersedia setelah instalasi react-native-image-picker'};
     }
   }
 
@@ -126,6 +135,15 @@ class ImagePickerService {
   async openGallery() {
     try {
       console.log('ImagePickerService: Opening gallery...');
+
+      // Check if react-native-image-picker is available
+      if (!launchImageLibrary) {
+        Alert.alert(
+          'Fitur Tidak Tersedia',
+          'Fitur galeri akan tersedia setelah instalasi react-native-image-picker'
+        );
+        return {success: false, message: 'Gallery not available'};
+      }
 
       // Request storage permission
       const hasPermission = await this.requestStoragePermission();
@@ -169,7 +187,7 @@ class ImagePickerService {
       });
     } catch (error) {
       console.error('ImagePickerService: Gallery error:', error);
-      return {success: false, message: error.message};
+      return {success: false, message: 'Fitur galeri akan tersedia setelah instalasi react-native-image-picker'};
     }
   }
 
@@ -224,12 +242,51 @@ class ImagePickerService {
   }
 
   /**
-   * Show image picker options
+   * Show image picker options for payment proof
    */
   showImagePickerOptions(onImageSelected) {
     Alert.alert(
       'Pilih Bukti Pembayaran',
       'Pilih sumber gambar untuk bukti pembayaran',
+      [
+        {
+          text: 'Batal',
+          style: 'cancel',
+        },
+        {
+          text: 'Kamera',
+          onPress: async () => {
+            const result = await this.openCamera();
+            if (result.success) {
+              onImageSelected(result.data);
+            } else if (result.message !== 'Camera cancelled') {
+              Alert.alert('Error', result.message);
+            }
+          },
+        },
+        {
+          text: 'Galeri',
+          onPress: async () => {
+            const result = await this.openGallery();
+            if (result.success) {
+              onImageSelected(result.data);
+            } else if (result.message !== 'Gallery cancelled') {
+              Alert.alert('Error', result.message);
+            }
+          },
+        },
+      ],
+      {cancelable: true}
+    );
+  }
+
+  /**
+   * Show image picker options for profile image
+   */
+  showProfileImagePicker(onImageSelected) {
+    Alert.alert(
+      'Pilih Foto Profil',
+      'Pilih sumber gambar untuk foto profil',
       [
         {
           text: 'Batal',
