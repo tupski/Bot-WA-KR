@@ -86,21 +86,70 @@ class MarketingSourceService {
 
       const trimmedName = name.trim();
 
-      // Call the database function
-      const { data, error } = await supabase
-        .rpc('add_marketing_source_if_not_exists', {
-          marketing_name: trimmedName
-        });
+      // Try to call the database function first
+      let result;
+      try {
+        const { data, error } = await supabase
+          .rpc('add_marketing_source_if_not_exists', {
+            marketing_name: trimmedName
+          });
 
-      if (error) {
-        throw error;
+        if (error) {
+          throw error;
+        }
+
+        result = {
+          success: true,
+          data: { id: data, name: trimmedName },
+          message: 'Sumber marketing berhasil ditambahkan',
+        };
+      } catch (rpcError) {
+        console.warn('MarketingSourceService: RPC function not available, using fallback:', rpcError);
+
+        // Fallback: Check if exists, then insert if not
+        const { data: existing, error: checkError } = await supabase
+          .from('marketing_sources')
+          .select('id, name')
+          .eq('name', trimmedName)
+          .single();
+
+        if (checkError && checkError.code !== 'PGRST116') {
+          throw checkError;
+        }
+
+        if (existing) {
+          // Already exists
+          result = {
+            success: true,
+            data: { id: existing.id, name: existing.name },
+            message: 'Sumber marketing sudah ada',
+          };
+        } else {
+          // Insert new
+          const { data: newSource, error: insertError } = await supabase
+            .from('marketing_sources')
+            .insert({
+              name: trimmedName,
+              usage_count: 1,
+              is_active: true,
+              created_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+
+          if (insertError) {
+            throw insertError;
+          }
+
+          result = {
+            success: true,
+            data: { id: newSource.id, name: newSource.name },
+            message: 'Sumber marketing berhasil ditambahkan',
+          };
+        }
       }
 
-      return {
-        success: true,
-        data: { id: data, name: trimmedName },
-        message: 'Sumber marketing berhasil ditambahkan',
-      };
+      return result;
     } catch (error) {
       console.error('Error adding marketing source:', error);
       return {

@@ -218,6 +218,12 @@ const FieldCheckinScreen = ({ navigation, route }) => {
 
         if (marketingResult && marketingResult.success) {
           console.log('FieldCheckinScreen: Loaded marketing sources:', marketingResult.data?.length || 0);
+          console.log('FieldCheckinScreen: Marketing sources data:', marketingResult.data?.map(source => ({
+            id: source.id,
+            name: source.name,
+            usage_count: source.usage_count,
+            is_active: source.is_active
+          })));
           setMarketingSources(marketingResult.data || []);
           setFilteredMarketingSources(marketingResult.data || []);
         } else {
@@ -436,13 +442,23 @@ const FieldCheckinScreen = ({ navigation, route }) => {
         if (source.id === 'new') {
           console.log('FieldCheckinScreen: Adding new marketing source:', source.name);
           const result = await MarketingSourceService.addMarketingSourceIfNotExists(source.name);
-          if (!result.success) {
+          if (result.success) {
+            console.log('FieldCheckinScreen: Successfully added marketing source:', source.name);
+            // Refresh marketing sources list
+            const refreshResult = await MarketingSourceService.getAllMarketingSources();
+            if (refreshResult.success) {
+              setMarketingSources(refreshResult.data || []);
+              setFilteredMarketingSources(refreshResult.data || []);
+            }
+          } else {
             console.warn('FieldCheckinScreen: Failed to add marketing source:', result.message);
           }
         } else {
           console.log('FieldCheckinScreen: Incrementing usage for:', source.name);
           const result = await MarketingSourceService.incrementUsage(source.name);
-          if (!result.success) {
+          if (result.success) {
+            console.log('FieldCheckinScreen: Successfully incremented usage for:', source.name);
+          } else {
             console.warn('FieldCheckinScreen: Failed to increment usage:', result.message);
           }
         }
