@@ -568,14 +568,16 @@ class NotificationService {
         .from('scheduled_notifications')
         .insert({
           checkin_id: checkinId,
-          notification_type: 'checkout_reminder',
+          notification_type: NOTIFICATION_TYPES.CHECKOUT_REMINDER.type,
           scheduled_time: reminderTime.toISOString(),
           title: '⏰ Reminder Checkout',
           body: `Unit ${unitName} akan checkout dalam 30 menit`,
           data: {
-            type: 'checkout_reminder',
+            type: NOTIFICATION_TYPES.CHECKOUT_REMINDER.type,
             checkin_id: checkinId,
-            unit_name: unitName
+            unit_name: unitName,
+            channel: NOTIFICATION_TYPES.CHECKOUT_REMINDER.channel,
+            priority: NOTIFICATION_TYPES.CHECKOUT_REMINDER.priority
           }
         });
 
@@ -601,14 +603,16 @@ class NotificationService {
         .from('scheduled_notifications')
         .insert({
           checkin_id: checkinId,
-          notification_type: 'checkout_time',
+          notification_type: NOTIFICATION_TYPES.CHECKOUT_TIME.type,
           scheduled_time: new Date(checkoutTime).toISOString(),
           title: '🏁 Waktu Checkout',
           body: `Unit ${unitName} sudah waktunya checkout`,
           data: {
-            type: 'checkout_time',
+            type: NOTIFICATION_TYPES.CHECKOUT_TIME.type,
             checkin_id: checkinId,
-            unit_name: unitName
+            unit_name: unitName,
+            channel: NOTIFICATION_TYPES.CHECKOUT_TIME.channel,
+            priority: NOTIFICATION_TYPES.CHECKOUT_TIME.priority
           }
         });
 
@@ -637,14 +641,16 @@ class NotificationService {
         .from('scheduled_notifications')
         .insert({
           checkin_id: checkinId,
-          notification_type: 'cleaning_time',
+          notification_type: NOTIFICATION_TYPES.CLEANING_TIME.type,
           scheduled_time: cleaningTime.toISOString(),
           title: '🧹 Waktu Cleaning',
           body: `Unit ${unitName} sudah siap untuk dibersihkan`,
           data: {
-            type: 'cleaning_time',
+            type: NOTIFICATION_TYPES.CLEANING_TIME.type,
             checkin_id: checkinId,
-            unit_name: unitName
+            unit_name: unitName,
+            channel: NOTIFICATION_TYPES.CLEANING_TIME.channel,
+            priority: NOTIFICATION_TYPES.CLEANING_TIME.priority
           }
         });
 
