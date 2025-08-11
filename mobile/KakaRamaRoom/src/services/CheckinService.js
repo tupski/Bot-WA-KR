@@ -453,6 +453,36 @@ class CheckinService {
       const CleaningService = require('./CleaningService').default;
       await CleaningService.startCleaning(checkin.unit_id, userId, userType);
 
+      // Schedule immediate cleaning notification for early checkout
+      try {
+        // Get unit name for notifications
+        const { data: unitData } = await supabase
+          .from('units')
+          .select('unit_number, apartments(name)')
+          .eq('id', checkin.unit_id)
+          .single();
+
+        const unitName = unitData ? `${unitData.apartments?.name} - ${unitData.unit_number}` : `Unit ${checkin.unit_id}`;
+
+        // Cancel any pending notifications for this checkin
+        await supabase
+          .from('scheduled_notifications')
+          .update({ is_sent: true, sent_at: new Date().toISOString() })
+          .eq('checkin_id', checkinId)
+          .eq('is_sent', false);
+
+        // Schedule immediate cleaning notification (5 minutes from now)
+        const cleaningTime = new Date();
+        cleaningTime.setMinutes(cleaningTime.getMinutes() + 5);
+
+        await NotificationService.scheduleCleaningNotification(checkinId, cleaningTime.toISOString(), unitName);
+
+        console.log('CheckinService: Cleaning notification scheduled for early checkout');
+      } catch (notificationError) {
+        console.error('CheckinService: Error scheduling cleaning notification:', notificationError);
+        // Don't fail the checkout if notification scheduling fails
+      }
+
       // Log aktivitas dengan detail lengkap
       await ActivityLogService.logActivity(
         userId,

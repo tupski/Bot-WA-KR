@@ -136,6 +136,9 @@ class ScheduledNotificationProcessor {
         case 'cleaning_time':
           success = await this.sendCleaningNotification(notification, checkin);
           break;
+        case 'unit_available':
+          success = await this.sendUnitAvailableNotification(notification, checkin);
+          break;
         default:
           console.warn(`ScheduledNotificationProcessor: Unknown notification type: ${notification.notification_type}`);
           success = true; // Mark as sent to avoid reprocessing
@@ -188,7 +191,7 @@ class ScheduledNotificationProcessor {
   async sendCheckoutNotification(notification, checkin) {
     try {
       const unitName = checkin.units ? `${checkin.units.apartments?.name} - ${checkin.units.unit_number}` : `Unit ${checkin.unit_id}`;
-      
+
       // Send to field team if assigned
       if (checkin.team_id && checkin.field_teams) {
         await NotificationService.sendNotificationToUser(
@@ -206,6 +209,42 @@ class ScheduledNotificationProcessor {
         notification.data
       );
 
+      // Auto-complete checkin when checkout time arrives
+      try {
+        const { error: updateError } = await supabase
+          .from('checkins')
+          .update({
+            status: 'completed',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', checkin.id)
+          .eq('status', 'active'); // Only update if still active
+
+        if (updateError) {
+          console.error('ScheduledNotificationProcessor: Error updating checkin status:', updateError);
+        } else {
+          console.log(`ScheduledNotificationProcessor: Checkin ${checkin.id} marked as completed`);
+        }
+
+        // Update unit status to cleaning
+        const { error: unitError } = await supabase
+          .from('units')
+          .update({
+            status: 'cleaning',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', checkin.unit_id);
+
+        if (unitError) {
+          console.error('ScheduledNotificationProcessor: Error updating unit status:', unitError);
+        } else {
+          console.log(`ScheduledNotificationProcessor: Unit ${checkin.unit_id} marked as cleaning`);
+        }
+
+      } catch (statusError) {
+        console.error('ScheduledNotificationProcessor: Error updating statuses:', statusError);
+      }
+
       console.log(`ScheduledNotificationProcessor: Checkout notification sent for checkin ${checkin.id}`);
       return true;
     } catch (error) {
@@ -220,18 +259,87 @@ class ScheduledNotificationProcessor {
   async sendCleaningNotification(notification, checkin) {
     try {
       const unitName = checkin.units ? `${checkin.units.apartments?.name} - ${checkin.units.unit_number}` : `Unit ${checkin.unit_id}`;
-      
+
       // Send to all admins (cleaning is usually admin responsibility)
       await NotificationService.sendNotificationToAdmins(
         notification.title,
-        notification.body,
+        `${notification.body} - ${unitName}`,
         notification.data
       );
+
+      // Schedule unit to be available after cleaning (30 minutes from now)
+      try {
+        const availableTime = new Date();
+        availableTime.setMinutes(availableTime.getMinutes() + 30);
+
+        // Schedule unit status update to available
+        const { error: scheduleError } = await supabase
+          .from('scheduled_notifications')
+          .insert({
+            checkin_id: checkin.id,
+            notification_type: 'unit_available',
+            scheduled_time: availableTime.toISOString(),
+            title: '✅ Unit Siap',
+            body: `Unit ${unitName} sudah selesai cleaning dan siap digunakan`,
+            data: {
+              type: 'unit_available',
+              checkin_id: checkin.id,
+              unit_id: checkin.unit_id,
+              unit_name: unitName
+            }
+          });
+
+        if (scheduleError) {
+          console.error('ScheduledNotificationProcessor: Error scheduling unit available notification:', scheduleError);
+        } else {
+          console.log(`ScheduledNotificationProcessor: Unit available notification scheduled for ${availableTime.toISOString()}`);
+        }
+
+      } catch (scheduleError) {
+        console.error('ScheduledNotificationProcessor: Error scheduling unit available:', scheduleError);
+      }
 
       console.log(`ScheduledNotificationProcessor: Cleaning notification sent for checkin ${checkin.id}`);
       return true;
     } catch (error) {
       console.error('ScheduledNotificationProcessor: Error sending cleaning notification:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Send unit available notification and update unit status
+   */
+  async sendUnitAvailableNotification(notification, checkin) {
+    try {
+      const unitName = checkin.units ? `${checkin.units.apartments?.name} - ${checkin.units.unit_number}` : `Unit ${checkin.unit_id}`;
+
+      // Update unit status to available
+      const { error: unitError } = await supabase
+        .from('units')
+        .update({
+          status: 'available',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', checkin.unit_id);
+
+      if (unitError) {
+        console.error('ScheduledNotificationProcessor: Error updating unit to available:', unitError);
+      } else {
+        console.log(`ScheduledNotificationProcessor: Unit ${checkin.unit_id} marked as available`);
+      }
+
+      // Send notification to admins
+      await NotificationService.sendNotificationToAdmins(
+        notification.title,
+        `${notification.body} - ${unitName}`,
+        notification.data
+      );
+
+      console.log(`ScheduledNotificationProcessor: Unit available notification sent for unit ${checkin.unit_id}`);
+      return true;
+    } catch (error) {
+      console.error('ScheduledNotificationProcessor: Error sending unit available notification:', error);
       return false;
     }
   }
