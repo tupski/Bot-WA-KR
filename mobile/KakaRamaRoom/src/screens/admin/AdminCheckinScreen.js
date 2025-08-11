@@ -238,9 +238,17 @@ const AdminCheckinScreen = ({ navigation }) => {
       console.log('AdminCheckinScreen: Starting handleSubmit');
 
       // Validasi form
-      if (!formData.apartmentId || !formData.unitId || !formData.paymentAmount) {
-        Alert.alert('Error', 'Harap lengkapi apartemen, unit, dan jumlah pembayaran');
+      if (!formData.apartmentId || !formData.unitId) {
+        Alert.alert('Error', 'Harap lengkapi apartemen dan unit');
         return;
+      }
+
+      // Validasi payment amount - allow empty for APK method
+      if (formData.paymentAmount === '' || formData.paymentAmount === null || formData.paymentAmount === undefined) {
+        if (formData.paymentMethod !== 'APK') {
+          Alert.alert('Error', 'Jumlah pembayaran harus diisi (kecuali untuk metode APK)');
+          return;
+        }
       }
 
       const durationHours = parseInt(formData.durationHours);
@@ -249,10 +257,14 @@ const AdminCheckinScreen = ({ navigation }) => {
         return;
       }
 
-      const paymentAmount = parseFloat(formData.paymentAmount);
-      if (isNaN(paymentAmount) || paymentAmount <= 0) {
-        Alert.alert('Error', 'Jumlah pembayaran harus berupa angka yang valid');
-        return;
+      // Parse payment amount - allow 0 for APK method
+      let paymentAmount = 0;
+      if (formData.paymentAmount !== '' && formData.paymentAmount !== null && formData.paymentAmount !== undefined) {
+        paymentAmount = parseFloat(formData.paymentAmount);
+        if (isNaN(paymentAmount) || paymentAmount < 0) {
+          Alert.alert('Error', 'Jumlah pembayaran harus berupa angka yang valid (minimal 0)');
+          return;
+        }
       }
 
       console.log('AdminCheckinScreen: Getting current user');
