@@ -17,8 +17,21 @@
 # Masuk ke folder project
 cd D:\Projects\Bot-WA-KR
 
-# Install Supabase CLI (jika belum)
-npm install -g supabase
+# Install Supabase CLI untuk Windows (pilih salah satu):
+
+# Option 1: Via Chocolatey (Recommended)
+choco install supabase
+
+# Option 2: Via Scoop
+scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
+scoop install supabase
+
+# Option 3: Download binary langsung
+# Download dari: https://github.com/supabase/cli/releases
+# Extract dan tambahkan ke PATH
+
+# Verify installation
+supabase --version
 
 # Login ke Supabase
 supabase login

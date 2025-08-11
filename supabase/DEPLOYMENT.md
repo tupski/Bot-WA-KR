@@ -2,17 +2,43 @@
 
 ## Prerequisites
 
-1. Install Supabase CLI:
+1. Install Supabase CLI (Windows):
+
+**Option 1: Via Chocolatey (Recommended)**
 ```bash
-npm install -g supabase
+# Install Chocolatey first if not installed
+# https://chocolatey.org/install
+
+choco install supabase
 ```
 
-2. Login to Supabase:
+**Option 2: Via Scoop**
+```bash
+# Install Scoop first if not installed
+# https://scoop.sh/
+
+scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
+scoop install supabase
+```
+
+**Option 3: Manual Download**
+```bash
+# Download latest release from:
+# https://github.com/supabase/cli/releases
+# Extract supabase.exe and add to PATH
+```
+
+2. Verify installation:
+```bash
+supabase --version
+```
+
+3. Login to Supabase:
 ```bash
 supabase login
 ```
 
-3. Link to your project:
+4. Link to your project:
 ```bash
 supabase link --project-ref rvcknyuinfssgpgkfetx
 ```
