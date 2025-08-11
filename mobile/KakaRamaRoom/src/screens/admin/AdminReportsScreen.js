@@ -447,13 +447,13 @@ const AdminReportsScreen = () => {
             style={styles.filterButton}
             onPress={() => setDateRangeModalVisible(true)}
           >
-            <Icon name="date-range" size={24} color={COLORS.primary} />
+            <Icon name="date-range" size={20} color={COLORS.white} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.filterButton}
             onPress={() => setApartmentModalVisible(true)}
           >
-            <Icon name="filter-list" size={24} color={COLORS.primary} />
+            <Icon name="filter-list" size={20} color={COLORS.white} />
           </TouchableOpacity>
         </View>
       </View>
@@ -488,6 +488,31 @@ const AdminReportsScreen = () => {
           </View>
         </View>
       </View>
+
+      {/* Filter Info */}
+      {(selectedApartments.length > 0 || (dateRange.startDate && dateRange.endDate)) && (
+        <View style={styles.filterInfo}>
+          <View style={styles.filterInfoContent}>
+            <Icon name="filter-alt" size={16} color={COLORS.primary} />
+            <Text style={styles.filterText}>
+              {selectedApartments.length > 0
+                ? `📍 ${selectedApartments.length} Apartemen Dipilih`
+                : '🏢 Semua Apartemen'
+              }
+              {dateRange.startDate && dateRange.endDate
+                ? ` • 📅 ${dateRange.startDate} - ${dateRange.endDate}`
+                : ' • 📅 Semua Tanggal'
+              }
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={clearFilters}
+            style={styles.filterButton}
+          >
+            <Icon name="clear" size={16} color={COLORS.error} />
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Daily Statistics Cards */}
       <View style={styles.dailyStatsContainer}>
@@ -553,36 +578,43 @@ const AdminReportsScreen = () => {
 
       {/* Summary Statistics */}
       <View style={styles.summaryContainer}>
-        <View style={styles.statCard}>
-          <Icon name="assessment" size={32} color={COLORS.primary} />
-          <Text style={styles.statNumber}>
-            {formatNumber(summaryStats.totalCheckins)}
-          </Text>
-          <Text style={styles.statLabel}>Total Checkin</Text>
-        </View>
+        <Text style={styles.sectionTitle}>Ringkasan Statistik</Text>
+        <View style={styles.statsGrid}>
+          <View style={[styles.statCard, styles.primaryCard]}>
+            <Icon name="assessment" size={32} color={COLORS.primary} />
+            <Text style={styles.statNumber}>
+              {formatNumber(summaryStats.totalCheckins)}
+            </Text>
+            <Text style={styles.statLabel}>Total Checkin</Text>
+            <Text style={styles.statSubLabel}>Semua waktu</Text>
+          </View>
 
-        <View style={styles.statCard}>
-          <Icon name="today" size={32} color={COLORS.success} />
-          <Text style={styles.statNumber}>
-            {formatNumber(summaryStats.todayCheckins)}
-          </Text>
-          <Text style={styles.statLabel}>Hari Ini</Text>
-        </View>
+          <View style={[styles.statCard, styles.successCard]}>
+            <Icon name="today" size={32} color={COLORS.success} />
+            <Text style={styles.statNumber}>
+              {formatNumber(summaryStats.todayCheckins)}
+            </Text>
+            <Text style={styles.statLabel}>Checkin Hari Ini</Text>
+            <Text style={styles.statSubLabel}>Business day</Text>
+          </View>
 
-        <View style={styles.statCard}>
-          <Icon name="schedule" size={32} color={COLORS.warning} />
-          <Text style={styles.statNumber}>
-            {formatNumber(summaryStats.activeCheckins)}
-          </Text>
-          <Text style={styles.statLabel}>Aktif</Text>
-        </View>
+          <View style={[styles.statCard, styles.warningCard]}>
+            <Icon name="schedule" size={32} color={COLORS.warning} />
+            <Text style={styles.statNumber}>
+              {formatNumber(summaryStats.activeCheckins)}
+            </Text>
+            <Text style={styles.statLabel}>Sedang Aktif</Text>
+            <Text style={styles.statSubLabel}>Belum checkout</Text>
+          </View>
 
-        <View style={styles.statCard}>
-          <Icon name="attach-money" size={32} color={COLORS.info} />
-          <Text style={styles.statNumber}>
-            {formatCurrency(summaryStats.totalRevenue)}
-          </Text>
-          <Text style={styles.statLabel}>Total Penghasilan</Text>
+          <View style={[styles.statCard, styles.infoCard]}>
+            <Icon name="attach-money" size={32} color={COLORS.info} />
+            <Text style={styles.statNumber}>
+              {formatCurrency(summaryStats.totalRevenue)}
+            </Text>
+            <Text style={styles.statLabel}>Total Revenue</Text>
+            <Text style={styles.statSubLabel}>Semua pembayaran</Text>
+          </View>
         </View>
       </View>
 
@@ -933,6 +965,29 @@ const styles = StyleSheet.create({
   },
   filterInfo: {
     backgroundColor: COLORS.primary + '10',
+    marginHorizontal: SIZES.lg,
+    marginVertical: SIZES.sm,
+    padding: SIZES.md,
+    borderRadius: SIZES.radius,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.primary,
+  },
+  filterInfoContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  filterText: {
+    fontSize: SIZES.caption,
+    color: COLORS.primary,
+    marginLeft: SIZES.sm,
+    fontWeight: '600',
+  },
+  filterInfo: {
+    backgroundColor: COLORS.primary + '10',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -1178,6 +1233,30 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     textAlign: 'center',
     marginTop: SIZES.xs,
+    fontWeight: '600',
+  },
+  statSubLabel: {
+    fontSize: SIZES.caption - 1,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginTop: 2,
+    opacity: 0.7,
+  },
+  primaryCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.primary,
+  },
+  successCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.success,
+  },
+  warningCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.warning,
+  },
+  infoCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.info,
   },
   emptyState: {
     alignItems: 'center',
