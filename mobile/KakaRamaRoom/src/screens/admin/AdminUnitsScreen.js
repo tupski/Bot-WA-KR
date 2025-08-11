@@ -24,7 +24,7 @@ import { useModernAlert } from '../../components/ModernAlert';
  * Screen untuk manajemen unit oleh admin
  * Fitur: CRUD unit, ubah status unit, monitoring auto-checkout
  */
-const AdminUnitsScreen = () => {
+const AdminUnitsScreen = ({ route }) => {
   // Modern Alert Hook
   const { showAlert, AlertComponent } = useModernAlert();
 
@@ -50,6 +50,15 @@ const AdminUnitsScreen = () => {
   useEffect(() => {
     loadInitialData();
   }, []);
+
+  // Handle parameter apartmentId dari navigasi
+  useEffect(() => {
+    const apartmentId = route?.params?.apartmentId;
+    if (apartmentId) {
+      console.log('AdminUnitsScreen: Auto-filtering by apartment ID:', apartmentId);
+      setSelectedApartment(apartmentId);
+    }
+  }, [route?.params?.apartmentId]);
 
   /**
    * Load data awal (unit dan apartemen)

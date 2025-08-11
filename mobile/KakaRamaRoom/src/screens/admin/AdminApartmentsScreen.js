@@ -314,7 +314,7 @@ const AdminApartmentsScreen = ({ navigation }) => {
           throw new Error('Navigation tidak tersedia');
         }
 
-        navigation.navigate('AdminApartmentDetail', { apartmentId: item.id });
+        navigation.navigate('AdminUnits', { apartmentId: item.id });
       } catch (error) {
         console.error('AdminApartmentsScreen: Error navigating to apartment detail:', error);
         showAlert({
