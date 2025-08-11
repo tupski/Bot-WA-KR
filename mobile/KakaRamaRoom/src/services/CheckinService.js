@@ -4,6 +4,7 @@ import ActivityLogService from './ActivityLogService';
 import UnitService from './UnitService';
 import TeamAssignmentService from './TeamAssignmentService';
 import StorageService from './StorageService';
+import NotificationService from './NotificationService';
 import { ACTIVITY_ACTIONS, UNIT_STATUS, CHECKIN_STATUS } from '../config/constants';
 import TimeUtils from '../utils/TimeUtils';
 
@@ -249,6 +250,32 @@ class CheckinService {
         }
       );
 
+      // Schedule automatic notifications
+      try {
+        // Get unit name for notifications
+        const { data: unitData } = await supabase
+          .from('units')
+          .select('unit_number, apartments(name)')
+          .eq('id', unitId)
+          .single();
+
+        const unitName = unitData ? `${unitData.apartments?.name} - ${unitData.unit_number}` : `Unit ${unitId}`;
+
+        // Schedule 30-minute reminder
+        await NotificationService.scheduleCheckoutReminder(checkinId, finalCheckoutTime, unitName);
+
+        // Schedule checkout notification
+        await NotificationService.scheduleCheckoutNotification(checkinId, finalCheckoutTime, unitName);
+
+        // Schedule cleaning notification
+        await NotificationService.scheduleCleaningNotification(checkinId, finalCheckoutTime, unitName);
+
+        console.log('CheckinService: Auto notifications scheduled successfully');
+      } catch (notificationError) {
+        console.error('CheckinService: Error scheduling notifications:', notificationError);
+        // Don't fail the checkin creation if notification scheduling fails
+      }
+
       console.log('CheckinService: Checkin created successfully:', newCheckin);
       return {
         success: true,
@@ -265,7 +292,7 @@ class CheckinService {
   }
 
   /**
-   * Extend checkin yang sudah ada
+   * Extend checkin yang sudah ada (Updated to use Supabase)
    * @param {number} checkinId - ID checkin yang akan di-extend
    * @param {Object} extendData - Data extend
    * @param {number} userId - ID user yang melakukan extend
@@ -273,72 +300,108 @@ class CheckinService {
    */
   async extendCheckin(checkinId, extendData, userId, userType = 'field_team') {
     try {
-      const { additionalHours, paymentMethod, paymentAmount, paymentProofPath, notes } = extendData;
+      console.log('CheckinService: Extending checkin with data:', { checkinId, extendData, userId });
 
-      const db = DatabaseManager.getDatabase();
+      const { additionalHours, paymentMethod, paymentAmount, paymentProofPath, notes, marketingCommission, marketingName } = extendData;
 
       // Get checkin yang akan di-extend
-      const checkinResult = await db.executeSql(
-        'SELECT * FROM checkins WHERE id = ? AND status IN (?, ?)',
-        [checkinId, CHECKIN_STATUS.ACTIVE, CHECKIN_STATUS.EXTENDED]
-      );
+      const { data: checkin, error: checkinError } = await supabase
+        .from('checkins')
+        .select('*, units(unit_number, apartments(name))')
+        .eq('id', checkinId)
+        .in('status', [CHECKIN_STATUS.ACTIVE, CHECKIN_STATUS.EXTENDED])
+        .single();
 
-      if (checkinResult[0].rows.length === 0) {
+      if (checkinError || !checkin) {
+        console.error('CheckinService: Checkin not found:', checkinError);
         return {
           success: false,
           message: 'Checkin tidak ditemukan atau sudah selesai',
         };
       }
 
-      const checkin = checkinResult[0].rows.item(0);
       const currentCheckoutTime = new Date(checkin.checkout_time);
       const newCheckoutTime = new Date(currentCheckoutTime.getTime() + (additionalHours * 60 * 60 * 1000));
 
       // Insert extend record
-      await db.executeSql(
-        `INSERT INTO checkin_extensions 
-         (checkin_id, additional_hours, new_checkout_time, payment_method, 
-          payment_amount, payment_proof_path, notes, created_by, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
-        [
-          checkinId,
-          additionalHours,
-          newCheckoutTime.toISOString(),
-          paymentMethod,
-          paymentAmount,
-          paymentProofPath,
-          notes,
-          userId,
-        ]
-      );
+      const { error: extensionError } = await supabase
+        .from('checkin_extensions')
+        .insert([{
+          checkin_id: checkinId,
+          additional_hours: additionalHours,
+          new_checkout_time: newCheckoutTime.toISOString(),
+          payment_method: paymentMethod,
+          payment_amount: paymentAmount || 0,
+          payment_proof_path: paymentProofPath,
+          marketing_commission: marketingCommission || 0,
+          marketing_name: marketingName,
+          notes: notes,
+          created_by: userId
+        }]);
+
+      if (extensionError) {
+        console.error('CheckinService: Extension insert error:', extensionError);
+        throw extensionError;
+      }
 
       // Update checkin dengan waktu checkout baru
-      await db.executeSql(
-        `UPDATE checkins 
-         SET checkout_time = ?, status = 'extended', updated_at = CURRENT_TIMESTAMP
-         WHERE id = ?`,
-        [newCheckoutTime.toISOString(), checkinId]
-      );
+      const { error: updateError } = await supabase
+        .from('checkins')
+        .update({
+          checkout_time: newCheckoutTime.toISOString(),
+          status: 'extended',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', checkinId);
+
+      if (updateError) {
+        console.error('CheckinService: Checkin update error:', updateError);
+        throw updateError;
+      }
+
+      // Schedule new notifications for extended checkout time
+      try {
+        const unitName = checkin.units ? `${checkin.units.apartments?.name} - ${checkin.units.unit_number}` : `Unit ${checkin.unit_id}`;
+
+        // Cancel old notifications
+        await supabase
+          .from('scheduled_notifications')
+          .update({ is_sent: true, sent_at: new Date().toISOString() })
+          .eq('checkin_id', checkinId)
+          .eq('is_sent', false);
+
+        // Schedule new notifications with extended time
+        await NotificationService.scheduleCheckoutReminder(checkinId, newCheckoutTime.toISOString(), unitName);
+        await NotificationService.scheduleCheckoutNotification(checkinId, newCheckoutTime.toISOString(), unitName);
+        await NotificationService.scheduleCleaningNotification(checkinId, newCheckoutTime.toISOString(), unitName);
+
+        console.log('CheckinService: New notifications scheduled for extended checkin');
+      } catch (notificationError) {
+        console.error('CheckinService: Error scheduling extend notifications:', notificationError);
+        // Don't fail the extend operation if notification scheduling fails
+      }
 
       // Log aktivitas
       await ActivityLogService.logActivity(
         userId,
         userType,
-        ACTIVITY_ACTIONS.EXTEND_CHECKIN,
-        `Extend checkin ${checkinId} selama ${additionalHours} jam`,
+        ACTIVITY_ACTIONS.EXTEND_CHECKIN || 'extend_checkin',
+        `Extend checkin ${checkinId} selama ${additionalHours} jam - Marketing: ${marketingName || 'N/A'}`,
         'checkins',
         checkinId
       );
 
+      console.log('CheckinService: Checkin extended successfully');
       return {
         success: true,
         message: 'Checkin berhasil di-extend',
+        data: { newCheckoutTime: newCheckoutTime.toISOString() }
       };
     } catch (error) {
-      console.error('Error extending checkin:', error);
+      console.error('CheckinService: Error extending checkin:', error);
       return {
         success: false,
-        message: 'Gagal extend checkin',
+        message: 'Gagal extend checkin: ' + error.message,
       };
     }
   }
