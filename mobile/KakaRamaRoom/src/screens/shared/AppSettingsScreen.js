@@ -13,6 +13,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { COLORS, SIZES, APP_INFO } from '../../config/constants';
 import AuthService from '../../services/AuthService';
 import { useModernAlert } from '../../components/ModernAlert';
+import DateTimeHeader from '../../components/DateTimeHeader';
 
 const AppSettingsScreen = ({ navigation }) => {
   // Modern Alert Hook
@@ -346,13 +347,16 @@ const AppSettingsScreen = ({ navigation }) => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Icon name="arrow-back" size={24} color={COLORS.white} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Pengaturan</Text>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Icon name="arrow-back" size={24} color={COLORS.white} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Pengaturan</Text>
+        </View>
+        <DateTimeHeader />
       </View>
 
       <ScrollView style={styles.content}>
@@ -541,9 +545,15 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingTop: 40,
     paddingBottom: 15,
     paddingHorizontal: 15,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   backButton: {
     marginRight: 15,

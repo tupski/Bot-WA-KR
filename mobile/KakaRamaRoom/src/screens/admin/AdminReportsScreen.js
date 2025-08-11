@@ -16,6 +16,7 @@ import ReportService from '../../services/ReportService';
 import ApartmentService from '../../services/ApartmentService';
 import BusinessDayService from '../../services/BusinessDayService';
 import { useModernAlert } from '../../components/ModernAlert';
+import DateTimeHeader from '../../components/DateTimeHeader';
 
 /**
  * Screen dashboard laporan untuk admin
@@ -435,7 +436,12 @@ const AdminReportsScreen = () => {
       >
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Dashboard Laporan</Text>
+        <View style={styles.headerLeft}>
+          <Text style={styles.headerTitle}>Laporan</Text>
+        </View>
+        <View style={styles.headerCenter}>
+          <DateTimeHeader style={styles.dateTimeHeader} />
+        </View>
         <View style={styles.headerActions}>
           <TouchableOpacity
             style={styles.filterButton}
@@ -887,28 +893,43 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.gray100,
   },
   header: {
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.primary,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: SIZES.lg,
+    paddingTop: 40,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
+  headerLeft: {
+    flex: 1,
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+  },
   headerTitle: {
     fontSize: SIZES.h4,
     fontWeight: 'bold',
-    color: COLORS.textPrimary,
+    color: COLORS.white,
+  },
+  dateTimeHeader: {
+    alignItems: 'center',
   },
   filterButton: {
     padding: SIZES.sm,
+    backgroundColor: COLORS.white + '20',
+    borderRadius: SIZES.radius,
   },
   headerActions: {
     flexDirection: 'row',
     gap: SIZES.sm,
+    flex: 1,
+    justifyContent: 'flex-end',
   },
   filterInfo: {
     backgroundColor: COLORS.primary + '10',
