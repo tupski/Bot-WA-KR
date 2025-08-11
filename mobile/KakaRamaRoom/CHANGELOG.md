@@ -5,6 +5,41 @@ Semua perubahan penting pada proyek KakaRama Room akan didokumentasikan di file 
 Format berdasarkan [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 dan proyek ini mengikuti [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2025-08-12
+
+### Fixed
+- **🔧 Error Unit Tidak Ditemukan**: Perbaiki error saat tim lapangan menambah checkin di Sky House BSD
+  - **Enhanced**: Logging detail untuk debugging unit validation
+  - **Improved**: Error handling dengan informasi unit ID yang lebih spesifik
+  - **Added**: Validasi unit existence dengan fallback checking
+
+- **📝 Error Data Checkin Tidak Lengkap**: Perbaiki validasi form checkin untuk apartemen
+  - **Fixed**: Validasi apartemen ID dengan proper string conversion
+  - **Enhanced**: Logging untuk debugging form data selection
+  - **Improved**: Error messages yang lebih informatif
+
+- **🖼️ Pengaturan Profil Tidak Tersimpan**: Perbaiki masalah update nama dan foto profil
+  - **Fixed**: AuthService.updateProfile untuk handle profile_image field
+  - **Enhanced**: Profile image caching di current user
+  - **Improved**: Password update handling yang lebih robust
+
+- **📊 Field Marketing Tidak Tampil**: Perbaiki dropdown marketing yang tidak menampilkan data
+  - **Added**: Fallback mechanism untuk RPC function yang tidak tersedia
+  - **Enhanced**: Logging detail untuk debugging marketing sources
+  - **Improved**: Auto-refresh marketing list setelah menambah source baru
+
+### Changed
+- **🎯 Admin Apartemen Navigation**: Card apartemen di admin sekarang mengarah ke Status Unit
+  - **Redirect**: Dari AdminApartmentDetail ke AdminUnits dengan filter apartemen
+  - **Feature**: Admin bisa langsung Perpanjang Checkin dan Early Checkout
+  - **Enhanced**: Auto-filter unit berdasarkan apartemen yang dipilih
+
+### Technical
+- **Version**: Updated ke 2.1.1 build 20250812
+- **Logging**: Enhanced debugging capabilities across all modules
+- **Error Handling**: Improved error recovery dan user feedback
+- **Database**: Fallback mechanisms untuk RPC functions
+
 ## [2.2.2] - 2025-08-11
 
 ### Fixed
