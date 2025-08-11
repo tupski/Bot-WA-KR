@@ -306,11 +306,24 @@ const FieldCheckinScreen = ({ navigation, route }) => {
    * @param {Object} apartment - Data apartemen yang dipilih
    */
   const selectApartment = (apartment) => {
-    setFormData({
+    console.log('FieldCheckinScreen: Selecting apartment:', {
+      id: apartment.id,
+      name: apartment.name,
+      code: apartment.code
+    });
+
+    const newFormData = {
       ...formData,
       apartmentId: apartment.id.toString(),
       unitId: '', // Reset unit selection
+    };
+
+    console.log('FieldCheckinScreen: Updated formData:', {
+      apartmentId: newFormData.apartmentId,
+      unitId: newFormData.unitId
     });
+
+    setFormData(newFormData);
     setApartmentModalVisible(false);
   };
 
@@ -319,10 +332,24 @@ const FieldCheckinScreen = ({ navigation, route }) => {
    * @param {Object} unit - Data unit yang dipilih
    */
   const selectUnit = (unit) => {
-    setFormData({
+    console.log('FieldCheckinScreen: Selecting unit:', {
+      id: unit.id,
+      unit_number: unit.unit_number,
+      apartment_id: unit.apartment_id,
+      status: unit.status
+    });
+
+    const newFormData = {
       ...formData,
       unitId: unit.id.toString(),
+    };
+
+    console.log('FieldCheckinScreen: Updated formData with unit:', {
+      apartmentId: newFormData.apartmentId,
+      unitId: newFormData.unitId
     });
+
+    setFormData(newFormData);
     setUnitModalVisible(false);
     setUnitSearchQuery('');
   };
@@ -516,13 +543,15 @@ const FieldCheckinScreen = ({ navigation, route }) => {
     const invalidFields = [];
 
     // Validasi apartemen
-    if (!formData.apartmentId || formData.apartmentId.trim() === '') {
+    if (!formData.apartmentId || formData.apartmentId.toString().trim() === '') {
       missingFields.push('Apartemen');
+      console.log('FieldCheckinScreen: Missing apartment, formData.apartmentId:', formData.apartmentId);
     }
 
     // Validasi unit
-    if (!formData.unitId || formData.unitId.trim() === '') {
+    if (!formData.unitId || formData.unitId.toString().trim() === '') {
       missingFields.push('Unit');
+      console.log('FieldCheckinScreen: Missing unit, formData.unitId:', formData.unitId);
     }
 
     // Validasi durasi
