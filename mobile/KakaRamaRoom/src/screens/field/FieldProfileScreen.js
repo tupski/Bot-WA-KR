@@ -210,9 +210,9 @@ const FieldProfileScreen = ({ navigation }) => {
         updateData.password = await PasswordUtils.hashPassword(formData.newPassword);
       }
 
-      // Handle profile image upload
-      if (profileImage && profileImage !== currentUser.profileImage) {
-        // TODO: Implement image upload to storage
+      // Handle profile image update
+      if (profileImage !== currentUser.profileImage) {
+        console.log('FieldProfileScreen: Updating profile image:', profileImage ? 'New image selected' : 'Image removed');
         updateData.profile_image = profileImage;
       }
 

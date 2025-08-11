@@ -374,12 +374,34 @@ class AuthService {
       }
 
       const table = this.isAdmin() ? 'admins' : 'field_teams';
-      const { fullName, email, phone } = profileData;
+      const { fullName, email, phone, profile_image, password } = profileData;
+
+      // Prepare update data
+      const updateData = {
+        full_name: fullName,
+        email,
+        phone,
+      };
+
+      // Add profile image if provided
+      if (profile_image !== undefined) {
+        updateData.profile_image = profile_image;
+      }
+
+      // Add password if provided
+      if (password) {
+        updateData.password = password;
+      }
+
+      console.log('AuthService: Updating profile with data:', {
+        ...updateData,
+        password: password ? '[HIDDEN]' : undefined
+      });
 
       // Update profile row in public table
       const { error } = await supabase
         .from(table)
-        .update({ full_name: fullName, email, phone })
+        .update(updateData)
         .eq('id', this.currentUser.id);
 
       if (error) throw error;
@@ -393,6 +415,12 @@ class AuthService {
       this.currentUser.fullName = fullName;
       this.currentUser.email = email;
       this.currentUser.phone = phone;
+
+      // Update profile image in cache if provided
+      if (profile_image !== undefined) {
+        this.currentUser.profileImage = profile_image;
+      }
+
       await this.setCurrentUser(this.currentUser);
 
       await ActivityLogService.logActivity(
