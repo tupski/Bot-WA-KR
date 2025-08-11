@@ -16,6 +16,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { COLORS, SIZES, PAYMENT_METHODS, CHECKIN_STATUS } from '../../config/constants';
 import CheckinService from '../../services/CheckinService';
 import AuthService from '../../services/AuthService';
+import MarketingSourceService from '../../services/MarketingSourceService';
 
 /**
  * Screen untuk extend checkin yang sudah ada
@@ -54,6 +55,7 @@ const FieldExtendScreen = ({ navigation, route }) => {
   // Load data saat komponen dimount
   useEffect(() => {
     loadUserData();
+    loadMarketingSources();
 
     // Jika ada checkinId tapi tidak ada checkinData, load data checkin
     if (checkinId && !checkinData) {
@@ -119,6 +121,30 @@ const FieldExtendScreen = ({ navigation, route }) => {
       paymentMethod: method,
     });
     setPaymentModalVisible(false);
+  };
+
+  /**
+   * Load marketing sources dari database
+   */
+  const loadMarketingSources = async () => {
+    try {
+      console.log('FieldExtendScreen: Loading marketing sources');
+      const result = await MarketingSourceService.getAllMarketingSources();
+
+      if (result && result.success) {
+        console.log('FieldExtendScreen: Loaded marketing sources:', result.data?.length || 0);
+        setMarketingSources(result.data || []);
+        setFilteredMarketingSources(result.data || []);
+      } else {
+        console.warn('FieldExtendScreen: Failed to load marketing sources:', result);
+        setMarketingSources([]);
+        setFilteredMarketingSources([]);
+      }
+    } catch (error) {
+      console.error('FieldExtendScreen: Error loading marketing sources:', error);
+      setMarketingSources([]);
+      setFilteredMarketingSources([]);
+    }
   };
 
   /**
@@ -214,10 +240,46 @@ const FieldExtendScreen = ({ navigation, route }) => {
   /**
    * Select marketing source
    */
-  const selectMarketingSource = (source) => {
-    setFormData({ ...formData, marketingName: source.name });
-    setMarketingModalVisible(false);
-    setMarketingSearchQuery('');
+  const selectMarketingSource = async (source) => {
+    try {
+      // Validate source data
+      if (!source || !source.name) {
+        console.error('FieldExtendScreen: Invalid marketing source data:', source);
+        Alert.alert('Error', 'Data marketing tidak valid');
+        return;
+      }
+
+      // Update form data immediately
+      setFormData({ ...formData, marketingName: source.name });
+      setMarketingModalVisible(false);
+      setMarketingSearchQuery('');
+
+      // Handle database operations in background
+      try {
+        if (source.id === 'new') {
+          console.log('FieldExtendScreen: Adding new marketing source:', source.name);
+          const result = await MarketingSourceService.addMarketingSourceIfNotExists(source.name);
+          if (!result.success) {
+            console.warn('FieldExtendScreen: Failed to add marketing source:', result.message);
+          }
+        } else {
+          console.log('FieldExtendScreen: Incrementing usage for:', source.name);
+          const result = await MarketingSourceService.incrementUsage(source.name);
+          if (!result.success) {
+            console.warn('FieldExtendScreen: Failed to increment usage:', result.message);
+          }
+        }
+
+        // Reload marketing sources to get updated data
+        await loadMarketingSources();
+      } catch (dbError) {
+        console.error('FieldExtendScreen: Database operation error:', dbError);
+        // Don't show error to user as form data is already updated
+      }
+    } catch (error) {
+      console.error('FieldExtendScreen: Error in selectMarketingSource:', error);
+      Alert.alert('Error', 'Gagal memilih marketing');
+    }
   };
 
   /**
@@ -331,6 +393,16 @@ const FieldExtendScreen = ({ navigation, route }) => {
       console.log('FieldExtendScreen: Extend result:', result);
 
       if (result.success) {
+        // Save marketing name to database if provided
+        if (formData.marketingName && formData.marketingName.trim()) {
+          try {
+            await MarketingSourceService.addMarketingSourceIfNotExists(formData.marketingName.trim());
+          } catch (marketingError) {
+            console.error('FieldExtendScreen: Error saving marketing source:', marketingError);
+            // Don't fail the main operation
+          }
+        }
+
         Alert.alert(
           'Sukses',
           'Checkin berhasil diperpanjang!',
