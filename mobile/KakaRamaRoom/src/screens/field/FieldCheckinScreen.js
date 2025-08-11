@@ -507,28 +507,30 @@ const FieldCheckinScreen = ({ navigation, route }) => {
       missingFields.push('Metode Pembayaran');
     }
 
-    // Validasi jumlah pembayaran
+    // Validasi jumlah pembayaran - allow 0 for APK method
     if (!formData.paymentAmount || formData.paymentAmount.trim() === '') {
-      missingFields.push('Jumlah Pembayaran');
+      if (formData.paymentMethod !== 'APK') {
+        missingFields.push('Jumlah Pembayaran (kecuali untuk metode APK)');
+      }
     } else {
       const paymentAmount = parseFloat(formData.paymentAmount);
-      if (isNaN(paymentAmount) || paymentAmount <= 0) {
-        invalidFields.push('Jumlah Pembayaran (minimal Rp 1)');
+      if (isNaN(paymentAmount) || paymentAmount < 0) {
+        invalidFields.push('Jumlah Pembayaran (minimal Rp 0)');
       }
     }
 
-    // Validasi komisi marketing (jika ada)
+    // Validasi komisi marketing (jika ada) - allow 0
     if (formData.marketingCommission && formData.marketingCommission.trim() !== '') {
       const commission = parseFloat(formData.marketingCommission);
       if (isNaN(commission) || commission < 0) {
-        invalidFields.push('Komisi Marketing (harus angka valid)');
+        invalidFields.push('Komisi Marketing (minimal Rp 0)');
       }
     }
 
-    // Validasi nama marketing (jika ada komisi)
+    // Validasi nama marketing (jika ada komisi > 0)
     if (formData.marketingCommission && parseFloat(formData.marketingCommission) > 0) {
       if (!formData.marketingName || formData.marketingName.trim() === '') {
-        missingFields.push('Nama Marketing (karena ada komisi)');
+        missingFields.push('Nama Marketing (karena ada komisi > 0)');
       }
     }
 
