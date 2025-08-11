@@ -3,11 +3,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform, PermissionsAndroid, Alert } from 'react-native';
 import { supabase } from '../config/supabase';
 import AuthService from './AuthService';
+import { FIREBASE_CONFIG, getNotificationChannel, NOTIFICATION_TYPES } from '../config/firebase';
 
 class NotificationService {
   constructor() {
     this.isInitialized = false;
     this.fcmToken = null;
+    this.senderId = FIREBASE_CONFIG.senderId;
+    this.projectId = FIREBASE_CONFIG.projectId;
   }
 
   /**
