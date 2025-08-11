@@ -8,11 +8,14 @@ import {
   RefreshControl,
   ScrollView,
   Alert,
+  Dimensions,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { COLORS, SIZES, UNIT_STATUS, UNIT_STATUS_LABELS, UNIT_STATUS_COLORS } from '../../config/constants';
 import UnitService from '../../services/UnitService';
 import AuthService from '../../services/AuthService';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 /**
  * Screen untuk tim lapangan melihat status unit apartemen yang ditugaskan
@@ -272,16 +275,23 @@ const FieldUnitsScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Statistics */}
-      <ScrollView
-        style={styles.statsContainer}
-        showsVerticalScrollIndicator={false}
-      >
+      {/* Statistics Carousel */}
+      <View style={styles.statsSection}>
         <Text style={styles.sectionTitle}>Statistik Apartemen</Text>
-        {Object.entries(unitStats).map(([apartmentName, stats]) =>
-          renderApartmentStats(apartmentName, stats)
-        )}
-      </ScrollView>
+        <FlatList
+          data={Object.entries(unitStats)}
+          renderItem={({ item: [apartmentName, stats] }) =>
+            renderApartmentStats(apartmentName, stats)
+          }
+          keyExtractor={([apartmentName]) => apartmentName}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.statsCarousel}
+          snapToInterval={screenWidth * 0.8 + SIZES.md}
+          decelerationRate="fast"
+          snapToAlignment="start"
+        />
+      </View>
 
       {/* Unit List */}
       <View style={styles.listSection}>
@@ -335,11 +345,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.textPrimary,
   },
-  statsContainer: {
+  statsSection: {
     backgroundColor: COLORS.background,
-    maxHeight: 300,
-    paddingHorizontal: SIZES.lg,
     paddingBottom: SIZES.md,
+  },
+  statsCarousel: {
+    paddingHorizontal: SIZES.lg,
   },
   sectionTitle: {
     fontSize: SIZES.h6,
@@ -351,9 +362,16 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.gray50,
     borderRadius: SIZES.radius,
     padding: SIZES.md,
-    marginBottom: SIZES.sm,
+    marginRight: SIZES.md,
     borderWidth: 1,
     borderColor: COLORS.gray200,
+    width: screenWidth * 0.8, // 80% dari lebar layar
+    minHeight: 140,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   statsCardSelected: {
     backgroundColor: COLORS.primary + '10',
