@@ -18,7 +18,7 @@ import ApartmentService from '../../services/ApartmentService';
 import UnitService from '../../services/UnitService';
 import CheckinService from '../../services/CheckinService';
 import TestNotification from '../../utils/TestNotification';
-import TestFieldTeamCheckin from '../../utils/TestFieldTeamCheckin';
+import UnitStatusFixService from '../../services/UnitStatusFixService';
 import BusinessDayService from '../../services/BusinessDayService';
 import { supabase } from '../../config/supabase';
 
@@ -186,44 +186,42 @@ const AdminDashboardScreen = ({ navigation }) => {
     );
   };
 
-  const testFieldTeamAccess = async () => {
+  const fixUnitStatus = async () => {
     Alert.alert(
-      'Test Field Team Access',
-      'Test akses checkin tim lapangan di semua apartemen:',
+      'Fix Unit Status',
+      'Perbaiki status unit yang tidak konsisten:',
       [
         {
           text: 'Cancel',
           style: 'cancel',
         },
         {
-          text: 'Test Checkin Access',
+          text: 'Fix Orphaned Occupied',
           onPress: async () => {
-            const result = await TestFieldTeamCheckin.testCheckinAccessAllApartments();
+            const result = await UnitStatusFixService.fixOrphanedOccupiedUnits();
             Alert.alert(
               result.success ? 'Success' : 'Failed',
-              result.message + (result.testApartment ? `\nTest apartment: ${result.testApartment}` : '')
+              `${result.message}\nFixed: ${result.fixed} units`
             );
           },
         },
         {
-          text: 'Test UI Filtering',
+          text: 'Fix Stuck Cleaning',
           onPress: async () => {
-            const result = await TestFieldTeamCheckin.testUIApartmentFiltering();
+            const result = await UnitStatusFixService.fixStuckCleaningUnits();
             Alert.alert(
               result.success ? 'Success' : 'Failed',
-              `UI: ${result.uiApartments || 0} apartments, Backend: ${result.allApartments || 0} apartments`
+              `${result.message}\nFixed: ${result.fixed} units`
             );
           },
         },
         {
-          text: 'Run All Tests',
+          text: 'Fix All Issues',
           onPress: async () => {
-            const results = await TestFieldTeamCheckin.runAllTests();
-            const passedCount = Object.values(results).filter(r => r.success).length;
-            const totalCount = Object.keys(results).length;
+            const results = await UnitStatusFixService.runAllFixes();
             Alert.alert(
-              'Test Results',
-              `${passedCount}/${totalCount} tests passed. Check console for details.`
+              'Fix Results',
+              `Total fixed: ${results.totalFixed} units\nCheck console for details.`
             );
           },
         },
@@ -292,9 +290,9 @@ const AdminDashboardScreen = ({ navigation }) => {
       color: '#FF9800',
     },
     {
-      title: 'Test Field Team Access',
-      icon: 'verified-user',
-      onPress: () => testFieldTeamAccess(),
+      title: 'Fix Unit Status',
+      icon: 'build',
+      onPress: () => fixUnitStatus(),
       color: '#9C27B0',
     },
   ];

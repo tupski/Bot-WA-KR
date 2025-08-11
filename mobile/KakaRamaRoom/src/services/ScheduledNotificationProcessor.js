@@ -278,12 +278,14 @@ class ScheduledNotificationProcessor {
     try {
       const unitName = checkin.units ? `${checkin.units.apartments?.name} - ${checkin.units.unit_number}` : `Unit ${checkin.unit_id}`;
 
+      console.log(`ScheduledNotificationProcessor: Processing checkout for ${unitName} (checkin ${checkin.id})`);
+
       // Send to field team if assigned
       if (checkin.team_id && checkin.field_teams) {
         await NotificationService.sendNotificationToUser(
           checkin.team_id,
           notification.title,
-          notification.body,
+          `${notification.body} - ${unitName}`,
           notification.data
         );
       }
@@ -291,16 +293,18 @@ class ScheduledNotificationProcessor {
       // Send to all admins
       await NotificationService.sendNotificationToAdmins(
         notification.title,
-        notification.body,
+        `${notification.body} - ${unitName}`,
         notification.data
       );
 
       // Auto-complete checkin when checkout time arrives
       try {
+        console.log(`ScheduledNotificationProcessor: Updating checkin ${checkin.id} status to completed`);
         const { error: updateError } = await supabase
           .from('checkins')
           .update({
             status: 'completed',
+            actual_checkout_time: new Date().toISOString(),
             updated_at: new Date().toISOString()
           })
           .eq('id', checkin.id)
@@ -312,17 +316,21 @@ class ScheduledNotificationProcessor {
           console.log(`ScheduledNotificationProcessor: Checkin ${checkin.id} marked as completed`);
         }
 
-        // Update unit status to cleaning
-        const { error: unitError } = await supabase
+        // Update unit status to cleaning (only if currently occupied)
+        console.log(`ScheduledNotificationProcessor: Updating unit ${checkin.unit_id} status to cleaning`);
+        const { error: unitError, count } = await supabase
           .from('units')
           .update({
             status: 'cleaning',
             updated_at: new Date().toISOString()
           })
-          .eq('id', checkin.unit_id);
+          .eq('id', checkin.unit_id)
+          .eq('status', 'occupied'); // Only update if currently occupied
 
         if (unitError) {
           console.error('ScheduledNotificationProcessor: Error updating unit status:', unitError);
+        } else if (count === 0) {
+          console.warn(`ScheduledNotificationProcessor: Unit ${checkin.unit_id} was not occupied, status not updated`);
         } else {
           console.log(`ScheduledNotificationProcessor: Unit ${checkin.unit_id} marked as cleaning`);
         }

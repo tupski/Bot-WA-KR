@@ -93,9 +93,48 @@ const ActivityLogScreen = ({ navigation }) => {
     return COLORS.primary;
   };
 
+  const getCardBackgroundColor = (action) => {
+    // Warna background tipis untuk setiap jenis aktivitas
+    const colorMap = {
+      // Checkin activities - Blue tones
+      'create_checkin': '#E3F2FD', // Light Blue
+      'extend_checkin': '#E1F5FE', // Light Cyan
+      'early_checkout': '#F3E5F5', // Light Purple
+
+      // User management - Green tones
+      'create_user': '#E8F5E8', // Light Green
+      'update_user': '#F1F8E9', // Light Lime
+      'delete_user': '#FFEBEE', // Light Red
+
+      // Team management - Orange tones
+      'create_team': '#FFF3E0', // Light Orange
+      'update_team': '#FFF8E1', // Light Amber
+      'delete_team': '#FFEBEE', // Light Red
+      'assign_team': '#F3E5F5', // Light Purple
+
+      // Apartment/Unit management - Teal tones
+      'create_apartment': '#E0F2F1', // Light Teal
+      'update_apartment': '#E0F7FA', // Light Cyan
+      'create_unit': '#E8F5E8', // Light Green
+      'update_unit': '#F1F8E9', // Light Lime
+
+      // Authentication - Indigo tones
+      'login': '#E8EAF6', // Light Indigo
+      'logout': '#F5F5F5', // Light Grey
+
+      // Reports - Pink tones
+      'export_report': '#FCE4EC', // Light Pink
+
+      // Default
+      'default': '#F8F9FA' // Very Light Grey
+    };
+
+    return colorMap[action] || colorMap.default;
+  };
+
   const renderLogItem = ({ item }) => (
     <TouchableOpacity
-      style={styles.logItem}
+      style={[styles.logItem, { backgroundColor: getCardBackgroundColor(item.action) }]}
       onPress={() => showLogDetail(item)}
     >
       <View style={styles.logHeader}>
