@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { COLORS, SIZES, SCREENS } from '../../config/constants';
-import NotificationIcon from '../../components/NotificationIcon';
 import AuthService from '../../services/AuthService';
 import SyncStatusIndicator from '../../components/SyncStatusIndicator';
 import { useAutoRefresh } from '../../hooks/useRealtime';
