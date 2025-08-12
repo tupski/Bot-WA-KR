@@ -8,7 +8,6 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { COLORS, SIZES } from '../config/constants';
-import NotificationIcon from './NotificationIcon';
 import { useNavigation } from '@react-navigation/native';
 
 /**
@@ -66,11 +65,13 @@ const GlobalHeader = ({
 
         <View style={styles.rightSection}>
           {rightComponent}
-          <NotificationIcon
+          <TouchableOpacity
+            style={styles.notificationButton}
             onPress={handleNotificationPress}
-            color={COLORS.background}
-            size={24}
-          />
+            activeOpacity={0.7}
+          >
+            <Icon name="notifications" size={24} color={COLORS.background} />
+          </TouchableOpacity>
         </View>
       </View>
     </>
@@ -110,6 +111,9 @@ const styles = StyleSheet.create({
   rightSection: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  notificationButton: {
+    padding: SIZES.xs,
   },
 });
 

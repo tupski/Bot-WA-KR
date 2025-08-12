@@ -97,28 +97,14 @@ const AdminTabNavigator = () => {
           fontSize: SIZES.caption,
           fontWeight: '500',
         },
-        // Gunakan custom header dengan GlobalHeader
+        // Gunakan header default sementara untuk debugging
         headerShown: true,
-        header: ({ route }) => {
-          let title = '';
-          switch (route.name) {
-            case SCREENS.ADMIN_DASHBOARD:
-              title = 'Dashboard';
-              break;
-            case SCREENS.ADMIN_REPORTS:
-              title = 'Laporan';
-              break;
-            case SCREENS.ADMIN_APARTMENTS:
-              title = 'Apartemen';
-              break;
-            case SCREENS.ADMIN_TEAMS:
-              title = 'Tim Lapangan';
-              break;
-            case 'AppSettings':
-              title = 'Pengaturan';
-              break;
-          }
-          return <GlobalHeader title={title} />;
+        headerStyle: {
+          backgroundColor: COLORS.primary,
+        },
+        headerTintColor: COLORS.background,
+        headerTitleStyle: {
+          fontWeight: 'bold',
         },
       })}
     >
@@ -207,25 +193,14 @@ const FieldTabNavigator = () => {
           fontSize: SIZES.caption,
           fontWeight: '500',
         },
-        // Gunakan custom header dengan GlobalHeader
+        // Gunakan header default sementara untuk debugging
         headerShown: true,
-        header: ({ route }) => {
-          let title = '';
-          switch (route.name) {
-            case SCREENS.FIELD_DASHBOARD:
-              title = 'Dashboard';
-              break;
-            case SCREENS.FIELD_CHECKIN:
-              title = 'Check-in';
-              break;
-            case SCREENS.FIELD_UNITS:
-              title = 'Status Unit';
-              break;
-            case 'AppSettings':
-              title = 'Pengaturan';
-              break;
-          }
-          return <GlobalHeader title={title} />;
+        headerStyle: {
+          backgroundColor: COLORS.primary,
+        },
+        headerTintColor: COLORS.background,
+        headerTitleStyle: {
+          fontWeight: 'bold',
         },
       })}
     >
@@ -359,7 +334,9 @@ const AppNavigator = () => {
               component={AdminActivityLogsScreen}
               options={{
                 headerShown: true,
-                header: () => <GlobalHeader title="Log Aktivitas" showBackButton={true} />,
+                title: 'Log Aktivitas',
+                headerStyle: { backgroundColor: COLORS.primary },
+                headerTintColor: COLORS.background,
               }}
             />
             <Stack.Screen
@@ -367,7 +344,9 @@ const AppNavigator = () => {
               component={AdminTopMarketingScreen}
               options={{
                 headerShown: true,
-                header: () => <GlobalHeader title="Top Marketing" showBackButton={true} />,
+                title: 'Top Marketing',
+                headerStyle: { backgroundColor: COLORS.primary },
+                headerTintColor: COLORS.background,
               }}
             />
             <Stack.Screen
@@ -375,7 +354,9 @@ const AppNavigator = () => {
               component={AdminUnitsScreen}
               options={{
                 headerShown: true,
-                header: () => <GlobalHeader title="Manajemen Unit" showBackButton={true} />,
+                title: 'Manajemen Unit',
+                headerStyle: { backgroundColor: COLORS.primary },
+                headerTintColor: COLORS.background,
               }}
             />
 

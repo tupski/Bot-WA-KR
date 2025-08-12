@@ -2,11 +2,9 @@ import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import 'react-native-url-polyfill/auto';
 
-// Supabase configuration - keys loaded from environment
-import Config from 'react-native-config';
-
-const supabaseUrl = Config.SUPABASE_URL || 'https://rvcknyuinfssgpgkfetx.supabase.co';
-const supabaseAnonKey = Config.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2Y2tueXVpbmZzc2dwZ2tmZXR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MjE2OTgsImV4cCI6MjA3MDA5NzY5OH0.FXWPp9L4xZ3uw34Iob7QvlEsePTdBmGmgRufXBZZ34c';
+// Supabase configuration - hardcoded untuk menghindari masalah react-native-config
+const supabaseUrl = 'https://rvcknyuinfssgpgkfetx.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2Y2tueXVpbmZzc2dwZ2tmZXR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MjE2OTgsImV4cCI6MjA3MDA5NzY5OH0.FXWPp9L4xZ3uw34Iob7QvlEsePTdBmGmgRufXBZZ34c';
 
 // Create Supabase client
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
