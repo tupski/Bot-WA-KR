@@ -440,39 +440,29 @@ const AdminReportsScreen = () => {
         </View>
       )}
 
-      {/* Daily Statistics Cards - Compact dengan scroll horizontal */}
+      {/* Daily Statistics Cards - Compact dengan FlatList horizontal */}
       <View style={styles.dailyStatsContainer}>
         <Text style={styles.sectionTitle}>Statistik Harian</Text>
-        <ScrollView
+        <FlatList
+          data={[
+            { id: '1', icon: 'check-circle', color: COLORS.success, value: dailyStats.activeCheckins, label: 'Checkin Aktif' },
+            { id: '2', icon: 'assignment', color: COLORS.primary, value: dailyStats.totalCheckins, label: 'Total Checkin' },
+            { id: '3', icon: 'money', color: COLORS.warning, value: dailyStats.cashTransactions, label: 'Transaksi Tunai' },
+            { id: '4', icon: 'credit-card', color: COLORS.info, value: dailyStats.transferTransactions, label: 'Transaksi Transfer' },
+          ]}
           horizontal
           showsHorizontalScrollIndicator={false}
-          style={styles.statsScrollView}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <View style={styles.compactStatCard}>
+              <Icon name={item.icon} size={24} color={item.color} />
+              <Text style={styles.compactStatNumber}>{item.value}</Text>
+              <Text style={styles.compactStatLabel}>{item.label}</Text>
+            </View>
+          )}
           contentContainerStyle={styles.statsScrollContent}
-        >
-          <View style={styles.compactStatCard}>
-            <Icon name="check-circle" size={24} color={COLORS.success} />
-            <Text style={styles.compactStatNumber}>{dailyStats.activeCheckins}</Text>
-            <Text style={styles.compactStatLabel}>Checkin Aktif</Text>
-          </View>
-
-          <View style={styles.compactStatCard}>
-            <Icon name="assignment" size={24} color={COLORS.primary} />
-            <Text style={styles.compactStatNumber}>{dailyStats.totalCheckins}</Text>
-            <Text style={styles.compactStatLabel}>Total Checkin</Text>
-          </View>
-
-          <View style={styles.compactStatCard}>
-            <Icon name="money" size={24} color={COLORS.warning} />
-            <Text style={styles.compactStatNumber}>{dailyStats.cashTransactions}</Text>
-            <Text style={styles.compactStatLabel}>Transaksi Tunai</Text>
-          </View>
-
-          <View style={styles.compactStatCard}>
-            <Icon name="credit-card" size={24} color={COLORS.info} />
-            <Text style={styles.compactStatNumber}>{dailyStats.transferTransactions}</Text>
-            <Text style={styles.compactStatLabel}>Transaksi Transfer</Text>
-          </View>
-        </ScrollView>
+          style={styles.statsScrollView}
+        />
       </View>
 
       {/* Filter Info */}
