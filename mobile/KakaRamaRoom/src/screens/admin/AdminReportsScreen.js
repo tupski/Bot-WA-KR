@@ -861,13 +861,33 @@ const AdminReportsScreen = () => {
         title="Pilih Tanggal Mulai"
         confirmText="Pilih"
         cancelText="Batal"
+        maximumDate={new Date()}
         onConfirm={(date) => {
-          setStartDatePickerOpen(false);
-          setTempStartDate(date);
-          setDateRange(prev => ({
-            ...prev,
-            startDate: date.toISOString()
-          }));
+          try {
+            setStartDatePickerOpen(false);
+            setTempStartDate(date);
+
+            // Reset tanggal selesai jika sebelum tanggal mulai yang baru
+            if (dateRange.endDate && new Date(dateRange.endDate) < date) {
+              setDateRange({
+                startDate: date.toISOString(),
+                endDate: null
+              });
+              setTempEndDate(date);
+            } else {
+              setDateRange(prev => ({
+                ...prev,
+                startDate: date.toISOString()
+              }));
+            }
+          } catch (error) {
+            console.error('Error setting start date:', error);
+            showAlert({
+              type: 'error',
+              title: 'Error',
+              message: 'Gagal mengatur tanggal mulai',
+            });
+          }
         }}
         onCancel={() => {
           setStartDatePickerOpen(false);
@@ -883,14 +903,35 @@ const AdminReportsScreen = () => {
         title="Pilih Tanggal Selesai"
         confirmText="Pilih"
         cancelText="Batal"
-        minimumDate={dateRange.startDate ? new Date(dateRange.startDate) : undefined}
+        minimumDate={dateRange.startDate ? new Date(dateRange.startDate) : new Date('2020-01-01')}
+        maximumDate={new Date()}
         onConfirm={(date) => {
-          setEndDatePickerOpen(false);
-          setTempEndDate(date);
-          setDateRange(prev => ({
-            ...prev,
-            endDate: date.toISOString()
-          }));
+          try {
+            setEndDatePickerOpen(false);
+            setTempEndDate(date);
+
+            // Validasi tanggal selesai tidak boleh sebelum tanggal mulai
+            if (dateRange.startDate && date < new Date(dateRange.startDate)) {
+              showAlert({
+                type: 'warning',
+                title: 'Peringatan',
+                message: 'Tanggal selesai tidak boleh sebelum tanggal mulai',
+              });
+              return;
+            }
+
+            setDateRange(prev => ({
+              ...prev,
+              endDate: date.toISOString()
+            }));
+          } catch (error) {
+            console.error('Error setting end date:', error);
+            showAlert({
+              type: 'error',
+              title: 'Error',
+              message: 'Gagal mengatur tanggal selesai',
+            });
+          }
         }}
         onCancel={() => {
           setEndDatePickerOpen(false);
