@@ -283,6 +283,10 @@ const AdminDashboardScreen = ({ navigation }) => {
       onPress: () => navigation.navigate('AdminBroadcast'),
       color: '#E91E63',
     },
+  ];
+
+  // Tools & Debug - kategori terpisah dengan ikon compact
+  const debugTools = [
     {
       title: 'Test Push Notification',
       icon: 'bug-report',
@@ -339,7 +343,7 @@ const AdminDashboardScreen = ({ navigation }) => {
       <View style={styles.menuContainer}>
         <Text style={styles.sectionTitle}>Menu Utama</Text>
         <View style={styles.menuGrid}>
-          {menuItems.map((item, index) => (
+          {quickActions.map((item, index) => (
             <TouchableOpacity
               key={index}
               style={styles.menuGridItem}
@@ -349,6 +353,25 @@ const AdminDashboardScreen = ({ navigation }) => {
                 <Icon name={item.icon} size={32} color={COLORS.background} />
               </View>
               <Text style={styles.menuGridTitle}>{item.title}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {/* Debug Tools - Compact Section */}
+      <View style={styles.debugContainer}>
+        <Text style={styles.debugSectionTitle}>Tools & Debug</Text>
+        <View style={styles.debugGrid}>
+          {debugTools.map((item, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.debugItem}
+              onPress={item.onPress}
+            >
+              <View style={[styles.debugIcon, { backgroundColor: item.color }]}>
+                <Icon name={item.icon} size={20} color={COLORS.background} />
+              </View>
+              <Text style={styles.debugTitle}>{item.title}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -466,6 +489,49 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     textAlign: 'center',
     lineHeight: 18,
+  },
+  // Debug Tools Styles - Compact
+  debugContainer: {
+    backgroundColor: COLORS.background,
+    margin: SIZES.md,
+    borderRadius: SIZES.radius,
+    padding: SIZES.lg,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  debugSectionTitle: {
+    fontSize: SIZES.h6,
+    fontWeight: 'bold',
+    color: COLORS.textSecondary,
+    marginBottom: SIZES.md,
+    textAlign: 'center',
+  },
+  debugGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  debugItem: {
+    alignItems: 'center',
+    flex: 1,
+    marginHorizontal: SIZES.xs,
+  },
+  debugIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: SIZES.radius,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SIZES.xs,
+  },
+  debugTitle: {
+    fontSize: SIZES.caption,
+    fontWeight: '500',
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 14,
   },
 });
 
