@@ -1238,14 +1238,15 @@ const styles = StyleSheet.create({
     marginLeft: SIZES.xs,
     fontStyle: 'italic',
   },
-  // Modern Filter Button Styles
+  // Modern Filter Button Styles - Konsisten untuk semua button
   modernFilterButton: {
     paddingHorizontal: SIZES.md,
     paddingVertical: SIZES.sm,
     borderRadius: SIZES.radius,
     backgroundColor: COLORS.background,
     marginRight: SIZES.sm,
-    minWidth: 100,
+    minWidth: 120, // Ukuran minimum yang lebih besar untuk konsistensi
+    maxWidth: 150, // Batas maksimum agar tidak terlalu lebar
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 1,
@@ -1255,6 +1256,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     borderWidth: 1,
     borderColor: COLORS.gray200,
+    flex: 0, // Pastikan tidak mengambil ruang berlebih
   },
   modernFilterButtonActive: {
     backgroundColor: COLORS.primary,
