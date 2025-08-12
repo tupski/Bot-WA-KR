@@ -522,15 +522,23 @@ const AdminReportsScreen = () => {
                 }
 
                 return (
-                  <View style={styles.apartmentCard}>
+                  <TouchableOpacity
+                    style={styles.apartmentCard}
+                    onPress={() => {
+                      // Navigasi ke laporan detail apartemen
+                      console.log('Navigate to apartment detail:', item.name);
+                      // TODO: Implement navigation to LaporanApartemenScreen
+                    }}
+                    activeOpacity={0.7}
+                  >
                     <View style={styles.apartmentHeader}>
                       <Text style={styles.apartmentName}>{item.name || 'N/A'}</Text>
                       <Text style={styles.apartmentCode}>{item.code || 'N/A'}</Text>
+                      <Icon name="chevron-right" size={20} color={COLORS.gray400} />
                     </View>
 
                     <View style={styles.apartmentStats}>
                       <View style={styles.apartmentStatItem}>
-                        <Icon name="home" size={20} color={COLORS.primary} />
                         <Text style={styles.apartmentStatNumber}>
                           {formatNumber(item.total_units || 0)}
                         </Text>
@@ -538,7 +546,6 @@ const AdminReportsScreen = () => {
                       </View>
 
                       <View style={styles.apartmentStatItem}>
-                        <Icon name="check-circle" size={20} color={COLORS.success} />
                         <Text style={styles.apartmentStatNumber}>
                           {formatNumber(item.active_checkins || 0)}
                         </Text>
@@ -546,14 +553,13 @@ const AdminReportsScreen = () => {
                       </View>
 
                       <View style={styles.apartmentStatItem}>
-                        <Icon name="attach-money" size={20} color={COLORS.warning} />
                         <Text style={styles.apartmentStatNumber}>
                           {formatCurrency(item.total_revenue || 0)}
                         </Text>
                         <Text style={styles.apartmentStatLabel}>Pendapatan</Text>
                       </View>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 );
               } catch (error) {
                 console.error('AdminReportsScreen: Error rendering apartment item:', error);
@@ -1098,6 +1104,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: SIZES.sm,
+    flex: 1,
   },
   apartmentName: {
     fontSize: SIZES.body,
