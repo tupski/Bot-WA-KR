@@ -27,12 +27,6 @@ const AdminReportsScreen = () => {
   const { showAlert, AlertComponent } = useModernAlert();
 
   // State untuk data laporan
-  const [summaryStats, setSummaryStats] = useState({
-    totalCheckins: 0,
-    todayCheckins: 0,
-    activeCheckins: 0,
-    totalRevenue: 0,
-  });
   const [apartmentStats, setApartmentStats] = useState([]);
   const [topMarketing, setTopMarketing] = useState([]);
   const [apartments, setApartments] = useState([]);
@@ -136,12 +130,6 @@ const AdminReportsScreen = () => {
       } catch (reportError) {
         console.error('AdminReportsScreen: Report data loading error:', reportError);
         // Set default values instead of showing error immediately
-        setSummaryStats({
-          totalCheckins: 0,
-          todayCheckins: 0,
-          activeCheckins: 0,
-          totalRevenue: 0,
-        });
         setApartmentStats([]);
         setTopMarketing([]);
         setDailyStats({
@@ -163,12 +151,6 @@ const AdminReportsScreen = () => {
       console.error('AdminReportsScreen: Critical error in loadInitialData:', error);
 
       // Set all states to safe defaults
-      setSummaryStats({
-        totalCheckins: 0,
-        todayCheckins: 0,
-        activeCheckins: 0,
-        totalRevenue: 0,
-      });
       setApartmentStats([]);
       setTopMarketing([]);
       setDailyStats({
@@ -221,30 +203,7 @@ const AdminReportsScreen = () => {
 
       console.log('AdminReportsScreen: Loading report data with filters:', filters);
 
-      // Load summary statistics with error handling
-      try {
-        console.log('AdminReportsScreen: Loading summary statistics');
-        const summaryResult = await ReportService.getSummaryStatistics(filters);
-        if (summaryResult && summaryResult.success) {
-          setSummaryStats(summaryResult.data);
-        } else {
-          console.warn('AdminReportsScreen: Summary statistics failed:', summaryResult);
-          setSummaryStats({
-            totalCheckins: 0,
-            todayCheckins: 0,
-            activeCheckins: 0,
-            totalRevenue: 0,
-          });
-        }
-      } catch (summaryError) {
-        console.error('AdminReportsScreen: Summary statistics error:', summaryError);
-        setSummaryStats({
-          totalCheckins: 0,
-          todayCheckins: 0,
-          activeCheckins: 0,
-          totalRevenue: 0,
-        });
-      }
+
 
       // Load apartment statistics with error handling
       try {
@@ -576,47 +535,7 @@ const AdminReportsScreen = () => {
         </View>
       )}
 
-      {/* Summary Statistics */}
-      <View style={styles.summaryContainer}>
-        <Text style={styles.sectionTitle}>Ringkasan Statistik</Text>
-        <View style={styles.statsGrid}>
-          <View style={[styles.statCard, styles.primaryCard]}>
-            <Icon name="assessment" size={32} color={COLORS.primary} />
-            <Text style={styles.statNumber}>
-              {formatNumber(summaryStats.totalCheckins)}
-            </Text>
-            <Text style={styles.statLabel}>Total Checkin</Text>
-            <Text style={styles.statSubLabel}>Semua waktu</Text>
-          </View>
 
-          <View style={[styles.statCard, styles.successCard]}>
-            <Icon name="today" size={32} color={COLORS.success} />
-            <Text style={styles.statNumber}>
-              {formatNumber(summaryStats.todayCheckins)}
-            </Text>
-            <Text style={styles.statLabel}>Checkin Hari Ini</Text>
-            <Text style={styles.statSubLabel}>Business day</Text>
-          </View>
-
-          <View style={[styles.statCard, styles.warningCard]}>
-            <Icon name="schedule" size={32} color={COLORS.warning} />
-            <Text style={styles.statNumber}>
-              {formatNumber(summaryStats.activeCheckins)}
-            </Text>
-            <Text style={styles.statLabel}>Sedang Aktif</Text>
-            <Text style={styles.statSubLabel}>Belum checkout</Text>
-          </View>
-
-          <View style={[styles.statCard, styles.infoCard]}>
-            <Icon name="attach-money" size={32} color={COLORS.info} />
-            <Text style={styles.statNumber}>
-              {formatCurrency(summaryStats.totalRevenue)}
-            </Text>
-            <Text style={styles.statLabel}>Total Revenue</Text>
-            <Text style={styles.statSubLabel}>Semua pembayaran</Text>
-          </View>
-        </View>
-      </View>
 
       {/* Apartment Statistics */}
       <View style={styles.sectionContainer}>
@@ -1242,22 +1161,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
     opacity: 0.7,
   },
-  primaryCard: {
-    borderLeftWidth: 4,
-    borderLeftColor: COLORS.primary,
-  },
-  successCard: {
-    borderLeftWidth: 4,
-    borderLeftColor: COLORS.success,
-  },
-  warningCard: {
-    borderLeftWidth: 4,
-    borderLeftColor: COLORS.warning,
-  },
-  infoCard: {
-    borderLeftWidth: 4,
-    borderLeftColor: COLORS.info,
-  },
+
   emptyState: {
     alignItems: 'center',
     paddingVertical: SIZES.xl,
