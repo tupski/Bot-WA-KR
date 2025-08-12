@@ -13,7 +13,6 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import { COLORS, SIZES, APP_INFO } from '../../config/constants';
 import AuthService from '../../services/AuthService';
 import { useModernAlert } from '../../components/ModernAlert';
-import DateTimeHeader from '../../components/DateTimeHeader';
 
 const AppSettingsScreen = ({ navigation }) => {
   // Modern Alert Hook
@@ -26,7 +25,6 @@ const AppSettingsScreen = ({ navigation }) => {
     debugMode: false,
   });
   const [currentUser, setCurrentUser] = useState(null);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -325,19 +323,7 @@ const AppSettingsScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Icon name="arrow-back" size={24} color={COLORS.white} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Pengaturan</Text>
-        </View>
-        <DateTimeHeader />
-      </View>
+      {/* Header duplikat dihapus karena sudah ada GlobalHeader */}
 
       <ScrollView style={styles.content}>
         {/* User Info */}
@@ -367,24 +353,7 @@ const AppSettingsScreen = ({ navigation }) => {
           </View>
         )}
 
-        {/* Profile Settings */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Profil & Akun</Text>
-
-          <SettingItem
-            icon="person"
-            title="Profil Saya"
-            subtitle="Kelola informasi profil dan password"
-            onPress={() => {
-              if (currentUser.role === 'admin') {
-                navigation.navigate('AdminProfile');
-              } else {
-                navigation.navigate('FieldProfile');
-              }
-            }}
-            showChevron={true}
-          />
-        </View>
+        {/* Section Profil & Akun dihapus karena redundan dengan Informasi Pengguna */}
 
         {/* App Settings */}
         <View style={styles.section}>
@@ -521,28 +490,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  header: {
-    backgroundColor: COLORS.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 40,
-    paddingBottom: 15,
-    paddingHorizontal: 15,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  backButton: {
-    marginRight: 15,
-  },
-  headerTitle: {
-    fontSize: SIZES.h4,
-    fontWeight: 'bold',
-    color: COLORS.background,
-  },
+  // Header styles dihapus karena menggunakan GlobalHeader
   content: {
     flex: 1,
   },
