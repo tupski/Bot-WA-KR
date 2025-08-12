@@ -334,11 +334,10 @@ class NotificationService {
       let targetUsers = [];
 
       if (targetUserType === 'all') {
-        // Get all active users
+        // Get all users with FCM tokens
         const { data: allUsers, error: allError } = await supabase
           .from('user_fcm_tokens')
-          .select('user_id, fcm_token')
-          .eq('is_active', true);
+          .select('user_id, fcm_token');
 
         if (allError) {
           throw allError;
@@ -354,8 +353,7 @@ class NotificationService {
             supabase
               .from('admins')
               .select('id')
-          )
-          .eq('is_active', true);
+          );
 
         if (adminError) {
           throw adminError;
@@ -371,8 +369,7 @@ class NotificationService {
             supabase
               .from('field_teams')
               .select('id')
-          )
-          .eq('is_active', true);
+          );
 
         if (fieldError) {
           throw fieldError;

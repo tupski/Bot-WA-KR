@@ -238,8 +238,7 @@ class TestNotification {
       // Get FCM tokens count
       const { count: fcmTokensCount } = await supabase
         .from('user_fcm_tokens')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_active', true);
+        .select('*', { count: 'exact', head: true });
 
       // Get notification logs count
       const { count: notificationLogsCount } = await supabase
