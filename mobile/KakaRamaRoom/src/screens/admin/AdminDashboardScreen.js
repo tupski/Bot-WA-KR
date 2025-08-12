@@ -304,19 +304,15 @@ const AdminDashboardScreen = ({ navigation }) => {
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
     >
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
+      {/* Welcome Section - Header konten dipindah ke sini tanpa notifikasi */}
+      <View style={styles.welcomeSection}>
+        <View style={styles.welcomeContent}>
           <Text style={styles.welcomeText}>Selamat Datang,</Text>
           <Text style={styles.nameText}>{currentUser?.fullName || 'Admin'}</Text>
           <Text style={styles.roleText}>Administrator</Text>
         </View>
-        <View style={styles.headerActions}>
+        <View style={styles.welcomeActions}>
           <SyncStatusIndicator />
-          <NotificationIcon
-            onPress={() => navigation.navigate('Notifications')}
-            color={COLORS.background}
-          />
         </View>
       </View>
 
@@ -366,17 +362,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.gray100,
   },
-  header: {
+  // Welcome section - menggantikan header lama
+  welcomeSection: {
     backgroundColor: COLORS.primary,
     padding: SIZES.lg,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  headerContent: {
+  welcomeContent: {
     flex: 1,
   },
-  headerActions: {
+  welcomeActions: {
     flexDirection: 'row',
     alignItems: 'center',
   },

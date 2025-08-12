@@ -7,6 +7,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import AuthService from '../services/AuthService';
 import { COLORS, SIZES, USER_ROLES, SCREENS } from '../config/constants';
 import { AuthProvider, useAuth } from '../context/AuthContext';
+import GlobalHeader from '../components/GlobalHeader';
 
 // Auth Screens
 import LoginScreen from '../screens/LoginScreen';
@@ -92,12 +93,28 @@ const AdminTabNavigator = () => {
           fontSize: SIZES.caption,
           fontWeight: '500',
         },
-        headerStyle: {
-          backgroundColor: COLORS.primary,
-        },
-        headerTintColor: COLORS.background,
-        headerTitleStyle: {
-          fontWeight: 'bold',
+        // Gunakan custom header dengan GlobalHeader
+        headerShown: true,
+        header: ({ route }) => {
+          let title = '';
+          switch (route.name) {
+            case SCREENS.ADMIN_DASHBOARD:
+              title = 'Dashboard';
+              break;
+            case SCREENS.ADMIN_REPORTS:
+              title = 'Laporan';
+              break;
+            case SCREENS.ADMIN_APARTMENTS:
+              title = 'Apartemen';
+              break;
+            case SCREENS.ADMIN_TEAMS:
+              title = 'Tim Lapangan';
+              break;
+            case 'AppSettings':
+              title = 'Pengaturan';
+              break;
+          }
+          return <GlobalHeader title={title} />;
         },
       })}
     >
@@ -184,12 +201,25 @@ const FieldTabNavigator = () => {
           fontSize: SIZES.caption,
           fontWeight: '500',
         },
-        headerStyle: {
-          backgroundColor: COLORS.primary,
-        },
-        headerTintColor: COLORS.background,
-        headerTitleStyle: {
-          fontWeight: 'bold',
+        // Gunakan custom header dengan GlobalHeader
+        headerShown: true,
+        header: ({ route }) => {
+          let title = '';
+          switch (route.name) {
+            case SCREENS.FIELD_DASHBOARD:
+              title = 'Dashboard';
+              break;
+            case SCREENS.FIELD_CHECKIN:
+              title = 'Check-in';
+              break;
+            case SCREENS.FIELD_UNITS:
+              title = 'Status Unit';
+              break;
+            case 'AppSettings':
+              title = 'Pengaturan';
+              break;
+          }
+          return <GlobalHeader title={title} />;
         },
       })}
     >

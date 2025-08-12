@@ -12,10 +12,8 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { COLORS, SIZES, CHECKIN_STATUS } from '../../config/constants';
-import NotificationIcon from '../../components/NotificationIcon';
 import AuthService from '../../services/AuthService';
 import CheckinService from '../../services/CheckinService';
-import UnitService from '../../services/UnitService';
 import TeamAssignmentService from '../../services/TeamAssignmentService';
 
 const FieldDashboardScreen = ({ navigation }) => {
@@ -284,9 +282,9 @@ const FieldDashboardScreen = ({ navigation }) => {
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
     >
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
+      {/* Welcome Section - Header konten dipindah ke sini tanpa notifikasi */}
+      <View style={styles.welcomeSection}>
+        <View style={styles.welcomeContent}>
           <Text style={styles.welcomeText}>Selamat Datang,</Text>
           <Text style={styles.nameText}>{currentUser?.fullName || 'Tim Lapangan'}</Text>
           <Text style={styles.roleText}>Tim Lapangan</Text>
@@ -295,12 +293,6 @@ const FieldDashboardScreen = ({ navigation }) => {
               {currentUser.apartmentNames.join(', ')}
             </Text>
           )}
-        </View>
-        <View style={styles.headerActions}>
-          <NotificationIcon
-            onPress={() => navigation.navigate('Notifications')}
-            color={COLORS.background}
-          />
         </View>
       </View>
 
@@ -458,19 +450,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.gray100,
   },
-  header: {
+  // Welcome section - menggantikan header lama
+  welcomeSection: {
     backgroundColor: COLORS.primary,
     padding: SIZES.lg,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  headerContent: {
+  welcomeContent: {
     flex: 1,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   welcomeText: {
     fontSize: SIZES.body,
