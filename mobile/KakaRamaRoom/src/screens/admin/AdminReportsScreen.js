@@ -9,6 +9,7 @@ import {
   Modal,
   FlatList,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import DatePicker from 'react-native-date-picker';
@@ -17,7 +18,6 @@ import ReportService from '../../services/ReportService';
 import ApartmentService from '../../services/ApartmentService';
 import BusinessDayService from '../../services/BusinessDayService';
 import { useModernAlert } from '../../components/ModernAlert';
-import DateTimeHeader from '../../components/DateTimeHeader';
 
 /**
  * Screen dashboard laporan untuk admin
@@ -57,9 +57,7 @@ const AdminReportsScreen = () => {
   const [tempStartDate, setTempStartDate] = useState(new Date());
   const [tempEndDate, setTempEndDate] = useState(new Date());
 
-  // State untuk current date/time
-  const [currentDateTime, setCurrentDateTime] = useState(new Date());
-  const [businessDate, setBusinessDate] = useState('');
+  // State untuk current date/time dihapus karena tidak digunakan lagi
 
   // Load data saat komponen dimount
   useEffect(() => {
@@ -400,59 +398,22 @@ const AdminReportsScreen = () => {
         }
         showsVerticalScrollIndicator={false}
       >
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Text style={styles.headerTitle}>Laporan</Text>
-        </View>
-        <View style={styles.headerCenter}>
-          <DateTimeHeader style={styles.dateTimeHeader} />
-        </View>
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.filterButton}
-            onPress={() => setDateRangeModalVisible(true)}
-          >
-            <Icon name="date-range" size={20} color={COLORS.white} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.filterButton}
-            onPress={() => setApartmentModalVisible(true)}
-          >
-            <Icon name="filter-list" size={20} color={COLORS.white} />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Date Time Info */}
-      <View style={styles.dateTimeContainer}>
-        <View style={styles.dateTimeCard}>
-          <Icon name="today" size={20} color={COLORS.primary} />
-          <View style={styles.dateTimeInfo}>
-            <Text style={styles.currentDateTime}>
-              {currentDateTime.toLocaleDateString('id-ID', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </Text>
-            <Text style={styles.currentTime}>
-              {currentDateTime.toLocaleTimeString('id-ID', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-              })} WIB
-            </Text>
-          </View>
-        </View>
-        <View style={styles.businessDateCard}>
-          <Icon name="business" size={20} color={COLORS.secondary} />
-          <View style={styles.dateTimeInfo}>
-            <Text style={styles.businessDateLabel}>Business Day</Text>
-            <Text style={styles.businessDateText}>{businessDate}</Text>
-          </View>
-        </View>
+      {/* Filter Actions - dipindah ke atas tanpa header duplikat */}
+      <View style={styles.filterActionsContainer}>
+        <TouchableOpacity
+          style={styles.filterActionButton}
+          onPress={() => setDateRangeModalVisible(true)}
+        >
+          <Icon name="date-range" size={20} color={COLORS.primary} />
+          <Text style={styles.filterActionText}>Pilih Tanggal</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.filterActionButton}
+          onPress={() => setApartmentModalVisible(true)}
+        >
+          <Icon name="filter-list" size={20} color={COLORS.primary} />
+          <Text style={styles.filterActionText}>Filter Apartemen</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Filter Info */}
@@ -480,34 +441,39 @@ const AdminReportsScreen = () => {
         </View>
       )}
 
-      {/* Daily Statistics Cards */}
+      {/* Daily Statistics Cards - Compact dengan scroll horizontal */}
       <View style={styles.dailyStatsContainer}>
         <Text style={styles.sectionTitle}>Statistik Harian</Text>
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <Icon name="check-circle" size={32} color={COLORS.success} />
-            <Text style={styles.statNumber}>{dailyStats.activeCheckins}</Text>
-            <Text style={styles.statLabel}>Checkin Aktif</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.statsScrollView}
+          contentContainerStyle={styles.statsScrollContent}
+        >
+          <View style={styles.compactStatCard}>
+            <Icon name="check-circle" size={24} color={COLORS.success} />
+            <Text style={styles.compactStatNumber}>{dailyStats.activeCheckins}</Text>
+            <Text style={styles.compactStatLabel}>Checkin Aktif</Text>
           </View>
 
-          <View style={styles.statCard}>
-            <Icon name="assignment" size={32} color={COLORS.primary} />
-            <Text style={styles.statNumber}>{dailyStats.totalCheckins}</Text>
-            <Text style={styles.statLabel}>Total Checkin</Text>
+          <View style={styles.compactStatCard}>
+            <Icon name="assignment" size={24} color={COLORS.primary} />
+            <Text style={styles.compactStatNumber}>{dailyStats.totalCheckins}</Text>
+            <Text style={styles.compactStatLabel}>Total Checkin</Text>
           </View>
 
-          <View style={styles.statCard}>
-            <Icon name="money" size={32} color={COLORS.warning} />
-            <Text style={styles.statNumber}>{dailyStats.cashTransactions}</Text>
-            <Text style={styles.statLabel}>Transaksi Tunai</Text>
+          <View style={styles.compactStatCard}>
+            <Icon name="money" size={24} color={COLORS.warning} />
+            <Text style={styles.compactStatNumber}>{dailyStats.cashTransactions}</Text>
+            <Text style={styles.compactStatLabel}>Transaksi Tunai</Text>
           </View>
 
-          <View style={styles.statCard}>
-            <Icon name="credit-card" size={32} color={COLORS.info} />
-            <Text style={styles.statNumber}>{dailyStats.transferTransactions}</Text>
-            <Text style={styles.statLabel}>Transaksi Transfer</Text>
+          <View style={styles.compactStatCard}>
+            <Icon name="credit-card" size={24} color={COLORS.info} />
+            <Text style={styles.compactStatNumber}>{dailyStats.transferTransactions}</Text>
+            <Text style={styles.compactStatLabel}>Transaksi Transfer</Text>
           </View>
-        </View>
+        </ScrollView>
       </View>
 
       {/* Filter Info */}
@@ -973,6 +939,38 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-end',
   },
+  // Filter Actions Container - style baru
+  filterActionsContainer: {
+    backgroundColor: COLORS.background,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    padding: SIZES.md,
+    marginHorizontal: SIZES.md,
+    marginVertical: SIZES.sm,
+    borderRadius: SIZES.radius,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  filterActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SIZES.md,
+    paddingVertical: SIZES.sm,
+    borderRadius: SIZES.radius,
+    backgroundColor: COLORS.gray100,
+    flex: 1,
+    marginHorizontal: SIZES.xs,
+    justifyContent: 'center',
+  },
+  filterActionText: {
+    fontSize: SIZES.body,
+    color: COLORS.textPrimary,
+    fontWeight: '500',
+    marginLeft: SIZES.xs,
+  },
   filterInfo: {
     backgroundColor: COLORS.primary + '10',
     marginHorizontal: SIZES.lg,
@@ -1048,6 +1046,40 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: SIZES.xs,
     textAlign: 'center',
+  },
+  // Compact Stats Styles - untuk scroll horizontal
+  statsScrollView: {
+    marginTop: SIZES.sm,
+  },
+  statsScrollContent: {
+    paddingHorizontal: SIZES.md,
+    paddingRight: SIZES.lg,
+  },
+  compactStatCard: {
+    backgroundColor: COLORS.background,
+    borderRadius: SIZES.radius,
+    padding: SIZES.md,
+    alignItems: 'center',
+    marginRight: SIZES.sm,
+    minWidth: 100,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  compactStatNumber: {
+    fontSize: SIZES.h6,
+    fontWeight: 'bold',
+    color: COLORS.textPrimary,
+    marginTop: SIZES.xs,
+  },
+  compactStatLabel: {
+    fontSize: SIZES.caption,
+    color: COLORS.textSecondary,
+    marginTop: SIZES.xs,
+    textAlign: 'center',
+    lineHeight: 14,
   },
   sectionContainer: {
     backgroundColor: COLORS.background,
