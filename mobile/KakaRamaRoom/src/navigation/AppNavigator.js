@@ -11,9 +11,11 @@ import GlobalHeader from '../components/GlobalHeader';
 
 // Auth Screens
 import LoginScreen from '../screens/LoginScreen';
+import ModernLoginScreen from '../screens/modern/ModernLoginScreen';
 
 // Admin Screens
 import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
+import ModernDashboardScreen from '../screens/modern/ModernDashboardScreen';
 import AdminCheckinScreen from '../screens/admin/AdminCheckinScreen';
 import AdminReportsScreen from '../screens/admin/AdminReportsScreen';
 import AdminApartmentsScreen from '../screens/admin/AdminApartmentsScreen';
@@ -110,7 +112,7 @@ const AdminTabNavigator = () => {
     >
       <Tab.Screen
         name={SCREENS.ADMIN_DASHBOARD}
-        component={AdminDashboardScreen}
+        component={ModernDashboardScreen}
         options={{
           title: 'Dashboard',
           tabBarLabel: 'Dashboard',
@@ -317,7 +319,7 @@ const AppNavigator = () => {
       >
         {!currentUser ? (
           // Auth Stack
-          <Stack.Screen name={SCREENS.LOGIN} component={LoginScreen} />
+          <Stack.Screen name={SCREENS.LOGIN} component={ModernLoginScreen} />
         ) : currentUser.role === USER_ROLES.ADMIN ? (
           // Admin Stack
           <>
