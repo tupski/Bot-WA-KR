@@ -1,7 +1,7 @@
 // App Constants
 export const APP_CONFIG = {
   name: 'KakaRama Room',
-  version: '2.1.0',
+  version: '2.1.1',
   company: 'KakaRama Room',
   website: 'https://kakaramaroom.com',
   logo: require('../assets/images/logo-placeholder.png'), // Placeholder
@@ -9,8 +9,8 @@ export const APP_CONFIG = {
 
 export const APP_INFO = {
   name: 'KakaRama Room',
-  version: '2.1.0',
-  buildNumber: '20250108',
+  version: '2.1.1',
+  buildNumber: '20250112',
   developer: 'Angga Artupas',
   description: 'Aplikasi manajemen kamar apartemen untuk check-in, check-out, dan monitoring unit secara real-time.',
   features: [
