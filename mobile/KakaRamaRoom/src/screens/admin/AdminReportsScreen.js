@@ -9,7 +9,6 @@ import {
   Modal,
   FlatList,
   ActivityIndicator,
-  ScrollView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import DatePicker from 'react-native-date-picker';
