@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import DatePicker from 'react-native-date-picker';
 import { COLORS, SIZES } from '../../config/constants';
 import ReportService from '../../services/ReportService';
 import ApartmentService from '../../services/ApartmentService';
@@ -49,6 +50,12 @@ const AdminReportsScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [apartmentModalVisible, setApartmentModalVisible] = useState(false);
   const [dateRangeModalVisible, setDateRangeModalVisible] = useState(false);
+
+  // State untuk date picker
+  const [startDatePickerOpen, setStartDatePickerOpen] = useState(false);
+  const [endDatePickerOpen, setEndDatePickerOpen] = useState(false);
+  const [tempStartDate, setTempStartDate] = useState(new Date());
+  const [tempEndDate, setTempEndDate] = useState(new Date());
 
   // State untuk current date/time
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
@@ -802,15 +809,54 @@ const AdminReportsScreen = () => {
               </TouchableOpacity>
             </View>
 
-            {/* Current Date Range Display */}
-            {(dateRange.startDate || dateRange.endDate) && (
-              <View style={styles.currentDateRange}>
-                <Text style={styles.currentDateRangeLabel}>Rentang Saat Ini:</Text>
-                <Text style={styles.currentDateRangeText}>
-                  {dateRange.startDate ? new Date(dateRange.startDate).toLocaleDateString('id-ID') : 'Tidak ada'} - {dateRange.endDate ? new Date(dateRange.endDate).toLocaleDateString('id-ID') : 'Tidak ada'}
-                </Text>
+            {/* Date Picker Section */}
+            <View style={styles.datePickerSection}>
+              <Text style={styles.sectionTitle}>Pilih Rentang Tanggal</Text>
+
+              {/* Start Date */}
+              <View style={styles.datePickerRow}>
+                <Text style={styles.dateLabel}>Tanggal Mulai:</Text>
+                <TouchableOpacity
+                  style={styles.dateButton}
+                  onPress={() => setStartDatePickerOpen(true)}
+                >
+                  <Text style={styles.dateButtonText}>
+                    {dateRange.startDate
+                      ? new Date(dateRange.startDate).toLocaleDateString('id-ID')
+                      : 'Pilih tanggal mulai'
+                    }
+                  </Text>
+                  <Icon name="date-range" size={20} color={COLORS.primary} />
+                </TouchableOpacity>
               </View>
-            )}
+
+              {/* End Date */}
+              <View style={styles.datePickerRow}>
+                <Text style={styles.dateLabel}>Tanggal Selesai:</Text>
+                <TouchableOpacity
+                  style={styles.dateButton}
+                  onPress={() => setEndDatePickerOpen(true)}
+                >
+                  <Text style={styles.dateButtonText}>
+                    {dateRange.endDate
+                      ? new Date(dateRange.endDate).toLocaleDateString('id-ID')
+                      : 'Pilih tanggal selesai'
+                    }
+                  </Text>
+                  <Icon name="date-range" size={20} color={COLORS.primary} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Current Date Range Display */}
+              {(dateRange.startDate && dateRange.endDate) && (
+                <View style={styles.currentDateRange}>
+                  <Text style={styles.currentDateRangeLabel}>Rentang Dipilih:</Text>
+                  <Text style={styles.currentDateRangeText}>
+                    {new Date(dateRange.startDate).toLocaleDateString('id-ID')} - {new Date(dateRange.endDate).toLocaleDateString('id-ID')}
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
 
           {/* Modal Actions */}
@@ -830,6 +876,51 @@ const AdminReportsScreen = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Start Date Picker */}
+      <DatePicker
+        modal
+        open={startDatePickerOpen}
+        date={tempStartDate}
+        mode="date"
+        title="Pilih Tanggal Mulai"
+        confirmText="Pilih"
+        cancelText="Batal"
+        onConfirm={(date) => {
+          setStartDatePickerOpen(false);
+          setTempStartDate(date);
+          setDateRange(prev => ({
+            ...prev,
+            startDate: date.toISOString()
+          }));
+        }}
+        onCancel={() => {
+          setStartDatePickerOpen(false);
+        }}
+      />
+
+      {/* End Date Picker */}
+      <DatePicker
+        modal
+        open={endDatePickerOpen}
+        date={tempEndDate}
+        mode="date"
+        title="Pilih Tanggal Selesai"
+        confirmText="Pilih"
+        cancelText="Batal"
+        minimumDate={dateRange.startDate ? new Date(dateRange.startDate) : undefined}
+        onConfirm={(date) => {
+          setEndDatePickerOpen(false);
+          setTempEndDate(date);
+          setDateRange(prev => ({
+            ...prev,
+            endDate: date.toISOString()
+          }));
+        }}
+        onCancel={() => {
+          setEndDatePickerOpen(false);
+        }}
+      />
       </ScrollView>
 
       {/* Modern Alert Component */}
@@ -1290,6 +1381,53 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: SIZES.md,
     textAlign: 'center',
+  },
+
+  // Date Picker Styles
+  datePickerSection: {
+    marginTop: SIZES.md,
+  },
+  datePickerRow: {
+    marginBottom: SIZES.md,
+  },
+  dateLabel: {
+    fontSize: SIZES.body,
+    color: COLORS.textPrimary,
+    fontWeight: '500',
+    marginBottom: SIZES.xs,
+  },
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: SIZES.md,
+    backgroundColor: COLORS.background,
+    borderRadius: SIZES.radius,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  dateButtonText: {
+    fontSize: SIZES.body,
+    color: COLORS.textPrimary,
+  },
+  currentDateRange: {
+    marginTop: SIZES.md,
+    padding: SIZES.md,
+    backgroundColor: COLORS.primary + '10',
+    borderRadius: SIZES.radius,
+    borderWidth: 1,
+    borderColor: COLORS.primary + '30',
+  },
+  currentDateRangeLabel: {
+    fontSize: SIZES.caption,
+    color: COLORS.primary,
+    marginBottom: SIZES.xs,
+    fontWeight: '500',
+  },
+  currentDateRangeText: {
+    fontSize: SIZES.body,
+    color: COLORS.primary,
+    fontWeight: '600',
   },
 });
 
