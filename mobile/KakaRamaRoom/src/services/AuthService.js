@@ -370,18 +370,47 @@ class AuthService {
   async updateProfile(profileData) {
     try {
       if (!this.currentUser) {
+        console.error('AuthService: No current user found');
         return { success: false, message: 'User tidak ditemukan' };
       }
+
+      console.log('AuthService: Current user:', {
+        id: this.currentUser.id,
+        role: this.currentUser.role,
+        fullName: this.currentUser.fullName
+      });
 
       const table = this.isAdmin() ? 'admins' : 'field_teams';
       const { fullName, email, phone, profile_image, password } = profileData;
 
-      // Prepare update data
-      const updateData = {
-        full_name: fullName,
+      console.log('AuthService: Profile data received:', {
+        fullName,
         email,
         phone,
+        profile_image: profile_image ? 'provided' : 'not provided',
+        password: password ? 'provided' : 'not provided'
+      });
+
+      // Validate required fields
+      if (!fullName || fullName.trim() === '') {
+        return { success: false, message: 'Nama lengkap harus diisi' };
+      }
+
+      // Prepare update data - only include fields that are not undefined/null
+      const updateData = {
+        full_name: fullName.trim(),
       };
+
+      // Add email for admin, phone for field team
+      if (this.isAdmin()) {
+        if (email && email.trim() !== '') {
+          updateData.email = email.trim();
+        }
+      } else {
+        if (phone && phone.trim() !== '') {
+          updateData.phone = phone.trim();
+        }
+      }
 
       // Add profile image if provided
       if (profile_image !== undefined) {
@@ -393,18 +422,31 @@ class AuthService {
         updateData.password = password;
       }
 
-      console.log('AuthService: Updating profile with data:', {
+      console.log('AuthService: Updating profile in table:', table);
+      console.log('AuthService: Update data:', {
         ...updateData,
         password: password ? '[HIDDEN]' : undefined
       });
 
       // Update profile row in public table
-      const { error } = await supabase
+      const { data: updatedData, error } = await supabase
         .from(table)
         .update(updateData)
-        .eq('id', this.currentUser.id);
+        .eq('id', this.currentUser.id)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('AuthService: Database update error:', error);
+        console.error('AuthService: Error details:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+        throw error;
+      }
+
+      console.log('AuthService: Profile updated successfully:', updatedData);
 
       // Optionally update auth user email/display name
       if (email && email !== this.currentUser.email) {
@@ -432,8 +474,23 @@ class AuthService {
 
       return { success: true, message: 'Profil berhasil diperbarui' };
     } catch (error) {
-      console.error('Update profile error:', error);
-      return { success: false, message: 'Terjadi kesalahan saat memperbarui profil' };
+      console.error('AuthService: Update profile error:', error);
+      console.error('AuthService: Error stack:', error.stack);
+
+      // Provide more specific error messages
+      let errorMessage = 'Terjadi kesalahan saat memperbarui profil';
+
+      if (error.code === 'PGRST116') {
+        errorMessage = 'User tidak ditemukan di database';
+      } else if (error.code === '23505') {
+        errorMessage = 'Email atau nomor telepon sudah digunakan';
+      } else if (error.code === '23502') {
+        errorMessage = 'Data yang diperlukan tidak lengkap';
+      } else if (error.message) {
+        errorMessage = `Error: ${error.message}`;
+      }
+
+      return { success: false, message: errorMessage };
     }
   }
 }
