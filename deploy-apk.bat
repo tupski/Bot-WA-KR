@@ -1,6 +1,6 @@
 @echo off
 echo ========================================
-echo KR App - Deploy Android APK
+echo KakaRama Room - Deploy Android APK
 echo ========================================
 echo.
 

@@ -50,9 +50,10 @@ const NotificationIcon = ({
   const loadBadgeCount = async () => {
     try {
       const count = await NotificationService.getUnreadCount();
-      setBadgeCount(count);
+      setBadgeCount(count || 0);
     } catch (error) {
-      console.error('NotificationIcon: Error loading badge count:', error);
+      console.warn('NotificationIcon: Error loading badge count:', error);
+      setBadgeCount(0); // Set to 0 if service fails
     }
   };
 

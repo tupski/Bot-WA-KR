@@ -1,6 +1,6 @@
 @echo off
 echo ========================================
-echo KR App - Quick Setup & Fix
+echo KakaRama Room - Quick Setup & Fix
 echo ========================================
 echo.
 
