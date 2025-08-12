@@ -415,6 +415,18 @@ const AdminReportsScreen = () => {
         </TouchableOpacity>
       </View>
 
+      {/* Marketing Report Button */}
+      <View style={styles.marketingReportContainer}>
+        <TouchableOpacity
+          style={styles.marketingReportButton}
+          onPress={() => navigation.navigate('LaporanMarketing')}
+        >
+          <Icon name="trending-up" size={20} color={COLORS.background} />
+          <Text style={styles.marketingReportText}>Lihat Laporan Marketing</Text>
+          <Icon name="chevron-right" size={20} color={COLORS.background} />
+        </TouchableOpacity>
+      </View>
+
       {/* Filter Info */}
       {(selectedApartments.length > 0 || (dateRange.startDate && dateRange.endDate)) && (
         <View style={styles.filterInfo}>
@@ -967,6 +979,33 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     fontWeight: '500',
     marginLeft: SIZES.xs,
+  },
+  // Marketing Report Button Styles
+  marketingReportContainer: {
+    marginHorizontal: SIZES.md,
+    marginVertical: SIZES.sm,
+  },
+  marketingReportButton: {
+    backgroundColor: COLORS.success,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: SIZES.lg,
+    paddingVertical: SIZES.md,
+    borderRadius: SIZES.radius,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  marketingReportText: {
+    fontSize: SIZES.body,
+    color: COLORS.background,
+    fontWeight: '600',
+    marginHorizontal: SIZES.sm,
+    flex: 1,
+    textAlign: 'center',
   },
   filterInfo: {
     backgroundColor: COLORS.primary + '10',
