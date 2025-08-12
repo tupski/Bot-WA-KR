@@ -88,7 +88,9 @@ const AdminTabNavigator = () => {
           borderTopColor: COLORS.gray200,
           paddingBottom: 5,
           height: 60,
+          display: 'flex', // Pastikan tab bar selalu terlihat
         },
+        tabBarHideOnKeyboard: false, // Jangan sembunyikan saat keyboard muncul
         tabBarLabelStyle: {
           fontSize: SIZES.caption,
           fontWeight: '500',
@@ -196,7 +198,9 @@ const FieldTabNavigator = () => {
           borderTopColor: COLORS.gray200,
           paddingBottom: 5,
           height: 60,
+          display: 'flex', // Pastikan tab bar selalu terlihat
         },
+        tabBarHideOnKeyboard: false, // Jangan sembunyikan saat keyboard muncul
         tabBarLabelStyle: {
           fontSize: SIZES.caption,
           fontWeight: '500',
@@ -353,9 +357,7 @@ const AppNavigator = () => {
               component={AdminActivityLogsScreen}
               options={{
                 headerShown: true,
-                title: 'Log Aktivitas',
-                headerStyle: { backgroundColor: COLORS.primary },
-                headerTintColor: COLORS.background,
+                header: () => <GlobalHeader title="Log Aktivitas" showBackButton={true} />,
               }}
             />
             <Stack.Screen
@@ -363,9 +365,7 @@ const AppNavigator = () => {
               component={AdminTopMarketingScreen}
               options={{
                 headerShown: true,
-                title: 'Top Marketing',
-                headerStyle: { backgroundColor: COLORS.primary },
-                headerTintColor: COLORS.background,
+                header: () => <GlobalHeader title="Top Marketing" showBackButton={true} />,
               }}
             />
             <Stack.Screen
@@ -373,9 +373,7 @@ const AppNavigator = () => {
               component={AdminUnitsScreen}
               options={{
                 headerShown: true,
-                title: 'Manajemen Unit',
-                headerStyle: { backgroundColor: COLORS.primary },
-                headerTintColor: COLORS.background,
+                header: () => <GlobalHeader title="Manajemen Unit" showBackButton={true} />,
               }}
             />
 
