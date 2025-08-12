@@ -663,11 +663,11 @@ const AdminUnitsScreen = ({ route }) => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Manajemen Unit</Text>
-        <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
-          <Icon name="add" size={24} color={COLORS.background} />
+      {/* Tombol Tambah Unit - dengan label yang jelas */}
+      <View style={styles.actionContainer}>
+        <TouchableOpacity style={styles.addUnitButton} onPress={openAddModal}>
+          <Icon name="add" size={20} color={COLORS.background} />
+          <Text style={styles.addUnitButtonText}>Tambah Unit</Text>
         </TouchableOpacity>
       </View>
 
@@ -922,30 +922,35 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.gray100,
   },
-  header: {
+  // Action container untuk tombol tambah unit
+  actionContainer: {
     backgroundColor: COLORS.background,
+    padding: SIZES.md,
+    alignItems: 'flex-end',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  addUnitButton: {
+    backgroundColor: COLORS.primary,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: SIZES.lg,
+    paddingHorizontal: SIZES.md,
+    paddingVertical: SIZES.sm,
+    borderRadius: SIZES.radius,
     elevation: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
-  headerTitle: {
-    fontSize: SIZES.h4,
-    fontWeight: 'bold',
-    color: COLORS.textPrimary,
-  },
-  addButton: {
-    backgroundColor: COLORS.primary,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+  addUnitButtonText: {
+    color: COLORS.background,
+    fontSize: SIZES.body,
+    fontWeight: '600',
+    marginLeft: SIZES.xs,
   },
   filterContainer: {
     backgroundColor: COLORS.background,
