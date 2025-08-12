@@ -526,8 +526,10 @@ const AdminReportsScreen = () => {
                     style={styles.apartmentCard}
                     onPress={() => {
                       // Navigasi ke laporan detail apartemen
-                      console.log('Navigate to apartment detail:', item.name);
-                      // TODO: Implement navigation to LaporanApartemenScreen
+                      navigation.navigate('LaporanApartemen', {
+                        apartmentId: item.id,
+                        apartmentName: item.name,
+                      });
                     }}
                     activeOpacity={0.7}
                   >

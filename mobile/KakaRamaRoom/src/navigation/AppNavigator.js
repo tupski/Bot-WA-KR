@@ -25,6 +25,7 @@ import AdminSMTPSettingsScreen from '../screens/admin/AdminSMTPSettingsScreen';
 
 import AdminApartmentDetailScreen from '../screens/admin/AdminApartmentDetailScreen';
 import AdminFieldTeamManagementScreen from '../screens/admin/AdminFieldTeamManagementScreen';
+import LaporanApartemenScreen from '../screens/admin/LaporanApartemenScreen';
 
 // Field Team Screens
 import FieldDashboardScreen from '../screens/field/FieldDashboardScreen';
@@ -442,6 +443,13 @@ const AppNavigator = () => {
             <Stack.Screen
               name="Notifications"
               component={NotificationsScreen}
+              options={{
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="LaporanApartemen"
+              component={LaporanApartemenScreen}
               options={{
                 headerShown: false,
               }}
