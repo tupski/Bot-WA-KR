@@ -100,7 +100,19 @@ class CheckinService {
       const finalUserId = createdBy || userId;
 
       // Cek apakah unit tersedia dengan detailed logging
-      console.log('CheckinService: Checking unit availability for unitId:', unitId);
+      console.log('CheckinService: Checking unit availability for unitId:', unitId, 'type:', typeof unitId);
+
+      // Ensure unitId is properly formatted
+      const parsedUnitId = parseInt(unitId);
+      if (isNaN(parsedUnitId)) {
+        console.error('CheckinService: Invalid unit ID format:', unitId);
+        return {
+          success: false,
+          message: `Unit ID tidak valid: ${unitId}. Harap pilih unit yang benar.`,
+        };
+      }
+
+      console.log('CheckinService: Using parsed unit ID:', parsedUnitId);
 
       const { data: unit, error: unitError } = await supabase
         .from('units')
@@ -115,28 +127,51 @@ class CheckinService {
             code
           )
         `)
-        .eq('id', unitId)
+        .eq('id', parsedUnitId)
         .single();
 
       if (unitError) {
         console.error('CheckinService: Unit check error:', unitError);
-        console.error('CheckinService: Unit ID that failed:', unitId);
+        console.error('CheckinService: Unit ID that failed:', parsedUnitId);
 
-        // Check if unit exists at all
+        // Check if unit exists at all (without single())
         const { data: unitExists, error: existsError } = await supabase
           .from('units')
-          .select('id, unit_number, apartment_id')
-          .eq('id', unitId);
+          .select('id, unit_number, apartment_id, status, apartments(name)')
+          .eq('id', parsedUnitId);
 
         if (existsError) {
           console.error('CheckinService: Error checking unit existence:', existsError);
         } else {
           console.log('CheckinService: Unit existence check result:', unitExists);
+
+          if (unitExists && unitExists.length > 0) {
+            const existingUnit = unitExists[0];
+            console.log('CheckinService: Unit exists but query failed:', existingUnit);
+            return {
+              success: false,
+              message: `Unit ${existingUnit.unit_number} ditemukan tapi tidak bisa diakses. Status: ${existingUnit.status}`,
+            };
+          }
+        }
+
+        // Check if there are any units at all for debugging
+        const { data: allUnits, error: allUnitsError } = await supabase
+          .from('units')
+          .select('id, unit_number, apartment_id, apartments(name)')
+          .limit(5);
+
+        if (!allUnitsError && allUnits) {
+          console.log('CheckinService: Sample units in database:', allUnits.map(u => ({
+            id: u.id,
+            unit_number: u.unit_number,
+            apartment: u.apartments?.name
+          })));
         }
 
         return {
           success: false,
-          message: `Unit tidak ditemukan (ID: ${unitId}). Pastikan unit sudah terdaftar di sistem.`,
+          message: `Unit tidak ditemukan (ID: ${parsedUnitId}). Pastikan unit sudah terdaftar di sistem.`,
         };
       }
 
